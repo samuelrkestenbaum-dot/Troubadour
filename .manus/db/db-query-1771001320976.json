@@ -1,0 +1,58 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reviews';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reviews';",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "projectId",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "trackId",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "reviewType",
+      "COLUMN_TYPE": "enum('track','album','comparison')"
+    },
+    {
+      "COLUMN_NAME": "modelUsed",
+      "COLUMN_TYPE": "varchar(100)"
+    },
+    {
+      "COLUMN_NAME": "promptVersion",
+      "COLUMN_TYPE": "varchar(20)"
+    },
+    {
+      "COLUMN_NAME": "reviewMarkdown",
+      "COLUMN_TYPE": "mediumtext"
+    },
+    {
+      "COLUMN_NAME": "scoresJson",
+      "COLUMN_TYPE": "json"
+    },
+    {
+      "COLUMN_NAME": "quickTake",
+      "COLUMN_TYPE": "mediumtext"
+    },
+    {
+      "COLUMN_NAME": "comparedTrackId",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\nid\tint(11)\nprojectId\tint(11)\ntrackId\tint(11)\nuserId\tint(11)\nreviewType\tenum('track','album','comparison')\nmodelUsed\tvarchar(100)\npromptVersion\tvarchar(20)\nreviewMarkdown\tmediumtext\nscoresJson\tjson\nquickTake\tmediumtext\ncomparedTrackId\tint(11)\ncreatedAt\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

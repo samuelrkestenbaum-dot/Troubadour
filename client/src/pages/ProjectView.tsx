@@ -11,7 +11,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
-  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen
+  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -82,6 +82,22 @@ export default function ProjectView({ id }: { id: number }) {
     onSuccess: () => {
       utils.project.get.invalidate({ id });
       toast.success("Version comparison started");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const analyzeAndReview = trpc.job.analyzeAndReview.useMutation({
+    onSuccess: () => {
+      utils.project.get.invalidate({ id });
+      toast.success("Analyze & Review started");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const retryJob = trpc.job.retry.useMutation({
+    onSuccess: () => {
+      utils.project.get.invalidate({ id });
+      toast.success("Retrying...");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -333,15 +349,25 @@ export default function ProjectView({ id }: { id: number }) {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {track.status === "uploaded" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => analyzeTrack.mutate({ trackId: track.id })}
-                            disabled={analyzeTrack.isPending}
-                          >
-                            <Headphones className="h-3.5 w-3.5 mr-1.5" />
-                            Analyze
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => analyzeAndReview.mutate({ trackId: track.id })}
+                              disabled={analyzeAndReview.isPending}
+                            >
+                              <Zap className="h-3.5 w-3.5 mr-1.5" />
+                              Full Review
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => analyzeTrack.mutate({ trackId: track.id })}
+                              disabled={analyzeTrack.isPending}
+                            >
+                              <Headphones className="h-3.5 w-3.5 mr-1.5" />
+                              Analyze
+                            </Button>
+                          </>
                         )}
                         {track.status === "analyzed" && (
                           <Button
@@ -373,6 +399,21 @@ export default function ProjectView({ id }: { id: number }) {
                           >
                             <GitCompare className="h-3.5 w-3.5 mr-1.5" />
                             Compare
+                          </Button>
+                        )}
+                        {track.status === "error" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const failedJob = jobs.find(j => j.trackId === track.id && j.status === "error");
+                              if (failedJob) retryJob.mutate({ jobId: failedJob.id });
+                              else analyzeAndReview.mutate({ trackId: track.id });
+                            }}
+                            disabled={retryJob.isPending || analyzeAndReview.isPending}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                            Retry
                           </Button>
                         )}
                         <Button

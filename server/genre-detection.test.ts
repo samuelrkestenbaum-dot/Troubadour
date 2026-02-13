@@ -144,7 +144,7 @@ vi.mock("./db", () => {
           trackId: 100,
           userId: 1,
           reviewType: "track",
-          modelUsed: "claude-4-5-sonnet-20250514",
+          modelUsed: "claude-sonnet-4-5-20250929",
           reviewMarkdown: "## Quick Take\n- Great indie rock track\n\n## Scores\n| Component | Score |\n|---|---|\n| Overall | 7 |",
           scoresJson: { overall: 7, production: 6, songwriting: 8 },
           quickTake: "Great indie rock track with strong melodies",
@@ -195,7 +195,7 @@ vi.mock("./_core/voiceTranscription", () => ({
 }));
 
 vi.mock("./services/claudeCritic", () => ({
-  CLAUDE_MODEL: "claude-4-5-sonnet-20250514",
+  CLAUDE_MODEL: "claude-sonnet-4-5-20250929",
   generateFollowUp: vi.fn().mockResolvedValue("Here's more detail..."),
   generateReferenceComparison: vi.fn().mockResolvedValue("## Comparison\nYour track vs reference..."),
   generateTrackReview: vi.fn(),

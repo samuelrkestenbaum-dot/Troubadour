@@ -110,3 +110,14 @@
 - [x] Show genre detection in the review as contextual framing
 - [x] Update Claude critique prompt to reference genre conventions and comparable artists naturally
 - [x] Tests for genre detection and integration (7 tests passing)
+
+## Round 3 - Bug Fixes & Polish
+- [x] Fix Data Too Long error: truncate error messages in job processor catch block
+- [x] Add retry/re-run capability for failed or stuck jobs
+- [x] Add radar chart visualization for review scores
+- [x] Improve score display visual hierarchy (overall score prominent, color-coded)
+- [x] Polish landing page copy and visual refinements
+- [x] Add "Analyze & Review" one-click flow (auto-chain analyze → review)
+- [x] Improve empty states and onboarding hints
+- [x] Update Claude model to claude-sonnet-4-5-20250929 (Claude Sonnet 4.5)
+- [x] Update tests for new features (60 tests passing)

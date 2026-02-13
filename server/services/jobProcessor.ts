@@ -57,11 +57,28 @@ async function processNextJob() {
     }
   } catch (error: any) {
     console.error(`[JobProcessor] Job ${jobId} failed:`, error);
-    await db.updateJob(jobId, {
-      status: "error",
-      errorMessage: error.message || "Unknown error",
-      completedAt: new Date(),
-    });
+    // Truncate error message to prevent cascading DB errors
+    const rawMessage = error.message || "Unknown error";
+    const errorMessage = rawMessage.length > 2000
+      ? rawMessage.substring(0, 2000) + "... (truncated)"
+      : rawMessage;
+    try {
+      await db.updateJob(jobId, {
+        status: "error",
+        errorMessage,
+        completedAt: new Date(),
+      });
+    } catch (updateError) {
+      console.error(`[JobProcessor] Failed to update job ${jobId} error status:`, updateError);
+      // Last resort: try with a minimal error message
+      try {
+        await db.updateJob(jobId, {
+          status: "error",
+          errorMessage: "Job failed — see server logs for details",
+          completedAt: new Date(),
+        });
+      } catch { /* give up */ }
+    }
   }
 
   // Process next job

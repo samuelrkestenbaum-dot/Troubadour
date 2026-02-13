@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Headphones, FileText, Loader2, Music, BarChart3,
   AlertCircle, GitCompare, Upload, Mic, Save, Target, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Minus
+  ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
@@ -366,6 +366,22 @@ export default function TrackView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const retryJob = trpc.job.retry.useMutation({
+    onSuccess: () => {
+      utils.track.get.invalidate({ id });
+      toast.success("Retrying...");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const analyzeAndReview = trpc.job.analyzeAndReview.useMutation({
+    onSuccess: () => {
+      utils.track.get.invalidate({ id });
+      toast.success("Analyze & Review started — sit back while we listen and critique");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const uploadTrack = trpc.track.upload.useMutation({
     onSuccess: () => {
       utils.track.get.invalidate({ id });
@@ -451,10 +467,20 @@ export default function TrackView({ id }: { id: number }) {
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         {(track.status === "uploaded" || track.status === "error") && (
-          <Button onClick={() => analyzeTrack.mutate({ trackId: id })} disabled={analyzeTrack.isPending}>
-            {analyzeTrack.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Headphones className="h-4 w-4 mr-2" />}
-            Analyze Audio
-          </Button>
+          <>
+            <Button
+              onClick={() => analyzeAndReview.mutate({ trackId: id })}
+              disabled={analyzeAndReview.isPending || analyzeTrack.isPending}
+              className="bg-primary"
+            >
+              {analyzeAndReview.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+              Analyze & Review
+            </Button>
+            <Button variant="outline" onClick={() => analyzeTrack.mutate({ trackId: id })} disabled={analyzeTrack.isPending || analyzeAndReview.isPending}>
+              {analyzeTrack.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Headphones className="h-4 w-4 mr-2" />}
+              Analyze Only
+            </Button>
+          </>
         )}
         {track.status === "analyzed" && (
           <Button onClick={() => reviewTrack.mutate({ trackId: id })} disabled={reviewTrack.isPending}>

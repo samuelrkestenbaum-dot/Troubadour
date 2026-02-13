@@ -1,0 +1,45 @@
+{
+  "query": "SELECT * FROM __drizzle_migrations ORDER BY created_at DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT * FROM __drizzle_migrations ORDER BY created_at DESC;",
+  "rows": [
+    {
+      "id": "7",
+      "hash": "4ffdccaebbaa50d85fc8f8a06b06ca62f4a85c60c13563225582800f2a329f89",
+      "created_at": "1771000151428"
+    },
+    {
+      "id": "6",
+      "hash": "31e2fba1c8a5e7ae67b73fb6fdfc29e5b86b2f6c73d97e494b0b30b1df44b2d4",
+      "created_at": "1770999682737"
+    },
+    {
+      "id": "5",
+      "hash": "07dc2a1801328bb2d2c7eefdbeee016debb903a421f5e2290c20417408f67208",
+      "created_at": "1770995645766"
+    },
+    {
+      "id": "4",
+      "hash": "73ac61e6c0326c12d96964cdaa0389249ac19bcc64506830010bd2baf35b90b3",
+      "created_at": "1770994983958"
+    },
+    {
+      "id": "3",
+      "hash": "9df8f181f18bd2cf573fbdc4d27661241bd0deec18ac4b234c313f3474c3a663",
+      "created_at": "1770992413959"
+    },
+    {
+      "id": "2",
+      "hash": "7de0f70c94208168ccf231af2bb8bf6e56d3237162a15f886b576c0647617098",
+      "created_at": "1770990475028"
+    },
+    {
+      "id": "1",
+      "hash": "814a08e40d7fc2bcfd458759d18319198ca8ae394f2fa15617a78678e9c9c93b",
+      "created_at": "1770989804022"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\thash\tcreated_at\n7\t4ffdccaebbaa50d85fc8f8a06b06ca62f4a85c60c13563225582800f2a329f89\t1771000151428\n6\t31e2fba1c8a5e7ae67b73fb6fdfc29e5b86b2f6c73d97e494b0b30b1df44b2d4\t1770999682737\n5\t07dc2a1801328bb2d2c7eefdbeee016debb903a421f5e2290c20417408f67208\t1770995645766\n4\t73ac61e6c0326c12d96964cdaa0389249ac19bcc64506830010bd2baf35b90b3\t1770994983958\n3\t9df8f181f18bd2cf573fbdc4d27661241bd0deec18ac4b234c313f3474c3a663\t1770992413959\n2\t7de0f70c94208168ccf231af2bb8bf6e56d3237162a15f886b576c0647617098\t1770990475028\n1\t814a08e40d7fc2bcfd458759d18319198ca8ae394f2fa15617a78678e9c9c93b\t1770989804022\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

@@ -1,13 +1,13 @@
 /**
  * Claude 4.5 Critique Generation Service
- * Uses the Forge API gateway to access Claude 4.5 Sonnet for detailed, honest music critiques
+ * Uses the Forge API gateway to access Claude Sonnet 4.5 for detailed, honest music critiques
  * based on Gemini's audio analysis, lyrics, and artist context.
  */
 import { ENV } from "../_core/env";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
 
-export const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+export const CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
 
 interface ClaudeMessage {
   role: "user" | "assistant" | "system";

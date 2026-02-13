@@ -129,7 +129,7 @@ vi.mock("./_core/voiceTranscription", () => ({
 
 // Mock Claude critic follow-up and reference comparison
 vi.mock("./services/claudeCritic", () => ({
-  CLAUDE_MODEL: "claude-4-5-sonnet-20250514",
+  CLAUDE_MODEL: "claude-sonnet-4-5-20250929",
   generateFollowUp: vi.fn().mockResolvedValue("Here's more detail about the chorus..."),
   generateReferenceComparison: vi.fn().mockResolvedValue("## Comparison\nYour track vs reference..."),
   generateTrackReview: vi.fn(),
@@ -394,7 +394,7 @@ describe("usage.get", () => {
 describe("claudeCritic score extraction", () => {
   it("CLAUDE_MODEL constant is set correctly", async () => {
     const { CLAUDE_MODEL } = await import("./services/claudeCritic");
-    expect(CLAUDE_MODEL).toBe("claude-4-5-sonnet-20250514");
+    expect(CLAUDE_MODEL).toBe("claude-sonnet-4-5-20250929");
     expect(CLAUDE_MODEL).toContain("claude");
   });
 });
@@ -676,5 +676,41 @@ describe("input validation", () => {
         text: "",
       })
     ).rejects.toThrow();
+  });
+});
+
+// ── Retry job tests ──
+
+describe("job.retry", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.job.retry({ jobId: 1 })
+    ).rejects.toThrow();
+  });
+});
+
+// ── Analyze and Review one-click flow tests ──
+
+describe("job.analyzeAndReview", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.job.analyzeAndReview({ trackId: 1 })
+    ).rejects.toThrow();
+  });
+});
+
+// ── Claude model version test ──
+
+describe("Claude model version", () => {
+  it("uses Claude Sonnet 4.5 model", async () => {
+    const { CLAUDE_MODEL } = await import("./services/claudeCritic");
+    expect(CLAUDE_MODEL).toBe("claude-sonnet-4-5-20250929");
+    expect(CLAUDE_MODEL).toContain("4-5");
   });
 });

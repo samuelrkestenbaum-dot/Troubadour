@@ -1,0 +1,42 @@
+{
+  "query": "SHOW COLUMNS FROM reviews WHERE Field IN ('reviewMarkdown', 'quickTake'); SHOW COLUMNS FROM jobs WHERE Field = 'errorMessage';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SHOW COLUMNS FROM reviews WHERE Field IN ('reviewMarkdown', 'quickTake'); SHOW COLUMNS FROM jobs WHERE Field = 'errorMessage';",
+  "rows": [
+    {
+      "Field": "reviewMarkdown",
+      "Type": "mediumtext",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "quickTake",
+      "Type": "mediumtext",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "Field",
+      "Type": "Type",
+      "Null": "Null",
+      "Key": "Key",
+      "Default": "Default",
+      "Extra": "Extra"
+    },
+    {
+      "Field": "errorMessage",
+      "Type": "mediumtext",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nreviewMarkdown\tmediumtext\tNO\t\tNULL\t\nquickTake\tmediumtext\tYES\t\tNULL\t\nField\tType\tNull\tKey\tDefault\tExtra\nerrorMessage\tmediumtext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 106
+}

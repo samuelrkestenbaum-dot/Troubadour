@@ -5,11 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@/contexts/ChatContext";
+import { RadarChart } from "@/components/RadarChart";
 import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
   MessageCircle, Send, Loader2, ChevronDown, ChevronUp
@@ -39,6 +39,13 @@ const scoreColor = (score: number) => {
   if (score >= 6) return "text-blue-400";
   if (score >= 4) return "text-yellow-400";
   return "text-red-400";
+};
+
+const scoreBgGlow = (score: number) => {
+  if (score >= 8) return "shadow-green-400/20";
+  if (score >= 6) return "shadow-blue-400/20";
+  if (score >= 4) return "shadow-yellow-400/20";
+  return "shadow-red-400/20";
 };
 
 function ConversationPanel({ reviewId }: { reviewId: number }) {
@@ -108,7 +115,6 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
 
       {isOpen && (
         <CardContent className="pt-0 px-4 pb-4">
-          {/* Messages */}
           <div
             ref={scrollRef}
             className="space-y-3 max-h-96 overflow-y-auto mb-4 pr-1"
@@ -173,7 +179,6 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
             )}
           </div>
 
-          {/* Input */}
           <div className="flex gap-2 items-end">
             <textarea
               ref={inputRef}
@@ -204,19 +209,15 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
   );
 }
 
-/** Strip Quick Take, Scores table, and opening paragraph (shown separately above) from the full review markdown */
+/** Strip Quick Take, Scores table, and opening paragraph from the full review markdown */
 function stripDuplicateSections(markdown: string): string {
   let cleaned = markdown;
-  // Remove opening paragraph before first heading
   const firstHeading = cleaned.search(/^#{2,3}\s/m);
   if (firstHeading > 50) {
     cleaned = cleaned.substring(firstHeading);
   }
-  // Remove Quick Take section
   cleaned = cleaned.replace(/#{2,3}\s*\*?\*?Quick Take\*?\*?\s*\n[\s\S]*?(?=\n#{2,3}\s|$)/i, '');
-  // Remove Scores table section
   cleaned = cleaned.replace(/#{2,3}\s*\*?\*?Scores\*?\*?\s*\n[\s\S]*?(?=\n#{2,3}\s(?!.*Score)|$)/i, '');
-  // Clean up multiple blank lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
   return cleaned;
 }
@@ -276,6 +277,13 @@ export default function ReviewView({ id }: { id: number }) {
     : BarChart3;
   const ReviewIcon = reviewTypeIcon;
 
+  // Separate overall from dimension scores
+  const overallScore = scores?.overall;
+  const dimensionScores = scores
+    ? Object.fromEntries(Object.entries(scores).filter(([k]) => k !== "overall"))
+    : null;
+  const dimensionCount = dimensionScores ? Object.keys(dimensionScores).length : 0;
+
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
@@ -300,7 +308,7 @@ export default function ReviewView({ id }: { id: number }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleCopy}>
             <Copy className="h-3.5 w-3.5 mr-1.5" />
             Copy
@@ -344,34 +352,69 @@ export default function ReviewView({ id }: { id: number }) {
         </Card>
       )}
 
-      {/* Scores */}
+      {/* Scores Section — Overall + Radar + Breakdown */}
       {scores && Object.keys(scores).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Scores</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Score Breakdown
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {Object.entries(scores).map(([key, value]) => {
-                const label = scoreLabels[key] || key.replace(/_/g, " ").replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
-                const numValue = typeof value === "number" ? value : 0;
-                return (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground w-40 shrink-0">{label}</span>
-                    <Progress value={numValue * 10} className="h-2 flex-1" />
-                    <span className={`text-sm font-semibold w-8 text-right ${scoreColor(numValue)}`}>
-                      {numValue}
-                    </span>
+            {/* Overall Score Hero */}
+            {overallScore !== undefined && (
+              <div className="flex items-center justify-center mb-6">
+                <div className={`flex flex-col items-center p-6 rounded-2xl bg-secondary/50 shadow-lg ${scoreBgGlow(overallScore)}`}>
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Overall</span>
+                  <span className={`text-5xl font-black tabular-nums ${scoreColor(overallScore)}`}>
+                    {overallScore}
+                  </span>
+                  <span className="text-sm text-muted-foreground mt-0.5">out of 10</span>
+                </div>
+              </div>
+            )}
+
+            {/* Radar Chart + Score List side by side on larger screens */}
+            {dimensionScores && dimensionCount > 0 && (
+              <div className={`${dimensionCount >= 3 ? "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" : ""}`}>
+                {/* Radar Chart — only show if 3+ dimensions */}
+                {dimensionCount >= 3 && (
+                  <div className="flex justify-center">
+                    <RadarChart scores={dimensionScores} />
                   </div>
-                );
-              })}
-            </div>
-            {scores.overall !== undefined && (
-              <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between">
-                <span className="font-semibold">Overall Score</span>
-                <span className={`text-3xl font-bold ${scoreColor(scores.overall)}`}>
-                  {scores.overall}<span className="text-lg text-muted-foreground">/10</span>
-                </span>
+                )}
+
+                {/* Score Bars */}
+                <div className="space-y-3">
+                  {Object.entries(dimensionScores)
+                    .sort(([, a], [, b]) => (typeof b === "number" ? b : 0) - (typeof a === "number" ? a : 0))
+                    .map(([key, value]) => {
+                      const label = scoreLabels[key] || key.replace(/_/g, " ").replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
+                      const numValue = typeof value === "number" ? value : 0;
+                      return (
+                        <div key={key} className="group">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{label}</span>
+                            <span className={`text-sm font-bold tabular-nums ${scoreColor(numValue)}`}>
+                              {numValue}
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                numValue >= 8 ? "bg-green-400/80" :
+                                numValue >= 6 ? "bg-blue-400/80" :
+                                numValue >= 4 ? "bg-yellow-400/80" :
+                                "bg-red-400/80"
+                              }`}
+                              style={{ width: `${(numValue / 10) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             )}
           </CardContent>
@@ -380,7 +423,7 @@ export default function ReviewView({ id }: { id: number }) {
 
       <Separator />
 
-      {/* Full Review - strip Quick Take and Scores sections since they're shown above */}
+      {/* Full Review */}
       <Card>
         <CardContent className="py-6">
           <div className="prose prose-sm prose-invert max-w-none">
@@ -389,7 +432,7 @@ export default function ReviewView({ id }: { id: number }) {
         </CardContent>
       </Card>
 
-      {/* Conversation Panel - Ask follow-up questions */}
+      {/* Conversation Panel */}
       {review.reviewType === "track" && (
         <ConversationPanel reviewId={review.id} />
       )}

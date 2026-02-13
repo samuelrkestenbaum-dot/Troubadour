@@ -314,6 +314,68 @@ export const appRouter = router({
         return job;
       }),
 
+    retry: protectedProcedure
+      .input(z.object({ jobId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const oldJob = await db.getJobById(input.jobId);
+        if (!oldJob || oldJob.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+        }
+        if (oldJob.status !== "error") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Only failed jobs can be retried" });
+        }
+        // Reset the track status if needed
+        if (oldJob.trackId) {
+          const track = await db.getTrackById(oldJob.trackId);
+          if (track) {
+            if (oldJob.type === "analyze") {
+              await db.updateTrackStatus(track.id, "uploaded");
+            } else if (oldJob.type === "review") {
+              await db.updateTrackStatus(track.id, "analyzed");
+            }
+          }
+        }
+        // Create a new job with the same parameters
+        const newJob = await db.createJob({
+          projectId: oldJob.projectId,
+          trackId: oldJob.trackId,
+          userId: ctx.user.id,
+          type: oldJob.type,
+        });
+        enqueueJob(newJob.id);
+        return { jobId: newJob.id };
+      }),
+
+    analyzeAndReview: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const activeJob = await db.getActiveJobForTrack(input.trackId);
+        if (activeJob) {
+          throw new TRPCError({ code: "CONFLICT", message: "Track is already being processed" });
+        }
+        // Create analyze job first
+        const analyzeJob = await db.createJob({
+          projectId: track.projectId,
+          trackId: track.id,
+          userId: ctx.user.id,
+          type: "analyze",
+        });
+        // Create review job (will be queued after analyze completes)
+        const reviewJob = await db.createJob({
+          projectId: track.projectId,
+          trackId: track.id,
+          userId: ctx.user.id,
+          type: "review",
+        });
+        enqueueJob(analyzeJob.id);
+        enqueueJob(reviewJob.id);
+        return { analyzeJobId: analyzeJob.id, reviewJobId: reviewJob.id };
+      }),
+
     listByProject: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
