@@ -16,9 +16,12 @@ const focusLabels: Record<string, { label: string; icon: React.ElementType }> = 
 import { formatDistanceToNow } from "date-fns";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ElementType }> = {
+  draft: { label: "Draft", variant: "outline", icon: Clock },
   pending: { label: "Pending", variant: "outline", icon: Clock },
-  processing: { label: "Processing", variant: "secondary", icon: Loader2 },
+  processing: { label: "In Progress", variant: "secondary", icon: Loader2 },
+  reviewed: { label: "Reviewed", variant: "default", icon: CheckCircle2 },
   completed: { label: "Completed", variant: "default", icon: CheckCircle2 },
+  error: { label: "Error", variant: "destructive", icon: AlertCircle },
   failed: { label: "Failed", variant: "destructive", icon: AlertCircle },
 };
 
@@ -139,7 +142,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Music className="h-3.5 w-3.5" />
-                      <span>{project.trackCount ?? 0} tracks</span>
+                      <span>{project.trackCount ?? 0} {(project.trackCount ?? 0) === 1 ? 'track' : 'tracks'}</span>
                     </div>
                     <span className="text-border">|</span>
                     <span className="capitalize">{project.type}</span>

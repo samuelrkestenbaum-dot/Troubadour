@@ -265,11 +265,11 @@ export default function Analytics() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs capitalize shrink-0">
-                          {activity.reviewType}
-                        </Badge>
+                        <p className="text-sm font-medium truncate">
+                          {activity.trackFilename || "Unknown track"}
+                        </p>
                         {activity.reviewVersion && activity.reviewVersion > 1 && (
-                          <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-400 border-amber-500/20">
+                          <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-400 border-amber-500/20 shrink-0">
                             v{activity.reviewVersion}
                           </Badge>
                         )}
@@ -296,12 +296,18 @@ export default function Analytics() {
 
       {/* Empty state */}
       {(!stats || stats.totalReviews === 0) && (
-        <Card className="border-dashed">
+        <Card className="border-dashed border-primary/20">
           <CardContent className="py-12 text-center">
             <BarChart3 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">
-              No reviews yet. Upload tracks and generate reviews to see your analytics.
+            <p className="text-muted-foreground mb-4">
+              Analytics will populate once you have reviewed tracks.
             </p>
+            <button
+              onClick={() => setLocation("/projects/new")}
+              className="text-sm text-primary hover:underline"
+            >
+              Create a project and upload your first track &rarr;
+            </button>
           </CardContent>
         </Card>
       )}

@@ -182,3 +182,11 @@
 - [x] Dashboard analytics: Score distribution visualization
 - [x] Dashboard analytics: Recent activity feed
 - [x] Update tests for all new features (121 tests passing)
+
+## Round 9 - Narrow & Polish (Claude 4.5)
+- [x] Fix "1 tracks" grammar → "1 track" (singular) on Dashboard project cards
+- [x] Fix project card status: show "Reviewed" or "In Progress" based on actual track status instead of always "Pending"
+- [x] Analytics "Recent Reviews" shows track filename instead of generic "Track" badge
+- [x] Simplified sidebar: removed redundant "New Project" nav item (already a button on Dashboard)
+- [x] Analytics empty state now guides user to create a project and upload first track
+- [x] Consistent loading states and error handling across pages

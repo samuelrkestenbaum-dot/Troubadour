@@ -30,7 +30,14 @@ export const appRouter = router({
       for (const p of projects) {
         const tracks = await db.getTracksByProject(p.id);
         const reviewedCount = tracks.filter(t => t.status === "reviewed").length;
-        result.push({ ...p, trackCount: tracks.length, reviewedCount });
+        const processingCount = tracks.filter(t => t.status === "analyzing" || t.status === "reviewing").length;
+        // Derive display status from actual track states
+        let derivedStatus = p.status;
+        if (tracks.length === 0) derivedStatus = "draft";
+        else if (processingCount > 0) derivedStatus = "processing";
+        else if (reviewedCount === tracks.length) derivedStatus = "reviewed";
+        else if (reviewedCount > 0) derivedStatus = "processing";
+        result.push({ ...p, status: derivedStatus, trackCount: tracks.length, reviewedCount });
       }
       return result;
     }),

@@ -256,7 +256,8 @@ export async function getRecentActivity(userId: number, limit = 15) {
     projectId: reviews.projectId,
     createdAt: reviews.createdAt,
     reviewVersion: reviews.reviewVersion,
-  }).from(reviews).where(eq(reviews.userId, userId)).orderBy(desc(reviews.createdAt)).limit(limit);
+    trackFilename: tracks.filename,
+  }).from(reviews).leftJoin(tracks, eq(reviews.trackId, tracks.id)).where(eq(reviews.userId, userId)).orderBy(desc(reviews.createdAt)).limit(limit);
 }
 
 export async function getAverageScores(userId: number) {
