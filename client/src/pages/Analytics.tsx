@@ -9,24 +9,24 @@ import {
 import { formatDistanceToNow } from "date-fns";
 
 const scoreColor = (score: number) => {
-  if (score >= 8) return "text-green-400";
-  if (score >= 6) return "text-blue-400";
-  if (score >= 4) return "text-yellow-400";
-  return "text-red-400";
+  if (score >= 8) return "text-emerald-400";
+  if (score >= 6) return "text-sky-400";
+  if (score >= 4) return "text-amber-400";
+  return "text-rose-400";
 };
 
 const scoreBg = (score: number) => {
-  if (score >= 8) return "bg-green-400/10";
-  if (score >= 6) return "bg-blue-400/10";
-  if (score >= 4) return "bg-yellow-400/10";
-  return "bg-red-400/10";
+  if (score >= 8) return "bg-emerald-400/10";
+  if (score >= 6) return "bg-sky-400/10";
+  if (score >= 4) return "bg-amber-400/10";
+  return "bg-rose-400/10";
 };
 
 const scoreBarColor = (score: number) => {
-  if (score >= 8) return "bg-green-400";
-  if (score >= 6) return "bg-blue-400";
-  if (score >= 4) return "bg-yellow-400";
-  return "bg-red-400";
+  if (score >= 8) return "bg-emerald-400";
+  if (score >= 6) return "bg-sky-400";
+  if (score >= 4) return "bg-amber-400";
+  return "bg-rose-400";
 };
 
 const scoreLabels: Record<string, string> = {
@@ -48,10 +48,10 @@ const scoreLabels: Record<string, string> = {
 
 function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string | number; sub?: string }) {
   return (
-    <Card>
-      <CardContent className="py-4">
+    <Card className="border-border/40 hover:border-primary/30 transition-all">
+      <CardContent className="py-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5">
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -153,8 +153,8 @@ export default function Analytics() {
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <BarChart3 className="h-7 w-7 text-primary" />
           Analytics
         </h1>
         <p className="text-sm text-muted-foreground mt-1">

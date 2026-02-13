@@ -212,7 +212,7 @@ export function ScoreLineChart({ data, height = 280 }: ScoreLineChartProps) {
               />
               <span className="text-muted-foreground">{label}</span>
               {delta !== null && (
-                <span className={`font-semibold ${delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                <span className={`font-semibold ${delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-muted-foreground"}`}>
                   {delta > 0 ? `+${delta}` : delta === 0 ? "—" : delta}
                 </span>
               )}

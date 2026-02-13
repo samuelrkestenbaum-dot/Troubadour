@@ -32,7 +32,7 @@ const focusOptions: Array<{
     label: "Producer / Mix Engineer",
     description: "Mix quality, frequency balance, dynamics, spatial characteristics",
     icon: Sliders,
-    color: "text-blue-400 border-blue-400/30 bg-blue-400/5",
+    color: "text-sky-400 border-sky-400/30 bg-sky-400/5",
   },
   {
     value: "arranger",
@@ -106,7 +106,7 @@ export default function NewProject() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">New Project</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>New Project</h1>
           <p className="text-muted-foreground text-sm">Set up your music project for AI-powered feedback</p>
         </div>
       </div>

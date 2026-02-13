@@ -36,17 +36,17 @@ const scoreLabels: Record<string, string> = {
 };
 
 const scoreColor = (score: number) => {
-  if (score >= 8) return "text-green-400";
-  if (score >= 6) return "text-blue-400";
-  if (score >= 4) return "text-yellow-400";
-  return "text-red-400";
+  if (score >= 8) return "text-emerald-400";
+  if (score >= 6) return "text-sky-400";
+  if (score >= 4) return "text-amber-400";
+  return "text-rose-400";
 };
 
 const scoreBgGlow = (score: number) => {
-  if (score >= 8) return "shadow-green-400/20";
-  if (score >= 6) return "shadow-blue-400/20";
-  if (score >= 4) return "shadow-yellow-400/20";
-  return "shadow-red-400/20";
+  if (score >= 8) return "shadow-emerald-400/20";
+  if (score >= 6) return "shadow-sky-400/20";
+  if (score >= 4) return "shadow-amber-400/20";
+  return "shadow-rose-400/20";
 };
 
 function ConversationPanel({ reviewId }: { reviewId: number }) {
@@ -343,7 +343,7 @@ export default function ReviewView({ id }: { id: number }) {
           <div>
             <div className="flex items-center gap-2">
               <ReviewIcon className="h-5 w-5 text-primary" />
-              <h1 className="text-2xl font-bold tracking-tight capitalize">
+              <h1 className="text-2xl font-bold tracking-tight capitalize" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
                 {review.reviewType === "album" ? "Album A&R Memo" : review.reviewType === "comparison" ? "Version Comparison" : "Track Review"}
               </h1>
             </div>
@@ -481,10 +481,10 @@ export default function ReviewView({ id }: { id: number }) {
                           <div className="h-2 rounded-full bg-secondary overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                numValue >= 8 ? "bg-green-400/80" :
-                                numValue >= 6 ? "bg-blue-400/80" :
-                                numValue >= 4 ? "bg-yellow-400/80" :
-                                "bg-red-400/80"
+                                numValue >= 8 ? "bg-emerald-400/80" :
+                                numValue >= 6 ? "bg-sky-400/80" :
+                                numValue >= 4 ? "bg-amber-400/80" :
+                                "bg-rose-400/80"
                               }`}
                               style={{ width: `${(numValue / 10) * 100}%` }}
                             />

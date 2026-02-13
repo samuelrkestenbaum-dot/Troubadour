@@ -27,7 +27,7 @@ export function ChatToggleButton() {
         "fixed right-4 bottom-4 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all",
         isOpen
           ? "bg-muted text-muted-foreground hover:bg-muted/80"
-          : "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30"
       )}
       aria-label="Toggle AI chat"
     >

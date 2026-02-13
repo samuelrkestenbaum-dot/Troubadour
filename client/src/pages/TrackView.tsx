@@ -160,17 +160,17 @@ function ReferenceTrackSection({ trackId }: { trackId: number }) {
 // ── Progress Tracker ──
 
 const scoreColor = (score: number) => {
-  if (score >= 8) return "text-green-400";
-  if (score >= 6) return "text-blue-400";
-  if (score >= 4) return "text-yellow-400";
-  return "text-red-400";
+  if (score >= 8) return "text-emerald-400";
+  if (score >= 6) return "text-sky-400";
+  if (score >= 4) return "text-amber-400";
+  return "text-rose-400";
 };
 
 const scoreBgColor = (score: number) => {
-  if (score >= 8) return "bg-green-400/20";
-  if (score >= 6) return "bg-blue-400/20";
-  if (score >= 4) return "bg-yellow-400/20";
-  return "bg-red-400/20";
+  if (score >= 8) return "bg-emerald-400/20";
+  if (score >= 6) return "bg-sky-400/20";
+  if (score >= 4) return "bg-amber-400/20";
+  return "bg-rose-400/20";
 };
 
 // ── Review History Section ──
@@ -243,11 +243,11 @@ function ReviewHistorySection({ trackId, reviews, onNavigate }: { trackId: numbe
                     {overall !== null && (
                       <div className="flex items-center gap-2">
                         <span className={`text-lg font-bold ${
-                          overall >= 8 ? "text-green-500" : overall >= 6 ? "text-yellow-500" : "text-red-500"
+                          overall >= 8 ? "text-emerald-500" : overall >= 6 ? "text-yellow-500" : "text-rose-500"
                         }`}>{overall}/10</span>
                         {delta !== null && delta !== 0 && (
                           <span className={`text-xs flex items-center gap-0.5 ${
-                            delta > 0 ? "text-green-500" : "text-red-500"
+                            delta > 0 ? "text-emerald-500" : "text-rose-500"
                           }`}>
                             {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                             {delta > 0 ? "+" : ""}{delta}
@@ -354,7 +354,7 @@ function ProgressTracker({ trackId }: { trackId: number }) {
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Change</p>
               <p className={`text-2xl font-bold ${
-                overallDelta > 0 ? "text-green-400" : overallDelta < 0 ? "text-red-400" : "text-muted-foreground"
+                overallDelta > 0 ? "text-emerald-400" : overallDelta < 0 ? "text-rose-400" : "text-muted-foreground"
               }`}>
                 {overallDelta > 0 ? `+${overallDelta}` : overallDelta === 0 ? "—" : overallDelta}
               </p>
@@ -514,7 +514,7 @@ export default function TrackView({ id }: { id: number }) {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{track.originalFilename}</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>{track.originalFilename}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
               {track.versionNumber > 1 && <Badge variant="outline">v{track.versionNumber}</Badge>}
               <span>{(track.fileSize / (1024 * 1024)).toFixed(1)} MB</span>

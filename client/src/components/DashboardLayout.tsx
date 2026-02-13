@@ -63,9 +63,10 @@ export default function DashboardLayout({
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full relative">
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
           <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-center" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
@@ -77,7 +78,7 @@ export default function DashboardLayout({
               window.location.href = getLoginUrl();
             }}
             size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
+            className="w-full shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
           >
             Sign in
           </Button>
@@ -178,7 +179,7 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
+                  <span className="font-bold tracking-tight truncate" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
                     FirstSpin.ai
                   </span>
                 </div>

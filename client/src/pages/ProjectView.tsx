@@ -19,11 +19,11 @@ import { formatDistanceToNow } from "date-fns";
 
 const trackStatusConfig: Record<string, { label: string; color: string }> = {
   uploaded: { label: "Uploaded", color: "text-muted-foreground" },
-  analyzing: { label: "Analyzing...", color: "text-yellow-400" },
-  analyzed: { label: "Analyzed", color: "text-blue-400" },
-  reviewing: { label: "Reviewing...", color: "text-yellow-400" },
-  reviewed: { label: "Reviewed", color: "text-green-400" },
-  error: { label: "Error", color: "text-red-400" },
+  analyzing: { label: "Analyzing...", color: "text-amber-400" },
+  analyzed: { label: "Analyzed", color: "text-sky-400" },
+  reviewing: { label: "Reviewing...", color: "text-amber-400" },
+  reviewed: { label: "Reviewed", color: "text-emerald-400" },
+  error: { label: "Error", color: "text-rose-400" },
 };
 
 export default function ProjectView({ id }: { id: number }) {
@@ -214,7 +214,7 @@ export default function ProjectView({ id }: { id: number }) {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{project.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>{project.title}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
               <Badge variant="outline" className="capitalize">{project.type}</Badge>
               {(project as any).reviewFocus && (project as any).reviewFocus !== "full" && (
@@ -302,7 +302,7 @@ export default function ProjectView({ id }: { id: number }) {
 
       {/* Tracks List */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">
+        <h2 className="text-lg font-semibold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
           Tracks ({tracks.length})
         </h2>
         {tracks.length === 0 ? (

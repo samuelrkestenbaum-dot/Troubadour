@@ -24,7 +24,7 @@ export default function Usage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Usage</h1>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Usage</h1>
         <p className="text-muted-foreground text-sm mt-1">Track your audio processing usage</p>
       </div>
 
@@ -46,7 +46,7 @@ export default function Usage() {
           </div>
           <Progress value={usagePercent} className="h-2" />
           {usagePercent >= 80 && (
-            <p className="text-xs text-yellow-400">
+            <p className="text-xs text-amber-400">
               You are approaching your usage limit. Consider upgrading for more capacity.
             </p>
           )}
@@ -56,7 +56,7 @@ export default function Usage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="py-5 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shrink-0">
               <Music className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -67,7 +67,7 @@ export default function Usage() {
         </Card>
         <Card>
           <CardContent className="py-5 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shrink-0">
               <Zap className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -78,7 +78,7 @@ export default function Usage() {
         </Card>
         <Card>
           <CardContent className="py-5 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shrink-0">
               <Clock className="h-5 w-5 text-primary" />
             </div>
             <div>

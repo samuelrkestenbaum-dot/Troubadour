@@ -15,10 +15,10 @@ function formatLabel(key: string): string {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 8) return "text-green-400";
-  if (score >= 6) return "text-yellow-400";
-  if (score >= 4) return "text-orange-400";
-  return "text-red-400";
+  if (score >= 8) return "text-emerald-400";
+  if (score >= 6) return "text-sky-400";
+  if (score >= 4) return "text-amber-400";
+  return "text-rose-400";
 }
 
 export default function SharedReview({ token }: { token: string }) {
@@ -67,7 +67,7 @@ export default function SharedReview({ token }: { token: string }) {
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">FirstSpin.ai Review</p>
-              <h1 className="text-xl font-bold">{data.trackName}</h1>
+              <h1 className="text-xl font-bold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>{data.trackName}</h1>
             </div>
           </div>
 

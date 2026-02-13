@@ -25,10 +25,10 @@ const PRESET_TAGS = [
 
 const TAG_COLORS: Record<string, string> = {
   "Single Candidate": "bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25",
-  "Ready for Mastering": "bg-green-500/15 text-green-400 border-green-500/30 hover:bg-green-500/25",
+  "Ready for Mastering": "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25",
   "Needs Mixing": "bg-orange-500/15 text-orange-400 border-orange-500/30 hover:bg-orange-500/25",
   "Final Mix": "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25",
-  "Work in Progress": "bg-blue-500/15 text-blue-400 border-blue-500/30 hover:bg-blue-500/25",
+  "Work in Progress": "bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/25",
   "Demo": "bg-purple-500/15 text-purple-400 border-purple-500/30 hover:bg-purple-500/25",
   "Album Cut": "bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/25",
 };

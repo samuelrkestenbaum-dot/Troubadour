@@ -227,3 +227,15 @@
 - [x] Add tests for server-side file validation (4 tests: rejects bad MIME, rejects >50MB, accepts MP3, accepts WAV)
 - [x] Add tests for server-side version numbering, job error surfacing, score normalization, new db helpers (10 tests)
 - [x] All 137 tests passing
+
+## Round 11 - UI Redesign (Fun & Vibrant)
+- [x] Replace dark/black theme with warm indigo-to-slate palette + coral/amber accents
+- [x] Add Space Grotesk display font for all headings across every page
+- [x] Reworked CSS variables in index.css with OKLCH warm color system
+- [x] Restyled Dashboard: gradient cards, onboarding steps, warmer status badges
+- [x] Restyled ProjectView and TrackView with Space Grotesk headers
+- [x] Restyled Analytics page with emerald/sky/amber/rose chart colors
+- [x] Redesigned landing page: vibrant hero, role carousel, A&R callout section
+- [x] Updated sidebar/navigation with Space Grotesk branding
+- [x] Unified score colors across all pages (emerald/sky/amber/rose), updated RadarChart
+- [x] Batch-updated all color references across 9+ component files for consistency

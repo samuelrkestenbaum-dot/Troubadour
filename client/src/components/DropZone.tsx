@@ -151,8 +151,8 @@ export function DropZone({
           </>
         ) : (
           <>
-            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-muted/50 mb-4">
-              <Upload className="h-6 w-6 text-muted-foreground" />
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 mb-4">
+              <Upload className="h-6 w-6 text-primary/60" />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">
               Drag & drop audio files here

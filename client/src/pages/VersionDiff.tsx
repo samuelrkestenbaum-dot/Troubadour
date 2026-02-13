@@ -20,7 +20,7 @@ function formatLabel(key: string): string {
 function DeltaIndicator({ delta }: { delta: number }) {
   if (delta > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-green-400 font-semibold text-sm">
+      <span className="inline-flex items-center gap-0.5 text-emerald-400 font-semibold text-sm">
         <ArrowUp className="h-3.5 w-3.5" />
         +{delta}
       </span>
@@ -28,7 +28,7 @@ function DeltaIndicator({ delta }: { delta: number }) {
   }
   if (delta < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-red-400 font-semibold text-sm">
+      <span className="inline-flex items-center gap-0.5 text-rose-400 font-semibold text-sm">
         <ArrowDown className="h-3.5 w-3.5" />
         {delta}
       </span>
@@ -80,7 +80,7 @@ function ScoreBar({ label, previous, current, delta }: {
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                delta > 0 ? "bg-green-500" : delta < 0 ? "bg-red-500" : "bg-primary"
+                delta > 0 ? "bg-emerald-500" : delta < 0 ? "bg-rose-500" : "bg-primary"
               }`}
               style={{ width: `${currPct}%` }}
             />
@@ -132,7 +132,7 @@ export default function VersionDiff({ trackId }: { trackId: number }) {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
             <GitCompare className="h-6 w-6 text-primary" />
             Version Comparison
           </h1>
@@ -144,13 +144,13 @@ export default function VersionDiff({ trackId }: { trackId: number }) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className={`${improvements.length > regressions.length ? "border-green-500/30 bg-green-500/5" : improvements.length < regressions.length ? "border-red-500/30 bg-red-500/5" : "border-primary/30 bg-primary/5"}`}>
+        <Card className={`${improvements.length > regressions.length ? "border-emerald-500/30 bg-emerald-500/5" : improvements.length < regressions.length ? "border-rose-500/30 bg-rose-500/5" : "border-primary/30 bg-primary/5"}`}>
           <CardContent className="py-4 text-center">
             <div className="text-3xl font-bold mb-1">
               {improvements.length > regressions.length ? (
-                <TrendingUp className="h-8 w-8 mx-auto text-green-400" />
+                <TrendingUp className="h-8 w-8 mx-auto text-emerald-400" />
               ) : improvements.length < regressions.length ? (
-                <TrendingDown className="h-8 w-8 mx-auto text-red-400" />
+                <TrendingDown className="h-8 w-8 mx-auto text-rose-400" />
               ) : (
                 <Minus className="h-8 w-8 mx-auto text-muted-foreground" />
               )}
@@ -164,14 +164,14 @@ export default function VersionDiff({ trackId }: { trackId: number }) {
 
         <Card>
           <CardContent className="py-4 text-center">
-            <p className="text-3xl font-bold text-green-400">{improvements.length}</p>
+            <p className="text-3xl font-bold text-emerald-400">{improvements.length}</p>
             <p className="text-sm text-muted-foreground mt-1">Improved</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="py-4 text-center">
-            <p className="text-3xl font-bold text-red-400">{regressions.length}</p>
+            <p className="text-3xl font-bold text-rose-400">{regressions.length}</p>
             <p className="text-sm text-muted-foreground mt-1">Regressed</p>
           </CardContent>
         </Card>
@@ -193,7 +193,7 @@ export default function VersionDiff({ trackId }: { trackId: number }) {
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Change</p>
                 <div className="mt-1">
-                  <span className={`text-2xl font-bold ${overallDelta.delta > 0 ? "text-green-400" : overallDelta.delta < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                  <span className={`text-2xl font-bold ${overallDelta.delta > 0 ? "text-emerald-400" : overallDelta.delta < 0 ? "text-rose-400" : "text-muted-foreground"}`}>
                     {overallDelta.delta > 0 ? "+" : ""}{overallDelta.delta}
                   </span>
                 </div>

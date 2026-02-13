@@ -76,10 +76,10 @@ export function RadarChart({
 
   // Score color based on value
   const getScoreColor = (score: number) => {
-    if (score >= 8) return { fill: "rgba(74, 222, 128, 0.15)", stroke: "rgba(74, 222, 128, 0.8)" };
-    if (score >= 6) return { fill: "rgba(96, 165, 250, 0.15)", stroke: "rgba(96, 165, 250, 0.8)" };
-    if (score >= 4) return { fill: "rgba(250, 204, 21, 0.12)", stroke: "rgba(250, 204, 21, 0.7)" };
-    return { fill: "rgba(248, 113, 113, 0.12)", stroke: "rgba(248, 113, 113, 0.7)" };
+    if (score >= 8) return { fill: "rgba(52, 211, 153, 0.15)", stroke: "rgba(52, 211, 153, 0.8)" };
+    if (score >= 6) return { fill: "rgba(56, 189, 248, 0.15)", stroke: "rgba(56, 189, 248, 0.8)" };
+    if (score >= 4) return { fill: "rgba(251, 191, 36, 0.12)", stroke: "rgba(251, 191, 36, 0.7)" };
+    return { fill: "rgba(251, 113, 133, 0.12)", stroke: "rgba(251, 113, 133, 0.7)" };
   };
 
   // Average score for color
