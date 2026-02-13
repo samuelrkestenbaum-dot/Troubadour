@@ -388,6 +388,8 @@ export const appRouter = router({
         if (unreviewedTracks.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "All tracks have already been reviewed" });
         }
+        // Generate a unique batchId to track batch completion
+        const batchId = `batch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const queuedJobs: { trackId: number; analyzeJobId: number; reviewJobId: number }[] = [];
         for (const track of unreviewedTracks) {
           const activeJob = await db.getActiveJobForTrack(track.id);
@@ -399,12 +401,14 @@ export const appRouter = router({
               trackId: track.id,
               userId: ctx.user.id,
               type: "analyze",
+              batchId,
             });
             const reviewJob = await db.createJob({
               projectId: track.projectId,
               trackId: track.id,
               userId: ctx.user.id,
               type: "review",
+              batchId,
             });
             enqueueJob(analyzeJob.id);
             enqueueJob(reviewJob.id);
@@ -415,12 +419,13 @@ export const appRouter = router({
               trackId: track.id,
               userId: ctx.user.id,
               type: "review",
+              batchId,
             });
             enqueueJob(reviewJob.id);
             queuedJobs.push({ trackId: track.id, analyzeJobId: 0, reviewJobId: reviewJob.id });
           }
         }
-        return { queued: queuedJobs.length, jobs: queuedJobs };
+        return { queued: queuedJobs.length, batchId, jobs: queuedJobs };
       }),
 
     listByProject: protectedProcedure

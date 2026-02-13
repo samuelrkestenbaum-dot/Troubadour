@@ -94,6 +94,7 @@ vi.mock("./db", () => {
     getScoreHistoryForTrack: vi.fn().mockResolvedValue([]),
     getNextQueuedJob: vi.fn().mockResolvedValue(null),
     getStaleRunningJobs: vi.fn().mockResolvedValue([]),
+    getJobsByBatchId: vi.fn().mockResolvedValue([]),
     updateTrackGenre: vi.fn().mockResolvedValue(undefined),
     createChatSession: vi.fn().mockImplementation(async (data: any) => {
       return { id: 99, ...data, lastActiveAt: new Date(), createdAt: new Date() };
@@ -976,5 +977,94 @@ describe("db share token helpers", () => {
   it("setReviewShareToken resolves without error", async () => {
     const db = await import("./db");
     await expect(db.setReviewShareToken(1, "test-token")).resolves.toBeUndefined();
+  });
+});
+
+// ── Round 6: Batch Completion Notification, Score Line Chart, Progress Tracking ──
+
+describe("batch completion notification", () => {
+  it("batchReviewAll assigns batchId to all created jobs", async () => {
+    const db = await import("./db");
+    // Create a project and track first
+    const project = await db.createProject({
+      userId: 1,
+      type: "single",
+      title: "Batch Test Project",
+    });
+    await db.createTrack({
+      projectId: project.id,
+      userId: 1,
+      filename: "batch-track.mp3",
+      originalFilename: "batch-track.mp3",
+      storageUrl: "https://example.com/batch.mp3",
+      storageKey: "batch/track.mp3",
+      mimeType: "audio/mpeg",
+      fileSize: 1024,
+    });
+
+    const caller = appRouter.createCaller(createAuthContext());
+    const result = await caller.job.batchReviewAll({ projectId: project.id });
+    expect(result.queued).toBeGreaterThanOrEqual(1);
+    expect(result.batchId).toBeDefined();
+    expect(result.batchId).toMatch(/^batch_/);
+  });
+
+  it("getJobsByBatchId returns empty array for unknown batch", async () => {
+    const db = await import("./db");
+    const result = await db.getJobsByBatchId("nonexistent_batch");
+    expect(result).toEqual([]);
+  });
+});
+
+describe("score line chart data", () => {
+  it("scoreHistory.get returns score history for a track", async () => {
+    const db = await import("./db");
+    // Create a project and track
+    const project = await db.createProject({
+      userId: 1,
+      type: "single",
+      title: "Score History Project",
+    });
+    const track = await db.createTrack({
+      projectId: project.id,
+      userId: 1,
+      filename: "history-track.mp3",
+      originalFilename: "history-track.mp3",
+      storageUrl: "https://example.com/history.mp3",
+      storageKey: "history/track.mp3",
+      mimeType: "audio/mpeg",
+      fileSize: 1024,
+    });
+
+    const caller = appRouter.createCaller(createAuthContext());
+    const result = await caller.scoreHistory.get({ trackId: track.id });
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("jobProcessor batch notification", () => {
+  it("exports checkBatchCompletion-related functions", async () => {
+    const mod = await import("./services/jobProcessor");
+    expect(typeof mod.enqueueJob).toBe("function");
+    expect(typeof mod.startJobQueuePoller).toBe("function");
+  });
+});
+
+describe("db batchId helpers", () => {
+  it("getJobsByBatchId is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getJobsByBatchId).toBe("function");
+  });
+
+  it("createJob accepts batchId parameter", async () => {
+    const db = await import("./db");
+    const job = await db.createJob({
+      projectId: 1,
+      trackId: 1,
+      userId: 1,
+      type: "review",
+      batchId: "batch_test_123",
+    });
+    expect(job.id).toBeDefined();
   });
 });

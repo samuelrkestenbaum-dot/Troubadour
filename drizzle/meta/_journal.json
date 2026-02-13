@@ -57,6 +57,13 @@
       "when": 1771006637174,
       "tag": "0007_past_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1771007616791,
+      "tag": "0008_ancient_blindfold",
+      "breakpoints": true
     }
   ]
 }

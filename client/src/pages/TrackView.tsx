@@ -17,6 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap
 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { ScoreLineChart } from "@/components/ScoreLineChart";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
 
@@ -191,90 +192,58 @@ function ProgressTracker({ trackId }: { trackId: number }) {
     );
   }
 
-  // Get all score dimensions across all versions
-  const allDimensions = new Set<string>();
-  scoreHistory.forEach(v => {
-    const scores = typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores;
-    Object.keys(scores).forEach(k => allDimensions.add(k));
-  });
+  // Parse scores for chart data
+  const chartData = scoreHistory.map(v => ({
+    versionNumber: v.versionNumber,
+    filename: v.filename,
+    scores: typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores,
+  }));
 
-  const dimensionLabels: Record<string, string> = {
-    songwriting: "Songwriting",
-    melody: "Melody & Hooks",
-    structure: "Structure",
-    lyrics: "Lyrics",
-    performance: "Performance",
-    production: "Production",
-    originality: "Originality",
-    commercial: "Commercial",
-    overall: "Overall",
-  };
-
-  const latest = scoreHistory[scoreHistory.length - 1];
-  const previous = scoreHistory[scoreHistory.length - 2];
-  const latestScores = typeof latest.scores === "string" ? JSON.parse(latest.scores) : latest.scores;
-  const previousScores = typeof previous.scores === "string" ? JSON.parse(previous.scores) : previous.scores;
+  const latest = chartData[chartData.length - 1];
+  const first = chartData[0];
+  const overallDelta = (latest.scores.overall ?? 0) - (first.scores.overall ?? 0);
 
   return (
     <div className="space-y-4">
-      {/* Score Comparison Table */}
+      {/* Overall Progress Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            Score Trajectory
+            Score Evolution
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {Array.from(allDimensions).map(dim => {
-              const label = dimensionLabels[dim] || dim.replace(/_/g, " ").replace(/^./, s => s.toUpperCase());
-              const currentVal = latestScores[dim] ?? null;
-              const prevVal = previousScores[dim] ?? null;
-              const delta = currentVal !== null && prevVal !== null ? currentVal - prevVal : null;
-
-              return (
-                <div key={dim} className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground w-36 shrink-0">{label}</span>
-                  <div className="flex-1 flex items-center gap-2">
-                    {/* Version bars */}
-                    {scoreHistory.map((v, i) => {
-                      const scores = typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores;
-                      const val = scores[dim];
-                      if (val === undefined) return null;
-                      return (
-                        <div key={i} className="flex items-center gap-1" title={`v${v.versionNumber}: ${val}/10`}>
-                          <span className="text-xs text-muted-foreground w-5">v{v.versionNumber}</span>
-                          <div className="w-16 h-2 rounded-full bg-secondary overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${i === scoreHistory.length - 1 ? "bg-primary" : "bg-muted-foreground/40"}`}
-                              style={{ width: `${(val / 10) * 100}%` }}
-                            />
-                          </div>
-                          <span className={`text-xs font-semibold w-5 ${i === scoreHistory.length - 1 ? scoreColor(val) : "text-muted-foreground"}`}>
-                            {val}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Delta indicator */}
-                  {delta !== null && (
-                    <div className={`flex items-center gap-0.5 shrink-0 ${
-                      delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-muted-foreground"
-                    }`}>
-                      {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> :
-                       delta < 0 ? <ArrowDownRight className="h-3 w-3" /> :
-                       <Minus className="h-3 w-3" />}
-                      <span className="text-xs font-semibold">
-                        {delta > 0 ? `+${delta}` : delta === 0 ? "—" : delta}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        <CardContent className="space-y-4">
+          {/* Summary stats */}
+          <div className="flex items-center gap-6 pb-4 border-b border-border/50">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Versions</p>
+              <p className="text-2xl font-bold">{chartData.length}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">First Score</p>
+              <p className={`text-2xl font-bold ${scoreColor(first.scores.overall ?? 0)}`}>
+                {first.scores.overall ?? "—"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Latest Score</p>
+              <p className={`text-2xl font-bold ${scoreColor(latest.scores.overall ?? 0)}`}>
+                {latest.scores.overall ?? "—"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Change</p>
+              <p className={`text-2xl font-bold ${
+                overallDelta > 0 ? "text-green-400" : overallDelta < 0 ? "text-red-400" : "text-muted-foreground"
+              }`}>
+                {overallDelta > 0 ? `+${overallDelta}` : overallDelta === 0 ? "—" : overallDelta}
+              </p>
+            </div>
           </div>
+
+          {/* Line Chart */}
+          <ScoreLineChart data={chartData} />
         </CardContent>
       </Card>
 

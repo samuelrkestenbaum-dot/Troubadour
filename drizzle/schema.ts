@@ -120,6 +120,7 @@ export const jobs = mysqlTable("jobs", {
   errorMessage: mediumtext("errorMessage"),
   resultId: int("resultId"),
   notificationSent: boolean("notificationSent").default(false).notNull(),
+  batchId: varchar("batchId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   completedAt: timestamp("completedAt"),

@@ -308,6 +308,12 @@ export async function getJobsByProject(projectId: number) {
   return db.select().from(jobs).where(eq(jobs.projectId, projectId)).orderBy(desc(jobs.createdAt));
 }
 
+export async function getJobsByBatchId(batchId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobs).where(eq(jobs.batchId, batchId)).orderBy(desc(jobs.createdAt));
+}
+
 export async function updateJob(id: number, data: Partial<InsertJob>) {
   const db = await getDb();
   if (!db) return;

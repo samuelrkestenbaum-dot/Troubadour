@@ -145,3 +145,15 @@
 - [x] Shareable review links: Share button on ReviewView that generates/copies the public URL
 - [x] Shareable review links: Public review page with clean, branded layout
 - [x] Update tests for all new features (82 tests passing)
+
+## Round 6 - Strategic Features (Claude 4.5)
+- [x] Progress tracking timeline: Score evolution chart showing how scores change across track versions
+- [x] Progress tracking timeline: SVG line chart component with interactive hover, tooltips, and legend
+- [x] Progress tracking timeline: Integrated into TrackView Progress tab with summary stats
+- [x] Email notifications: Notify project owner when batch review completes
+- [x] Email notifications: Use built-in notifyOwner helper for notification delivery
+- [x] Email notifications: Track batch completion status via batchId in job processor
+- [x] Reference track comparison: Upload reference tracks alongside original tracks (already built)
+- [x] Reference track comparison: Claude-powered comparative analysis against reference (already built)
+- [x] Reference track comparison: Side-by-side display of reference vs original analysis (already built)
+- [x] Update tests for all new features (88 tests passing)

@@ -166,11 +166,61 @@ async function processNextJob() {
 
     processing = false;
 
+    // Check if this job was part of a batch and if the batch is now complete
+    if (nextJob.batchId) {
+      await checkBatchCompletion(nextJob.batchId, nextJob.projectId);
+    }
+
     // Immediately check for more jobs
     processNextJob();
   } catch (error) {
     console.error("[JobQueue] Error in processNextJob:", error);
     processing = false;
+  }
+}
+
+/**
+ * Check if all jobs in a batch are complete and send a summary notification.
+ */
+async function checkBatchCompletion(batchId: string, projectId: number) {
+  try {
+    const batchJobs = await db.getJobsByBatchId(batchId);
+    if (batchJobs.length === 0) return;
+
+    // Check if all jobs are terminal (done or error)
+    const allTerminal = batchJobs.every(j => j.status === "done" || j.status === "error");
+    if (!allTerminal) return;
+
+    // Check if we already sent a batch notification (avoid duplicates)
+    // We use the first job's notificationSent as a proxy for batch notification
+    const reviewJobs = batchJobs.filter(j => j.type === "review");
+    const alreadyNotified = reviewJobs.some(j => j.progressMessage?.includes("[batch-notified]"));
+    if (alreadyNotified) return;
+
+    // Gather batch summary
+    const succeeded = reviewJobs.filter(j => j.status === "done").length;
+    const failed = reviewJobs.filter(j => j.status === "error").length;
+    const total = reviewJobs.length;
+
+    const project = await db.getProjectById(projectId);
+    const projectTitle = project?.title || `Project #${projectId}`;
+
+    // Send batch completion notification
+    await notifyOwner({
+      title: `Batch Review Complete: ${projectTitle}`,
+      content: `All ${total} track review(s) for "${projectTitle}" have finished processing. ${succeeded} succeeded${failed > 0 ? `, ${failed} failed` : ""}. Your reviews are ready to view.`,
+    });
+
+    // Mark batch as notified to prevent duplicate notifications
+    for (const job of reviewJobs) {
+      await db.updateJob(job.id, {
+        progressMessage: (job.progressMessage || "") + " [batch-notified]",
+      });
+    }
+
+    console.log(`[JobQueue] Batch ${batchId} complete: ${succeeded}/${total} succeeded`);
+  } catch (error) {
+    console.warn("[JobQueue] Batch completion check failed:", error);
   }
 }
 
