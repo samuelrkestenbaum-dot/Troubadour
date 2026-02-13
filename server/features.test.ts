@@ -183,6 +183,46 @@ describe("project.create", () => {
     expect(result.id).toBeGreaterThan(0);
   });
 
+  it("creates a project with reviewFocus", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.project.create({
+      type: "single",
+      title: "Producer Test Track",
+      reviewFocus: "producer",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("defaults reviewFocus to full", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.project.create({
+      type: "single",
+      title: "Default Focus Track",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("rejects invalid reviewFocus", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.project.create({
+        type: "single",
+        title: "Bad Focus",
+        reviewFocus: "invalid" as any,
+      })
+    ).rejects.toThrow();
+  });
+
   it("rejects empty title", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
@@ -301,12 +341,53 @@ describe("usage.get", () => {
 // ── Claude Critic unit tests ──
 
 describe("claudeCritic score extraction", () => {
-  // We test the internal score extraction logic by importing it
-  // Since it's not exported, we test via the module behavior indirectly
   it("CLAUDE_MODEL constant is set correctly", async () => {
     const { CLAUDE_MODEL } = await import("./services/claudeCritic");
-    expect(CLAUDE_MODEL).toBe("claude-sonnet-4-20250514");
+    expect(CLAUDE_MODEL).toBe("claude-4-5-sonnet-20250514");
     expect(CLAUDE_MODEL).toContain("claude");
+  });
+});
+
+// ── Review Focus configuration tests ──
+
+describe("reviewFocus configuration", () => {
+  it("returns config for all valid roles", async () => {
+    const { getFocusConfig } = await import("./services/reviewFocus");
+    const roles = ["songwriter", "producer", "arranger", "artist", "anr", "full"] as const;
+    for (const role of roles) {
+      const config = getFocusConfig(role);
+      expect(config).toBeDefined();
+      expect(config.label).toBeTruthy();
+      expect(config.description).toBeTruthy();
+      expect(config.scoringDimensions.length).toBeGreaterThan(0);
+      expect(config.outputSections.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("full role has empty overrides", async () => {
+    const { getFocusConfig } = await import("./services/reviewFocus");
+    const config = getFocusConfig("full");
+    expect(config.geminiAddendum).toBe("");
+    expect(config.claudeSystemOverride).toBe("");
+  });
+
+  it("non-full roles have system overrides", async () => {
+    const { getFocusConfig } = await import("./services/reviewFocus");
+    const roles = ["songwriter", "producer", "arranger", "artist", "anr"] as const;
+    for (const role of roles) {
+      const config = getFocusConfig(role);
+      expect(config.claudeSystemOverride.length).toBeGreaterThan(100);
+      expect(config.geminiAddendum.length).toBeGreaterThan(50);
+    }
+  });
+
+  it("getAllFocusConfigs returns all roles", async () => {
+    const { getAllFocusConfigs } = await import("./services/reviewFocus");
+    const configs = getAllFocusConfigs();
+    expect(Object.keys(configs)).toHaveLength(6);
+    expect(configs.songwriter).toBeDefined();
+    expect(configs.producer).toBeDefined();
+    expect(configs.anr).toBeDefined();
   });
 });
 

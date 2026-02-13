@@ -56,6 +56,7 @@ export const appRouter = router({
         referenceArtists: z.string().optional(),
         albumConcept: z.string().optional(),
         targetVibe: z.string().optional(),
+        reviewFocus: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full"),
       }))
       .mutation(async ({ ctx, input }) => {
         const result = await db.createProject({
@@ -67,6 +68,7 @@ export const appRouter = router({
           referenceArtists: input.referenceArtists || null,
           albumConcept: input.albumConcept || null,
           targetVibe: input.targetVibe || null,
+          reviewFocus: input.reviewFocus,
         });
         return result;
       }),
@@ -81,6 +83,7 @@ export const appRouter = router({
         referenceArtists: z.string().optional(),
         albumConcept: z.string().optional(),
         targetVibe: z.string().optional(),
+        reviewFocus: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.id);

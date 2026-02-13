@@ -5,9 +5,10 @@
  */
 import { ENV } from "../_core/env";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
+import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-export const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+export const CLAUDE_MODEL = "claude-4-5-sonnet-20250514";
 
 interface ClaudeMessage {
   role: "user" | "assistant";
@@ -138,6 +139,7 @@ export interface TrackReviewInput {
   genre?: string;
   referenceArtists?: string;
   artistNotes?: string;
+  reviewFocus?: ReviewFocusRole;
 }
 
 export interface TrackReviewOutput {
@@ -147,8 +149,10 @@ export interface TrackReviewOutput {
 }
 
 export async function generateTrackReview(input: TrackReviewInput): Promise<TrackReviewOutput> {
+  const focus = getFocusConfig(input.reviewFocus || "full");
+  const systemPrompt = focus.claudeSystemOverride || TRACK_CRITIC_SYSTEM;
   const userMessage = buildTrackReviewPrompt(input);
-  const reviewMarkdown = await callClaude(TRACK_CRITIC_SYSTEM, [
+  const reviewMarkdown = await callClaude(systemPrompt, [
     { role: "user", content: userMessage },
   ]);
 
@@ -164,7 +168,12 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
   prompt += `**Track:** "${input.trackTitle}"\n`;
   prompt += `**Project:** "${input.projectTitle}"\n\n`;
 
-  prompt += `## Audio Analysis (from Gemini — the AI that listened to the track)\n\n`;
+  const focus = getFocusConfig(input.reviewFocus || "full");
+  if (focus.label !== "Full Review") {
+    prompt += `**Review Focus:** ${focus.label} — ${focus.description}\n\n`;
+  }
+
+  prompt += `## Audio Analysis (from the engine that listened to the track)\n\n`;
   prompt += `\`\`\`json\n${JSON.stringify(input.audioAnalysis, null, 2)}\n\`\`\`\n\n`;
 
   if (input.lyrics) {
@@ -183,7 +192,11 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
     prompt += `**Reference artists:** ${input.referenceArtists}\n`;
   }
 
-  prompt += `\nNow write your full review. Remember: be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. The audio analysis above is from an AI that actually listened to the track — use those observations as the foundation for your critique.`;
+  if (focus.label !== "Full Review") {
+    prompt += `\n**IMPORTANT: This review is for a ${focus.label}. Focus your critique on: ${focus.description}. Use the scoring dimensions: ${focus.scoringDimensions.join(", ")}. Structure your output with these sections: ${focus.outputSections.join(", ")}.`;
+  }
+
+  prompt += `\nNow write your full review. Remember: be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. The audio analysis above is from an engine that actually listened to the track — use those observations as the foundation for your critique.`;
 
   return prompt;
 }

@@ -60,3 +60,13 @@
 - [x] Remove all references to Gemini, Claude, and specific AI model names from user-facing frontend
 - [x] Replace model-specific language with generic "AI" or "FirstSpin" branding
 - [x] Audit landing page, dashboard, project view, track view, review view, usage page, and new project form
+
+## Role-Based Critique System
+- [x] Design critique focus areas for each role: Songwriter, Producer/Mixer, Arranger, Artist/Performer, A&R/Label
+- [x] Add reviewFocus field to projects schema and push migration
+- [x] Create role-specific Claude critique prompts that prioritize what each role cares about
+- [x] Update Gemini analysis prompts to extract role-relevant audio features
+- [x] Add role selection UI to project creation flow
+- [x] Update landing page with user story-driven value propositions per role
+- [x] Update review display to highlight role-relevant sections
+- [x] Tests for new role-based functionality

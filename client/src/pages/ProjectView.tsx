@@ -186,6 +186,15 @@ export default function ProjectView({ id }: { id: number }) {
             <h1 className="text-2xl font-bold tracking-tight">{project.title}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
               <Badge variant="outline" className="capitalize">{project.type}</Badge>
+              {(project as any).reviewFocus && (project as any).reviewFocus !== "full" && (
+                <Badge variant="secondary" className="text-xs">
+                  {(project as any).reviewFocus === "songwriter" ? "Songwriter Focus" :
+                   (project as any).reviewFocus === "producer" ? "Producer Focus" :
+                   (project as any).reviewFocus === "arranger" ? "Arranger Focus" :
+                   (project as any).reviewFocus === "artist" ? "Artist Focus" :
+                   (project as any).reviewFocus === "anr" ? "A&R Focus" : "Full Review"}
+                </Badge>
+              )}
               {project.genre && <span>{project.genre}</span>}
               <span>{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</span>
             </div>

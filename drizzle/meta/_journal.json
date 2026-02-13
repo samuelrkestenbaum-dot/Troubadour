@@ -15,6 +15,13 @@
       "when": 1770990475028,
       "tag": "0001_stale_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770992413959,
+      "tag": "0002_romantic_wasp",
+      "breakpoints": true
     }
   ]
 }

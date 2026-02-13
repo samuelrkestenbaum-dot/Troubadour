@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `reviewFocus` enum('songwriter','producer','arranger','artist','anr','full') DEFAULT 'full' NOT NULL;

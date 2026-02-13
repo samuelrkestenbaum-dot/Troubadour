@@ -4,6 +4,7 @@
  * to Google Gemini for multimodal audio understanding and musical analysis.
  */
 import { ENV } from "../_core/env";
+import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -128,7 +129,7 @@ Analyze the following aspects and return your analysis as a JSON object:
 
 Be specific and reference actual moments in the audio. Use timestamps. Do not be generic — this analysis should prove you actually listened to the track. Label uncertain inferences (e.g., "key estimate" or "approximate BPM").`;
 
-export async function analyzeAudioWithGemini(audioUrl: string, mimeType: string): Promise<GeminiAudioAnalysis> {
+export async function analyzeAudioWithGemini(audioUrl: string, mimeType: string, reviewFocus?: ReviewFocusRole): Promise<GeminiAudioAnalysis> {
   if (!ENV.geminiApiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
@@ -159,7 +160,7 @@ export async function analyzeAudioWithGemini(audioUrl: string, mimeType: string)
             },
           },
           {
-            text: AUDIO_ANALYSIS_PROMPT,
+            text: buildAnalysisPrompt(reviewFocus),
           },
         ],
       },
@@ -201,6 +202,14 @@ export async function analyzeAudioWithGemini(audioUrl: string, mimeType: string)
   const analysis: GeminiAudioAnalysis = JSON.parse(cleaned);
 
   return analysis;
+}
+
+function buildAnalysisPrompt(reviewFocus?: ReviewFocusRole): string {
+  const focus = getFocusConfig(reviewFocus || "full");
+  if (!focus.geminiAddendum) {
+    return AUDIO_ANALYSIS_PROMPT;
+  }
+  return `${AUDIO_ANALYSIS_PROMPT}\n\n## ADDITIONAL FOCUS AREAS\n\nThe user is a ${focus.label}. ${focus.geminiAddendum}`;
 }
 
 /**
