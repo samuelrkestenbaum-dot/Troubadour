@@ -13,6 +13,7 @@ import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
   CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw
 } from "lucide-react";
+import { DropZone } from "@/components/DropZone";
 import { formatDistanceToNow } from "date-fns";
 
 const trackStatusConfig: Record<string, { label: string; color: string }> = {
@@ -27,7 +28,6 @@ const trackStatusConfig: Record<string, { label: string; color: string }> = {
 export default function ProjectView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const versionInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingVersion, setUploadingVersion] = useState<number | null>(null);
@@ -110,8 +110,8 @@ export default function ProjectView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
-  const handleFileUpload = useCallback(async (files: FileList | null, parentTrackId?: number) => {
-    if (!files?.length) return;
+  const handleFileUpload = useCallback(async (files: FileList | File[] | null, parentTrackId?: number) => {
+    if (!files || (files instanceof FileList && !files.length) || (Array.isArray(files) && !files.length)) return;
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
@@ -199,7 +199,7 @@ export default function ProjectView({ id }: { id: number }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")}>
             <ArrowLeft className="h-4 w-4" />
@@ -267,18 +267,12 @@ export default function ProjectView({ id }: { id: number }) {
       )}
 
       {/* Action Bar */}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-          Upload Tracks
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFileUpload(e.target.files)}
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
+        <DropZone
+          onFiles={(files) => handleFileUpload(files as any)}
+          uploading={uploading}
+          compact
+          className="flex-1 max-w-xs"
         />
         <Button variant="secondary" onClick={handleAnalyzeAll} disabled={analyzeTrack.isPending}>
           <Headphones className="h-4 w-4 mr-2" />
@@ -304,12 +298,10 @@ export default function ProjectView({ id }: { id: number }) {
           Tracks ({tracks.length})
         </h2>
         {tracks.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Music className="h-8 w-8 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground text-sm">No tracks yet. Upload audio files to get started.</p>
-            </CardContent>
-          </Card>
+          <DropZone
+            onFiles={(files) => handleFileUpload(files as any)}
+            uploading={uploading}
+          />
         ) : (
           <div className="space-y-2">
             {tracks.map((track, idx) => {

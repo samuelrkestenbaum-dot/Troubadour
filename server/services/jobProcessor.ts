@@ -1,5 +1,11 @@
 /**
- * Job Processor — orchestrates the async pipeline:
+ * Job Processor — database-backed persistent queue
+ * 
+ * Jobs are stored in the DB and processed via polling.
+ * On server restart, any "running" jobs are reset to "queued" and re-processed.
+ * This eliminates the in-memory queue that lost jobs on restart.
+ * 
+ * Pipeline:
  * 1. Gemini listens to the audio → extracts features
  * 2. Claude 4.5 writes the critique based on Gemini's analysis
  * 3. Results stored in DB, notifications sent
@@ -10,79 +16,162 @@ import { generateTrackReview, generateAlbumReview, generateVersionComparison, ex
 import { notifyOwner } from "../_core/notification";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 
-// Simple in-memory queue — processes jobs sequentially
-const jobQueue: number[] = [];
-let processing = false;
+// ── Persistent Queue State ──
 
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
+let processing = false;
+const POLL_INTERVAL_MS = 3000; // Check for new jobs every 3 seconds
+
+/**
+ * Start the persistent job queue poller.
+ * Called once on server startup.
+ */
+export function startJobQueue() {
+  if (pollingInterval) return; // Already running
+
+  console.log("[JobQueue] Starting persistent job queue poller");
+
+  // On startup, recover any jobs that were "running" when the server died
+  recoverStaleJobs().then(() => {
+    // Start polling
+    pollingInterval = setInterval(() => {
+      if (!processing) {
+        processNextJob();
+      }
+    }, POLL_INTERVAL_MS);
+
+    // Also process immediately in case there are queued jobs
+    processNextJob();
+  });
+}
+
+/**
+ * Stop the job queue poller (for graceful shutdown).
+ */
+export function stopJobQueue() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+    console.log("[JobQueue] Job queue poller stopped");
+  }
+}
+
+/**
+ * Enqueue a job — simply marks it as queued in the DB.
+ * The poller will pick it up automatically.
+ * This function exists for backward compatibility with the router.
+ */
 export function enqueueJob(jobId: number) {
-  jobQueue.push(jobId);
+  // The job is already created with status "queued" in the DB.
+  // The poller will pick it up. But trigger an immediate check.
   if (!processing) {
     processNextJob();
   }
 }
 
-async function processNextJob() {
-  if (jobQueue.length === 0) {
-    processing = false;
-    return;
+/**
+ * Recover jobs that were "running" when the server crashed/restarted.
+ * Resets them to "queued" so they get re-processed.
+ */
+async function recoverStaleJobs() {
+  try {
+    const staleJobs = await db.getStaleRunningJobs();
+    if (staleJobs.length > 0) {
+      console.log(`[JobQueue] Recovering ${staleJobs.length} stale running job(s)...`);
+      for (const job of staleJobs) {
+        await db.updateJob(job.id, {
+          status: "queued",
+          progress: 0,
+          progressMessage: "Recovered after server restart — retrying...",
+        });
+        // Reset track status if needed
+        if (job.trackId) {
+          const track = await db.getTrackById(job.trackId);
+          if (track) {
+            if (job.type === "analyze" && track.status === "analyzing") {
+              await db.updateTrackStatus(track.id, "uploaded");
+            } else if (job.type === "review" && track.status === "reviewing") {
+              await db.updateTrackStatus(track.id, "analyzed");
+            }
+          }
+        }
+      }
+      console.log(`[JobQueue] Recovered ${staleJobs.length} job(s)`);
+    }
+  } catch (error) {
+    console.error("[JobQueue] Failed to recover stale jobs:", error);
   }
+}
 
-  processing = true;
-  const jobId = jobQueue.shift()!;
+/**
+ * Pick the next queued job from the DB and process it.
+ */
+async function processNextJob() {
+  if (processing) return;
 
   try {
-    const job = await db.getJobById(jobId);
-    if (!job || job.status === "done" || job.status === "error") {
-      processNextJob();
-      return;
-    }
+    const nextJob = await db.getNextQueuedJob();
+    if (!nextJob) return; // No jobs to process
 
-    await db.updateJob(jobId, { status: "running", progress: 5, progressMessage: "Starting..." });
+    processing = true;
 
-    switch (job.type) {
-      case "analyze":
-        await processAnalyzeJob(jobId, job);
-        break;
-      case "review":
-        await processReviewJob(jobId, job);
-        break;
-      case "album_review":
-        await processAlbumReviewJob(jobId, job);
-        break;
-      case "compare":
-        await processCompareJob(jobId, job);
-        break;
-      default:
-        throw new Error(`Unknown job type: ${job.type}`);
-    }
-  } catch (error: any) {
-    console.error(`[JobProcessor] Job ${jobId} failed:`, error);
-    // Truncate error message to prevent cascading DB errors
-    const rawMessage = error.message || "Unknown error";
-    const errorMessage = rawMessage.length > 2000
-      ? rawMessage.substring(0, 2000) + "... (truncated)"
-      : rawMessage;
     try {
-      await db.updateJob(jobId, {
-        status: "error",
-        errorMessage,
-        completedAt: new Date(),
-      });
-    } catch (updateError) {
-      console.error(`[JobProcessor] Failed to update job ${jobId} error status:`, updateError);
-      // Last resort: try with a minimal error message
+      const job = nextJob;
+      if (job.status === "done" || job.status === "error") {
+        processing = false;
+        return;
+      }
+
+      await db.updateJob(job.id, { status: "running", progress: 5, progressMessage: "Starting..." });
+
+      switch (job.type) {
+        case "analyze":
+          await processAnalyzeJob(job.id, job);
+          break;
+        case "review":
+          await processReviewJob(job.id, job);
+          break;
+        case "album_review":
+          await processAlbumReviewJob(job.id, job);
+          break;
+        case "compare":
+          await processCompareJob(job.id, job);
+          break;
+        default:
+          throw new Error(`Unknown job type: ${job.type}`);
+      }
+    } catch (error: any) {
+      console.error(`[JobQueue] Job ${nextJob.id} failed:`, error);
+      const rawMessage = error.message || "Unknown error";
+      const errorMessage = rawMessage.length > 2000
+        ? rawMessage.substring(0, 2000) + "... (truncated)"
+        : rawMessage;
       try {
-        await db.updateJob(jobId, {
+        await db.updateJob(nextJob.id, {
           status: "error",
-          errorMessage: "Job failed — see server logs for details",
+          errorMessage,
           completedAt: new Date(),
         });
-      } catch { /* give up */ }
+      } catch (updateError) {
+        console.error(`[JobQueue] Failed to update job ${nextJob.id} error status:`, updateError);
+        try {
+          await db.updateJob(nextJob.id, {
+            status: "error",
+            errorMessage: "Job failed — see server logs for details",
+            completedAt: new Date(),
+          });
+        } catch { /* give up */ }
+      }
     }
-  }
 
-  // Process next job
-  processNextJob();
+    processing = false;
+
+    // Immediately check for more jobs
+    processNextJob();
+  } catch (error) {
+    console.error("[JobQueue] Error in processNextJob:", error);
+    processing = false;
+  }
 }
 
 // ── Analyze Job: Gemini listens to the audio ──
@@ -161,7 +250,7 @@ async function processAnalyzeJob(jobId: number, job: any) {
     });
     await db.updateJob(jobId, { notificationSent: true });
   } catch (e) {
-    console.warn("[JobProcessor] Notification failed:", e);
+    console.warn("[JobQueue] Notification failed:", e);
   }
 }
 
@@ -242,7 +331,7 @@ async function processReviewJob(jobId: number, job: any) {
     });
     await db.updateJob(jobId, { notificationSent: true });
   } catch (e) {
-    console.warn("[JobProcessor] Notification failed:", e);
+    console.warn("[JobQueue] Notification failed:", e);
   }
 }
 
@@ -323,7 +412,7 @@ async function processAlbumReviewJob(jobId: number, job: any) {
     });
     await db.updateJob(jobId, { notificationSent: true });
   } catch (e) {
-    console.warn("[JobProcessor] Notification failed:", e);
+    console.warn("[JobQueue] Notification failed:", e);
   }
 }
 
@@ -358,7 +447,7 @@ async function processCompareJob(jobId: number, job: any) {
       v2Track.storageUrl, v2Track.mimeType
     );
   } catch (e: any) {
-    console.warn("[JobProcessor] Gemini comparison failed, proceeding with analysis data only:", e.message);
+    console.warn("[JobQueue] Gemini comparison failed, proceeding with analysis data only:", e.message);
   }
 
   await db.updateJob(jobId, { progress: 50, progressMessage: "Writing the comparison..." });
@@ -399,11 +488,11 @@ async function processCompareJob(jobId: number, job: any) {
 
   try {
     await notifyOwner({
-      title: `Version Comparison Ready`,
-      content: `The comparison between v${v1Track.versionNumber} and v${v2Track.versionNumber} of "${v2Track.originalFilename}" is complete. See what improved and what still needs work.`,
+      title: `Version Comparison Ready: ${v2Track.originalFilename}`,
+      content: `Comparison between v${v1Track.versionNumber} and v${v2Track.versionNumber} of "${v2Track.originalFilename}" is complete.`,
     });
     await db.updateJob(jobId, { notificationSent: true });
   } catch (e) {
-    console.warn("[JobProcessor] Notification failed:", e);
+    console.warn("[JobQueue] Notification failed:", e);
   }
 }

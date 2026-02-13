@@ -16,6 +16,7 @@ import {
   AlertCircle, GitCompare, Upload, Mic, Save, Target, TrendingUp,
   ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap
 } from "lucide-react";
+import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
 
@@ -456,13 +457,11 @@ export default function TrackView({ id }: { id: number }) {
       )}
 
       {/* Audio Player */}
-      <Card>
-        <CardContent className="py-4">
-          <audio controls className="w-full" src={track.storageUrl} preload="metadata">
-            Your browser does not support audio playback.
-          </audio>
-        </CardContent>
-      </Card>
+      <AudioPlayer
+        src={track.storageUrl}
+        title={track.originalFilename}
+        subtitle={track.detectedGenre ? `${track.detectedGenre}${track.detectedSubgenres ? ` · ${track.detectedSubgenres}` : ""}` : undefined}
+      />
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
@@ -570,34 +569,56 @@ export default function TrackView({ id }: { id: number }) {
                       {audioFeaturesData.tempo && (
                         <div className="p-3 rounded-lg bg-secondary">
                           <p className="text-xs text-muted-foreground">Tempo</p>
-                          <p className="text-lg font-semibold">{audioFeaturesData.tempo} BPM</p>
+                          <p className="text-lg font-semibold">
+                            {typeof audioFeaturesData.tempo === 'object' ? `${audioFeaturesData.tempo.bpm}` : audioFeaturesData.tempo} BPM
+                          </p>
+                          {typeof audioFeaturesData.tempo === 'object' && audioFeaturesData.tempo.feel && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{audioFeaturesData.tempo.feel}</p>
+                          )}
                         </div>
                       )}
                       {audioFeaturesData.key && (
                         <div className="p-3 rounded-lg bg-secondary">
                           <p className="text-xs text-muted-foreground">Key</p>
-                          <p className="text-lg font-semibold">{audioFeaturesData.key}</p>
+                          <p className="text-lg font-semibold">
+                            {typeof audioFeaturesData.key === 'object' ? audioFeaturesData.key.estimated : audioFeaturesData.key}
+                          </p>
                         </div>
                       )}
                       {audioFeaturesData.timeSignature && (
                         <div className="p-3 rounded-lg bg-secondary">
                           <p className="text-xs text-muted-foreground">Time Sig</p>
-                          <p className="text-lg font-semibold">{audioFeaturesData.timeSignature}</p>
+                          <p className="text-lg font-semibold">
+                            {typeof audioFeaturesData.timeSignature === 'object' ? JSON.stringify(audioFeaturesData.timeSignature) : audioFeaturesData.timeSignature}
+                          </p>
                         </div>
                       )}
                       {audioFeaturesData.overallEnergy && (
                         <div className="p-3 rounded-lg bg-secondary">
                           <p className="text-xs text-muted-foreground">Energy</p>
-                          <p className="text-lg font-semibold">{audioFeaturesData.overallEnergy}/10</p>
+                          <p className="text-lg font-semibold">
+                            {typeof audioFeaturesData.overallEnergy === 'object' ? JSON.stringify(audioFeaturesData.overallEnergy) : audioFeaturesData.overallEnergy}/10
+                          </p>
+                        </div>
+                      )}
+                      {audioFeaturesData.mood && Array.isArray(audioFeaturesData.mood) && (
+                        <div className="p-3 rounded-lg bg-secondary col-span-2">
+                          <p className="text-xs text-muted-foreground">Mood</p>
+                          <p className="text-sm font-medium mt-1">{audioFeaturesData.mood.join(", ")}</p>
                         </div>
                       )}
                     </div>
-                    {audioFeaturesData.instruments && (
+                    {(audioFeaturesData.instruments || audioFeaturesData.instrumentation) && (
                       <div className="mt-4">
                         <p className="text-xs text-muted-foreground mb-2">Instruments Detected</p>
                         <div className="flex flex-wrap gap-1.5">
-                          {(audioFeaturesData.instruments as string[]).map((inst: string) => (
-                            <Badge key={inst} variant="secondary" className="text-xs">{inst}</Badge>
+                          {(Array.isArray(audioFeaturesData.instruments || audioFeaturesData.instrumentation)
+                            ? (audioFeaturesData.instruments || audioFeaturesData.instrumentation)
+                            : []
+                          ).map((inst: any, i: number) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {typeof inst === 'object' ? (inst.name || inst.instrument || JSON.stringify(inst)) : inst}
+                            </Badge>
                           ))}
                         </div>
                       </div>

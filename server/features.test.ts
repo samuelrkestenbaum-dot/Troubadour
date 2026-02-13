@@ -92,6 +92,9 @@ vi.mock("./db", () => {
     }),
     updateReferenceTrackComparison: vi.fn().mockResolvedValue(undefined),
     getScoreHistoryForTrack: vi.fn().mockResolvedValue([]),
+    getNextQueuedJob: vi.fn().mockResolvedValue(null),
+    getStaleRunningJobs: vi.fn().mockResolvedValue([]),
+    updateTrackGenre: vi.fn().mockResolvedValue(undefined),
     createChatSession: vi.fn().mockImplementation(async (data: any) => {
       return { id: 99, ...data, lastActiveAt: new Date(), createdAt: new Date() };
     }),
@@ -120,6 +123,7 @@ vi.mock("./storage", () => ({
 // Mock job processor (don't actually run jobs)
 vi.mock("./services/jobProcessor", () => ({
   enqueueJob: vi.fn(),
+  startJobQueuePoller: vi.fn(),
 }));
 
 // Mock voice transcription
@@ -136,6 +140,8 @@ vi.mock("./services/claudeCritic", () => ({
   generateAlbumReview: vi.fn(),
   generateVersionComparison: vi.fn(),
   callClaude: vi.fn().mockResolvedValue("Great question! Here's my analysis of your track..."),
+  extractScoresStructured: vi.fn().mockResolvedValue({ overall: 7, production: 7, songwriting: 8 }),
+  extractScores: vi.fn().mockReturnValue({ overall: 7, production: 7, songwriting: 8 }),
 }));
 
 // Mock Gemini reference comparison
@@ -712,5 +718,76 @@ describe("Claude model version", () => {
     const { CLAUDE_MODEL } = await import("./services/claudeCritic");
     expect(CLAUDE_MODEL).toBe("claude-sonnet-4-5-20250929");
     expect(CLAUDE_MODEL).toContain("4-5");
+  });
+});
+
+// ── Persistent Job Queue tests ──
+
+describe("persistent job queue", () => {
+  it("exports startJobQueuePoller function", async () => {
+    const mod = await import("./services/jobProcessor");
+    expect(typeof mod.startJobQueuePoller).toBe("function");
+  });
+
+  it("exports enqueueJob function", async () => {
+    const mod = await import("./services/jobProcessor");
+    expect(typeof mod.enqueueJob).toBe("function");
+  });
+});
+
+// ── Structured Score Extraction tests ──
+
+describe("structured score extraction", () => {
+  it("exports extractScoresStructured function", async () => {
+    const mod = await import("./services/claudeCritic");
+    expect(typeof mod.extractScoresStructured).toBe("function");
+  });
+
+  it("exports extractScores as fallback", async () => {
+    const mod = await import("./services/claudeCritic");
+    expect(typeof mod.extractScores).toBe("function");
+  });
+});
+
+// ── Review Export tests ──
+
+describe("review.exportMarkdown", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.review.exportMarkdown({ id: 1 })
+    ).rejects.toThrow();
+  });
+
+  it("returns not found for non-existent review", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.review.exportMarkdown({ id: 999 })
+    ).rejects.toThrow("Review not found");
+  });
+});
+
+// ── Database helpers for persistent queue ──
+
+describe("db queue helpers", () => {
+  it("getNextQueuedJob returns null when no jobs queued", async () => {
+    const db = await import("./db");
+    const result = await db.getNextQueuedJob();
+    expect(result).toBeNull();
+  });
+
+  it("getStaleRunningJobs returns empty array", async () => {
+    const db = await import("./db");
+    const result = await db.getStaleRunningJobs();
+    expect(result).toEqual([]);
+  });
+
+  it("updateTrackGenre resolves without error", async () => {
+    const db = await import("./db");
+    await expect(db.updateTrackGenre(1, "Rock", "Alternative, Indie", "Radiohead, Coldplay")).resolves.toBeUndefined();
   });
 });

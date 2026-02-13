@@ -245,7 +245,7 @@ export async function generateTrackReview(input: TrackReviewInput): Promise<Trac
   ], 4096);
 
   const quickTake = extractQuickTake(reviewMarkdown);
-  const scores = extractScores(reviewMarkdown);
+  const scores = await extractScoresStructured(reviewMarkdown);
 
   return { reviewMarkdown, quickTake, scores };
 }
@@ -338,7 +338,7 @@ export async function generateAlbumReview(input: AlbumReviewInput): Promise<{ re
     { role: "user", content: prompt },
   ], 6000);
 
-  const scores = extractScores(reviewMarkdown);
+  const scores = await extractScoresStructured(reviewMarkdown);
   return { reviewMarkdown, scores };
 }
 
@@ -445,8 +445,91 @@ function extractQuickTake(markdown: string): string {
   return markdown.substring(0, 1000);
 }
 
-// ── Utility: Extract Scores ──
+// ── Utility: Extract Scores (Structured JSON via second Claude call) ──
 
+const SCORE_EXTRACTION_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    songwriting: { type: "number" as const, description: "Songwriting/composition score 1-10" },
+    melody: { type: "number" as const, description: "Melody & hooks score 1-10" },
+    structure: { type: "number" as const, description: "Arrangement/structure score 1-10" },
+    lyrics: { type: "number" as const, description: "Lyrical content score 1-10" },
+    performance: { type: "number" as const, description: "Performance/delivery score 1-10" },
+    production: { type: "number" as const, description: "Production & mix quality score 1-10" },
+    originality: { type: "number" as const, description: "Originality/creativity score 1-10" },
+    commercial: { type: "number" as const, description: "Commercial potential score 1-10" },
+    overall: { type: "number" as const, description: "Overall score 1-10" },
+  },
+  required: ["songwriting", "melody", "structure", "performance", "production", "originality", "commercial", "overall"] as const,
+  additionalProperties: false as const,
+};
+
+/**
+ * Extract scores using a structured JSON call to Claude.
+ * Falls back to regex extraction if the structured call fails.
+ */
+export async function extractScoresStructured(reviewMarkdown: string): Promise<Record<string, number>> {
+  try {
+    const response = await fetch(resolveApiUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${ENV.forgeApiKey}`,
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: 512,
+        messages: [
+          {
+            role: "system",
+            content: "You are a score extraction tool. Given a music review, extract the numerical scores (1-10) for each dimension. If a dimension is not mentioned, estimate it from context. All scores must be integers between 1 and 10.",
+          },
+          {
+            role: "user",
+            content: `Extract the scores from this music review:\n\n${reviewMarkdown.substring(0, 4000)}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "review_scores",
+            strict: true,
+            schema: SCORE_EXTRACTION_SCHEMA,
+          },
+        },
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const content = result.choices?.[0]?.message?.content;
+      if (content) {
+        const parsed = typeof content === "string" ? JSON.parse(content) : content;
+        // Validate all values are numbers 1-10
+        const scores: Record<string, number> = {};
+        for (const [key, val] of Object.entries(parsed)) {
+          const num = typeof val === "number" ? val : parseFloat(val as string);
+          if (!isNaN(num) && num >= 1 && num <= 10) {
+            scores[key] = Math.round(num);
+          }
+        }
+        if (Object.keys(scores).length >= 3) {
+          console.log(`[ScoreExtraction] Structured extraction succeeded: ${Object.keys(scores).length} scores`);
+          return scores;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[ScoreExtraction] Structured extraction failed, falling back to regex:", err);
+  }
+
+  // Fallback to regex extraction
+  return extractScores(reviewMarkdown);
+}
+
+/**
+ * Regex-based score extraction (fallback).
+ */
 export function extractScores(markdown: string): Record<string, number> {
   const scores: Record<string, number> = {};
   
@@ -474,7 +557,6 @@ export function extractScores(markdown: string): Record<string, number> {
     else if (label.includes("emotional") || label.includes("impact")) scores.emotionalImpact = value;
     else if (label.includes("cohesion")) scores.cohesion = value;
     else if (label.includes("sequencing")) scores.sequencing = value;
-    // Generic fallback: use cleaned label as key
     else {
       const key = label.replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
       if (key.length > 0 && key.length < 30) scores[key] = value;

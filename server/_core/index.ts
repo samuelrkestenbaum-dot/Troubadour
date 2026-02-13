@@ -59,6 +59,13 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+
+    // Start the persistent job queue after server is ready
+    import("../services/jobProcessor").then(({ startJobQueue }) => {
+      startJobQueue();
+    }).catch(err => {
+      console.error("[Server] Failed to start job queue:", err);
+    });
   });
 }
 

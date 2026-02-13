@@ -299,6 +299,24 @@ export async function updateJob(id: number, data: Partial<InsertJob>) {
   await db.update(jobs).set(data).where(eq(jobs.id, id));
 }
 
+export async function getNextQueuedJob() {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(jobs)
+    .where(eq(jobs.status, "queued"))
+    .orderBy(asc(jobs.createdAt))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getStaleRunningJobs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobs)
+    .where(eq(jobs.status, "running"))
+    .orderBy(asc(jobs.createdAt));
+}
+
 export async function getActiveJobForTrack(trackId: number) {
   const db = await getDb();
   if (!db) return undefined;

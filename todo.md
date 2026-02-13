@@ -121,3 +121,15 @@
 - [x] Improve empty states and onboarding hints
 - [x] Update Claude model to claude-sonnet-4-5-20250929 (Claude Sonnet 4.5)
 - [x] Update tests for new features (60 tests passing)
+
+## Round 4 - Audit Findings Implementation (Claude 4.5)
+- [x] P0: Implement database-backed persistent job queue (replace in-memory queue)
+- [x] P0: Implement in-app audio player on TrackView and ReviewView
+- [x] P1: Implement structured JSON score extraction from Claude (replace regex)
+- [x] P1: Implement drag-and-drop file upload for tracks
+- [x] P1: Add onboarding flow for new users
+- [x] P1: Mobile responsiveness audit and fixes
+- [x] P1: Markdown export for reviews (server-side with scores table and genre)
+- [ ] P1: Batch processing for multiple tracks
+- [ ] Cleanup: Remove unused Map.tsx component
+- [x] Update tests for all new features (69 tests passing)

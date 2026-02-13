@@ -54,21 +54,65 @@ export default function Dashboard() {
           ))}
         </div>
       ) : !projects?.length ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <FolderOpen className="h-6 w-6 text-primary" />
+        <div className="space-y-8">
+          {/* Welcome Hero */}
+          <Card className="border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Music className="h-7 w-7 text-primary" />
+              </div>
+              <h3 className="font-semibold text-xl mb-2">Welcome to FirstSpin.ai</h3>
+              <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
+                Get honest, detailed critiques of your music from an AI that actually listens.
+                Upload a track and receive a full review in minutes.
+              </p>
+              <Button size="lg" onClick={() => setLocation("/projects/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Project
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* How It Works */}
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">How it works</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="bg-muted/20">
+                <CardContent className="pt-6">
+                  <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3">
+                    <Music className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <h4 className="font-medium mb-1">1. Upload your track</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop MP3, WAV, or FLAC files. We support tracks up to 50MB.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/20">
+                <CardContent className="pt-6">
+                  <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3">
+                    <Sliders className="h-5 w-5 text-purple-400" />
+                  </div>
+                  <h4 className="font-medium mb-1">2. AI listens & analyzes</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Gemini detects genre, tempo, key, structure, and production qualities automatically.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/20">
+                <CardContent className="pt-6">
+                  <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-400" />
+                  </div>
+                  <h4 className="font-medium mb-1">3. Get your critique</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Claude 4.5 writes a detailed, honest review with scores, timestamps, and actionable feedback.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-            <h3 className="font-semibold text-lg mb-1">No projects yet</h3>
-            <p className="text-muted-foreground text-sm mb-6 text-center max-w-sm">
-              Create your first project to start getting AI-powered feedback on your music.
-            </p>
-            <Button onClick={() => setLocation("/projects/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Project
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => {

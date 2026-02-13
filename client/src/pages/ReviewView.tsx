@@ -14,6 +14,7 @@ import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
   MessageCircle, Send, Loader2, ChevronDown, ChevronUp
 } from "lucide-react";
+import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
 
@@ -222,6 +223,19 @@ function stripDuplicateSections(markdown: string): string {
   return cleaned;
 }
 
+function ReviewAudioPlayer({ trackId }: { trackId: number }) {
+  const { data: trackData } = trpc.track.get.useQuery({ id: trackId });
+  if (!trackData) return null;
+  return (
+    <AudioPlayer
+      src={trackData.track.storageUrl}
+      title={trackData.track.originalFilename}
+      subtitle={trackData.track.detectedGenre || undefined}
+      compact
+    />
+  );
+}
+
 export default function ReviewView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const { data: review, isLoading, error } = trpc.review.get.useQuery({ id });
@@ -235,16 +249,36 @@ export default function ReviewView({ id }: { id: number }) {
     }
   }, [review, setContext]);
 
-  const handleExport = () => {
+  const exportQuery = trpc.review.exportMarkdown.useQuery(
+    { id },
+    { enabled: false }
+  );
+
+  const handleExport = async () => {
     if (!review) return;
-    const blob = new Blob([review.reviewMarkdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `review-${review.id}-${review.reviewType}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Review exported");
+    try {
+      const result = await exportQuery.refetch();
+      if (result.data) {
+        const blob = new Blob([result.data.markdown], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.data.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Review exported as Markdown");
+      }
+    } catch {
+      // Fallback to basic export
+      const blob = new Blob([review.reviewMarkdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `review-${review.id}-${review.reviewType}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Review exported");
+    }
   };
 
   const handleCopy = () => {
@@ -287,7 +321,7 @@ export default function ReviewView({ id }: { id: number }) {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => {
             if (review.trackId) setLocation(`/tracks/${review.trackId}`);
@@ -308,17 +342,20 @@ export default function ReviewView({ id }: { id: number }) {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 sm:ml-auto">
           <Button variant="outline" size="sm" onClick={handleCopy}>
             <Copy className="h-3.5 w-3.5 mr-1.5" />
             Copy
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-3.5 w-3.5 mr-1.5" />
-            Export
+            Export .md
           </Button>
         </div>
       </div>
+
+      {/* Inline Audio Player — listen while reading */}
+      {review.trackId && <ReviewAudioPlayer trackId={review.trackId} />}
 
       {/* Genre Insight */}
       {review.genreInsight?.detectedGenre && (
