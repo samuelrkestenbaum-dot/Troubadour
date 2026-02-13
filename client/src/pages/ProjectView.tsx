@@ -51,7 +51,7 @@ export default function ProjectView({ id }: { id: number }) {
   const analyzeTrack = trpc.job.analyze.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id });
-      toast.success("Analysis started — Gemini is listening");
+      toast.success("Analysis started — listening to your track");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -59,7 +59,7 @@ export default function ProjectView({ id }: { id: number }) {
   const reviewTrack = trpc.job.review.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id });
-      toast.success("Review started — Claude is writing");
+      toast.success("Review started — writing your critique");
     },
     onError: (err) => toast.error(err.message),
   });

@@ -37,7 +37,7 @@ export default function Home() {
         <div className="container max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8">
             <Zap className="h-3.5 w-3.5" />
-            Powered by Gemini + Claude
+            AI-Powered Audio Intelligence
           </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
             The AI that actually{" "}
@@ -45,7 +45,7 @@ export default function Home() {
             to your music
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Upload your tracks. Gemini analyzes the audio. Claude writes the critique.
+            Upload your tracks. Our engine analyzes the audio and writes the critique.
             Get production notes, A&R memos, and actionable feedback that proves the AI heard every bar.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -62,13 +62,13 @@ export default function Home() {
         <div className="container max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-4">How It Works</h2>
           <p className="text-muted-foreground text-center mb-16 max-w-xl mx-auto">
-            Two AI models, one pipeline. Gemini is the ear. Claude is the critic.
+            Upload. Analyze. Critique. A seamless pipeline from audio to actionable feedback.
           </p>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: "01", title: "Upload", description: "Drop your audio files \u2014 singles or full albums. MP3, WAV, M4A supported. Add lyrics and context if you want.", icon: Music },
-              { step: "02", title: "Gemini Listens", description: "Google Gemini processes your actual audio \u2014 tempo, key, sections, instrumentation, mix quality, energy curves. No guessing.", icon: Headphones },
-              { step: "03", title: "Claude Critiques", description: "Claude writes a detailed review grounded in what Gemini heard. Scores, section notes, A&R recommendations, and a next-iteration checklist.", icon: FileText },
+              { step: "02", title: "AI Listens", description: "Our audio engine processes your actual audio \u2014 tempo, key, sections, instrumentation, mix quality, energy curves. No guessing.", icon: Headphones },
+              { step: "03", title: "AI Critiques", description: "A detailed review grounded in what the engine heard. Scores, section notes, A&R recommendations, and a next-iteration checklist.", icon: FileText },
             ].map((item) => (
               <div key={item.step} className="relative p-6 rounded-xl border border-border bg-card">
                 <div className="text-xs font-mono text-primary/60 mb-4">{item.step}</div>
@@ -90,10 +90,10 @@ export default function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: BarChart3, title: "Multi-Dimension Scoring", desc: "Production, songwriting, melody, performance, originality, and commercial potential \u2014 each scored 1-10 with justification." },
-              { icon: GitCompare, title: "Version Comparison", desc: "Upload v2 of a track. Gemini compares both versions side-by-side. Claude tells you what improved and what regressed." },
+              { icon: GitCompare, title: "Version Comparison", desc: "Upload v2 of a track. Both versions compared side-by-side. See exactly what improved and what regressed." },
               { icon: FileText, title: "Album A&R Memos", desc: "Full album-level analysis: sequencing, singles picks, thematic cohesion, market positioning, and producer notes." },
               { icon: Music, title: "Section-by-Section", desc: "Every intro, verse, chorus, and bridge analyzed with timestamps, energy levels, and specific production notes." },
-              { icon: Headphones, title: "Lyrics Integration", desc: "Paste lyrics or auto-transcribe with Whisper. Claude evaluates songwriting craft alongside the audio." },
+              { icon: Headphones, title: "Lyrics Integration", desc: "Paste lyrics or auto-transcribe. Songwriting craft evaluated alongside the audio for a complete picture." },
               { icon: Zap, title: "Export & Share", desc: "Download your reviews as formatted reports. Track your improvement across iterations." },
             ].map((f) => (
               <div key={f.title} className="p-5 rounded-xl border border-border/60 bg-card/50 hover:bg-card transition-colors">
@@ -123,7 +123,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="py-8 border-t border-border/50">
         <div className="container text-center text-sm text-muted-foreground">
-          FirstSpin.ai — Gemini listens. Claude critiques.
+          FirstSpin.ai — AI that actually listens to your music.
         </div>
       </footer>
     </div>

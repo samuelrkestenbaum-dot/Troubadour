@@ -122,7 +122,7 @@ export default function NewProject() {
                 rows={3}
               />
               <p className="text-xs text-muted-foreground">
-                This helps Claude tailor the critique to your artistic vision and goals.
+                This helps tailor the critique to your artistic vision and goals.
               </p>
             </div>
 

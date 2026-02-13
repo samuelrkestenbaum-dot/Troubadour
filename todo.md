@@ -55,3 +55,8 @@
 ## Testing
 - [x] Vitest tests for auth, project CRUD, input validation, service exports
 - [x] API key validation tests
+
+## Branding - Hide AI Engine Details
+- [x] Remove all references to Gemini, Claude, and specific AI model names from user-facing frontend
+- [x] Replace model-specific language with generic "AI" or "FirstSpin" branding
+- [x] Audit landing page, dashboard, project view, track view, review view, usage page, and new project form

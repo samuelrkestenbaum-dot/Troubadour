@@ -99,7 +99,7 @@ export default function ReviewView({ id }: { id: number }) {
               </h1>
             </div>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-              <Badge variant="outline">{review.modelUsed}</Badge>
+              <Badge variant="outline">FirstSpin.ai</Badge>
               <span>{formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}</span>
             </div>
           </div>

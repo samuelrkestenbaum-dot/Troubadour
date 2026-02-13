@@ -34,7 +34,7 @@ export default function Usage() {
             <CardTitle className="text-base">Audio Processing</CardTitle>
             <Badge variant="outline" className="capitalize">{data.tier} Plan</Badge>
           </div>
-          <CardDescription>Minutes of audio analyzed by Gemini</CardDescription>
+          <CardDescription>Minutes of audio analyzed by FirstSpin.ai</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-end justify-between">
@@ -60,7 +60,7 @@ export default function Usage() {
               <Music className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Gemini</p>
+              <p className="text-xs text-muted-foreground">Engine</p>
               <p className="text-sm font-medium">Audio Analysis</p>
             </div>
           </CardContent>
@@ -71,8 +71,8 @@ export default function Usage() {
               <Zap className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Claude</p>
-              <p className="text-sm font-medium">Critique Engine</p>
+              <p className="text-xs text-muted-foreground">Engine</p>
+              <p className="text-sm font-medium">Critique Generation</p>
             </div>
           </CardContent>
         </Card>
@@ -82,7 +82,7 @@ export default function Usage() {
               <Clock className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Whisper</p>
+              <p className="text-xs text-muted-foreground">Engine</p>
               <p className="text-sm font-medium">Transcription</p>
             </div>
           </CardContent>

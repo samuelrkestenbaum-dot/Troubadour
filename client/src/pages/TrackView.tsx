@@ -130,13 +130,13 @@ export default function TrackView({ id }: { id: number }) {
         {(track.status === "uploaded" || track.status === "error") && (
           <Button onClick={() => analyzeTrack.mutate({ trackId: id })} disabled={analyzeTrack.isPending}>
             {analyzeTrack.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Headphones className="h-4 w-4 mr-2" />}
-            Analyze with Gemini
+            Analyze Audio
           </Button>
         )}
         {track.status === "analyzed" && (
           <Button onClick={() => reviewTrack.mutate({ trackId: id })} disabled={reviewTrack.isPending}>
             {reviewTrack.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-            Review with Claude
+            Generate Review
           </Button>
         )}
         {track.parentTrackId && track.status === "reviewed" && (
@@ -184,7 +184,7 @@ export default function TrackView({ id }: { id: number }) {
           <CardContent className="py-4 flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-sm font-medium">
-              {track.status === "analyzing" ? "Gemini is listening to your track..." : "Claude is writing the critique..."}
+              {track.status === "analyzing" ? "Listening to your track..." : "Writing the critique..."}
             </span>
           </CardContent>
         </Card>
@@ -204,7 +204,7 @@ export default function TrackView({ id }: { id: number }) {
             <Card className="border-dashed">
               <CardContent className="py-12 text-center">
                 <Headphones className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No analysis yet. Click "Analyze with Gemini" to start.</p>
+                <p className="text-muted-foreground text-sm">No analysis yet. Click "Analyze Audio" to start.</p>
               </CardContent>
             </Card>
           ) : (
@@ -288,7 +288,7 @@ export default function TrackView({ id }: { id: number }) {
               {geminiAnalysis && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Gemini Raw Analysis</CardTitle>
+                    <CardTitle className="text-base">Raw Audio Analysis</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="prose prose-sm prose-invert max-w-none">
@@ -320,7 +320,7 @@ export default function TrackView({ id }: { id: number }) {
                       <div>
                         <p className="font-medium capitalize">{review.reviewType} Review</p>
                         <p className="text-xs text-muted-foreground">
-                          {review.modelUsed} — {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>
