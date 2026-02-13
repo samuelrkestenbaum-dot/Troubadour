@@ -119,6 +119,34 @@ vi.mock("./db", () => {
     deleteChatSession: vi.fn().mockResolvedValue(undefined),
     getReviewByShareToken: vi.fn().mockResolvedValue(null),
     setReviewShareToken: vi.fn().mockResolvedValue(undefined),
+    // Tags
+    updateTrackTags: vi.fn().mockResolvedValue(undefined),
+    getTrackTags: vi.fn().mockResolvedValue([]),
+    // Analytics
+    getDashboardStats: vi.fn().mockResolvedValue({
+      totalProjects: 3,
+      totalTracks: 12,
+      totalReviews: 8,
+      reviewedTracks: 7,
+    }),
+    getScoreDistribution: vi.fn().mockResolvedValue([
+      { score: 5, count: 1 },
+      { score: 6, count: 2 },
+      { score: 7, count: 3 },
+      { score: 8, count: 2 },
+    ]),
+    getRecentActivity: vi.fn().mockResolvedValue([
+      { id: 1, reviewType: "track", quickTake: "Solid track", scoresJson: { overall: 7 }, trackId: 1, projectId: 1, createdAt: new Date(), reviewVersion: 1 },
+    ]),
+    getAverageScores: vi.fn().mockResolvedValue({
+      overall: 7.2,
+      production: 6.8,
+      songwriting: 7.5,
+    }),
+    getTopTracks: vi.fn().mockResolvedValue([
+      { trackId: 1, overall: 9, quickTake: "Excellent", reviewVersion: 1, filename: "hit-song.wav", genre: "Pop" },
+      { trackId: 2, overall: 8, quickTake: "Great", reviewVersion: 1, filename: "banger.mp3", genre: "Hip-Hop" },
+    ]),
   };
 });
 
@@ -1142,5 +1170,275 @@ describe("album summary enhancement", () => {
     expect(source).toContain("Thematic Threads");
     expect(source).toContain("Sequencing");
     expect(source).toContain("Album Arc");
+  });
+});
+
+// ── Round 8: Tags, Analytics, Smart Re-Review ──
+
+describe("tags.get", () => {
+  it("returns tags for a track owned by user", async () => {
+    const db = await import("./db");
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
+    (db.getTrackTags as any).mockResolvedValueOnce(["Demo", "Needs Mixing"]);
+
+    const result = await caller.tags.get({ trackId: 1 });
+    expect(result).toEqual(["Demo", "Needs Mixing"]);
+  });
+
+  it("rejects for track not owned by user", async () => {
+    const db = await import("./db");
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 999 });
+    await expect(caller.tags.get({ trackId: 1 })).rejects.toThrow();
+  });
+});
+
+describe("tags.addTag", () => {
+  it("adds a tag to a track", async () => {
+    const db = await import("./db");
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
+    (db.getTrackTags as any).mockResolvedValueOnce(["Demo"]);
+
+    const result = await caller.tags.addTag({ trackId: 1, tag: "Single Candidate" });
+    expect(result.success).toBe(true);
+    expect(result.tags).toContain("Demo");
+    expect(result.tags).toContain("Single Candidate");
+  });
+
+  it("does not duplicate existing tags", async () => {
+    const db = await import("./db");
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
+    (db.getTrackTags as any).mockResolvedValueOnce(["Demo"]);
+
+    const result = await caller.tags.addTag({ trackId: 1, tag: "Demo" });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("tags.removeTag", () => {
+  it("removes a tag from a track", async () => {
+    const db = await import("./db");
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
+    (db.getTrackTags as any).mockResolvedValueOnce(["Demo", "Single Candidate"]);
+
+    const result = await caller.tags.removeTag({ trackId: 1, tag: "Demo" });
+    expect(result.success).toBe(true);
+    expect(result.tags).toEqual(["Single Candidate"]);
+  });
+});
+
+describe("tags.update", () => {
+  it("replaces all tags on a track", async () => {
+    const db = await import("./db");
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
+
+    const result = await caller.tags.update({ trackId: 1, tags: ["Final Mix", "Ready for Mastering"] });
+    expect(result.success).toBe(true);
+    expect(db.updateTrackTags).toHaveBeenCalledWith(1, ["Final Mix", "Ready for Mastering"]);
+  });
+});
+
+describe("analytics.dashboard", () => {
+  it("returns dashboard analytics data", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.analytics.dashboard();
+    expect(result).toBeDefined();
+    expect(result.stats).toBeDefined();
+    expect(result.stats?.totalProjects).toBe(3);
+    expect(result.stats?.totalTracks).toBe(12);
+    expect(result.stats?.totalReviews).toBe(8);
+    expect(result.stats?.reviewedTracks).toBe(7);
+  });
+
+  it("returns score distribution", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.analytics.dashboard();
+    expect(result.scoreDistribution).toBeDefined();
+    expect(Array.isArray(result.scoreDistribution)).toBe(true);
+    expect(result.scoreDistribution.length).toBeGreaterThan(0);
+    expect(result.scoreDistribution[0]).toHaveProperty("score");
+    expect(result.scoreDistribution[0]).toHaveProperty("count");
+  });
+
+  it("returns average scores", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.analytics.dashboard();
+    expect(result.averageScores).toBeDefined();
+    expect(result.averageScores?.overall).toBe(7.2);
+    expect(result.averageScores?.production).toBe(6.8);
+  });
+
+  it("returns top tracks", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.analytics.dashboard();
+    expect(result.topTracks).toBeDefined();
+    expect(result.topTracks.length).toBe(2);
+    expect(result.topTracks[0].overall).toBe(9);
+    expect(result.topTracks[0].filename).toBe("hit-song.wav");
+  });
+
+  it("returns recent activity", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.analytics.dashboard();
+    expect(result.recentActivity).toBeDefined();
+    expect(result.recentActivity.length).toBeGreaterThan(0);
+    expect(result.recentActivity[0]).toHaveProperty("reviewType");
+    expect(result.recentActivity[0]).toHaveProperty("quickTake");
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.analytics.dashboard()).rejects.toThrow();
+  });
+});
+
+describe("smart re-review prompt", () => {
+  it("buildTrackReviewPrompt includes previous review context", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./services/claudeCritic.ts"),
+      "utf-8"
+    );
+    // Verify the re-review prompt additions exist
+    expect(source).toContain("previousReview");
+    expect(source).toContain("Previous Review Context");
+    expect(source).toContain("RE-REVIEW INSTRUCTIONS");
+    expect(source).toContain("Note what has changed since the last review");
+    expect(source).toContain("whether your previous suggestions were addressed");
+  });
+
+  it("TrackReviewInput interface includes previousReview field", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./services/claudeCritic.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("previousReview?:");
+    expect(source).toContain("reviewMarkdown: string");
+    expect(source).toContain("scores: Record<string, number>");
+  });
+
+  it("jobProcessor looks up previous reviews before generating", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./services/jobProcessor.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("Smart re-review");
+    expect(source).toContain("getReviewHistory");
+    expect(source).toContain("previousReview: previousReviewContext");
+  });
+});
+
+describe("TrackTags component", () => {
+  it("TrackTags component file exists", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const componentPath = path.resolve(__dirname, "../client/src/components/TrackTags.tsx");
+    expect(fs.existsSync(componentPath)).toBe(true);
+  });
+
+  it("TrackTags exports both TrackTags and TrackTagsBadges", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../client/src/components/TrackTags.tsx"),
+      "utf-8"
+    );
+    expect(source).toContain("export function TrackTags");
+    expect(source).toContain("export function TrackTagsBadges");
+    expect(source).toContain("PRESET_TAGS");
+  });
+});
+
+describe("Analytics page", () => {
+  it("Analytics page file exists", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const pagePath = path.resolve(__dirname, "../client/src/pages/Analytics.tsx");
+    expect(fs.existsSync(pagePath)).toBe(true);
+  });
+
+  it("Analytics page uses trpc.analytics.dashboard", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../client/src/pages/Analytics.tsx"),
+      "utf-8"
+    );
+    expect(source).toContain("trpc.analytics.dashboard");
+    expect(source).toContain("ScoreDistributionChart");
+    expect(source).toContain("AverageScoresChart");
+    expect(source).toContain("Top Rated Tracks");
+    expect(source).toContain("Recent Reviews");
+  });
+});
+
+describe("db analytics helpers", () => {
+  it("getDashboardStats is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getDashboardStats).toBe("function");
+  });
+
+  it("getScoreDistribution is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getScoreDistribution).toBe("function");
+  });
+
+  it("getRecentActivity is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getRecentActivity).toBe("function");
+  });
+
+  it("getAverageScores is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getAverageScores).toBe("function");
+  });
+
+  it("getTopTracks is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getTopTracks).toBe("function");
+  });
+
+  it("updateTrackTags is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.updateTrackTags).toBe("function");
+  });
+
+  it("getTrackTags is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getTrackTags).toBe("function");
   });
 });

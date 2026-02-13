@@ -14,6 +14,7 @@ import {
   CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
+import { TrackTagsBadges } from "@/components/TrackTags";
 import { formatDistanceToNow } from "date-fns";
 
 const trackStatusConfig: Record<string, { label: string; color: string }> = {
@@ -345,6 +346,11 @@ export default function ProjectView({ id }: { id: number }) {
                             <span className="text-primary/70 italic">{track.detectedGenre}</span>
                           )}
                         </div>
+                        {track.tags && (
+                          <div className="mt-1">
+                            <TrackTagsBadges tags={track.tags} />
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {track.status === "uploaded" && (

@@ -232,6 +232,14 @@ export interface TrackReviewInput {
   referenceArtists?: string;
   artistNotes?: string;
   reviewFocus?: ReviewFocusRole;
+  /** Previous review context for smart re-review */
+  previousReview?: {
+    reviewMarkdown: string;
+    scores: Record<string, number>;
+    quickTake?: string;
+    reviewVersion: number;
+    createdAt: Date;
+  };
 }
 
 export interface TrackReviewOutput {
@@ -287,6 +295,27 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
 
   if (focus.label !== "Full Review") {
     prompt += `\n**IMPORTANT: This review is for a ${focus.label}. Focus your critique on: ${focus.description}. Use the scoring dimensions: ${focus.scoringDimensions.join(", ")}. Structure your output with these sections: ${focus.outputSections.join(", ")}.`;
+  }
+
+  // Smart re-review: include previous review context
+  if (input.previousReview) {
+    const prev = input.previousReview;
+    const prevScoresSummary = Object.entries(prev.scores)
+      .map(([k, v]) => `${k}: ${v}/10`)
+      .join(", ");
+    prompt += `\n\n## Previous Review Context (v${prev.reviewVersion})\n\n`;
+    prompt += `This track was previously reviewed. Here is what you said last time:\n\n`;
+    prompt += `**Previous Scores:** ${prevScoresSummary}\n\n`;
+    if (prev.quickTake) {
+      prompt += `**Previous Quick Take:** ${prev.quickTake.substring(0, 1000)}\n\n`;
+    }
+    prompt += `**Previous Review (excerpt):**\n${prev.reviewMarkdown.substring(0, 3000)}\n\n`;
+    prompt += `**IMPORTANT RE-REVIEW INSTRUCTIONS:** This is a follow-up review of the same track. You MUST:\n`;
+    prompt += `1. Note what has changed since the last review (if anything is audibly different)\n`;
+    prompt += `2. Call out whether your previous suggestions were addressed\n`;
+    prompt += `3. Identify any improvements or regressions compared to the last review\n`;
+    prompt += `4. Start your Quick Take with "**Re-review (v${prev.reviewVersion + 1}):**" to signal this is a follow-up\n`;
+    prompt += `5. Be honest about whether the track has actually improved — don't inflate scores just because it's a re-review\n`;
   }
 
   prompt += `\n\nNow write your full review. Be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. Remember: keep it between 1500-3000 words, write each section exactly once, and use the exact table format specified for scores.`;

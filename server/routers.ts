@@ -183,6 +183,66 @@ export const appRouter = router({
       }),
   }),
 
+  tags: router({
+    get: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        return db.getTrackTags(input.trackId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        tags: z.array(z.string().min(1).max(50)).max(20),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        await db.updateTrackTags(input.trackId, input.tags);
+        return { success: true };
+      }),
+
+    addTag: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        tag: z.string().min(1).max(50),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const existing = await db.getTrackTags(input.trackId);
+        if (!existing.includes(input.tag)) {
+          existing.push(input.tag);
+          await db.updateTrackTags(input.trackId, existing);
+        }
+        return { success: true, tags: existing };
+      }),
+
+    removeTag: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        tag: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const existing = await db.getTrackTags(input.trackId);
+        const updated = existing.filter(t => t !== input.tag);
+        await db.updateTrackTags(input.trackId, updated);
+        return { success: true, tags: updated };
+      }),
+  }),
+
   lyrics: router({
     save: protectedProcedure
       .input(z.object({
@@ -935,6 +995,19 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         await db.deleteChatSession(input.sessionId);
         return { success: true };
       }),
+  }),
+
+  analytics: router({
+    dashboard: protectedProcedure.query(async ({ ctx }) => {
+      const [stats, scoreDistribution, recentActivity, averageScores, topTracks] = await Promise.all([
+        db.getDashboardStats(ctx.user.id),
+        db.getScoreDistribution(ctx.user.id),
+        db.getRecentActivity(ctx.user.id),
+        db.getAverageScores(ctx.user.id),
+        db.getTopTracks(ctx.user.id),
+      ]);
+      return { stats, scoreDistribution, recentActivity, averageScores, topTracks };
+    }),
   }),
 
   usage: router({

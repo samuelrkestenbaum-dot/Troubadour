@@ -329,7 +329,35 @@ async function processReviewJob(jobId: number, job: any) {
   const lyricsText = trackLyrics.length > 0 ? trackLyrics[0].text : undefined;
 
   const reviewFocus = (project.reviewFocus as any) || "full";
-  await db.updateJob(jobId, { progress: 30, progressMessage: "Writing your critique..." });
+  await db.updateJob(jobId, { progress: 20, progressMessage: "Checking for previous reviews..." });
+
+  // Smart re-review: look for the current latest review on this track
+  const existingReviews = await db.getReviewHistory(track.id);
+  const latestExisting = existingReviews.length > 0 ? existingReviews[0] : null;
+  let previousReviewContext: {
+    reviewMarkdown: string;
+    scores: Record<string, number>;
+    quickTake?: string;
+    reviewVersion: number;
+    createdAt: Date;
+  } | undefined;
+
+  if (latestExisting) {
+    // Fetch the full review to get the markdown
+    const fullPrevReview = await db.getReviewById(latestExisting.id);
+    if (fullPrevReview) {
+      previousReviewContext = {
+        reviewMarkdown: fullPrevReview.reviewMarkdown,
+        scores: (latestExisting.scoresJson as Record<string, number>) || {},
+        quickTake: latestExisting.quickTake || undefined,
+        reviewVersion: latestExisting.reviewVersion ?? 1,
+        createdAt: latestExisting.createdAt,
+      };
+      console.log(`[JobQueue] Smart re-review: passing v${previousReviewContext.reviewVersion} context to Claude`);
+    }
+  }
+
+  await db.updateJob(jobId, { progress: 30, progressMessage: previousReviewContext ? "Writing follow-up critique..." : "Writing your critique..." });
 
   // Use auto-detected genre from Gemini analysis, falling back to user-provided genre
   const geminiAnalysis = features.geminiAnalysisJson as GeminiAudioAnalysis;
@@ -338,7 +366,7 @@ async function processReviewJob(jobId: number, job: any) {
     ? `${detectedGenre.primary}${detectedGenre.secondary?.length ? ` / ${detectedGenre.secondary.join(", ")}` : ""}${detectedGenre.influences?.length ? ` (influences: ${detectedGenre.influences.join(", ")})` : ""}`
     : project.genre || undefined;
 
-  // Step: Claude generates the review (guided by reviewFocus and detected genre)
+  // Step: Claude generates the review (guided by reviewFocus, detected genre, and previous review)
   const reviewResult = await generateTrackReview({
     trackTitle: track.originalFilename.replace(/\.[^.]+$/, ""),
     projectTitle: project.title,
@@ -348,6 +376,7 @@ async function processReviewJob(jobId: number, job: any) {
     genre: genreContext,
     referenceArtists: project.referenceArtists || undefined,
     reviewFocus,
+    previousReview: previousReviewContext,
   });
 
   await db.updateJob(jobId, { progress: 80, progressMessage: "Saving review..." });

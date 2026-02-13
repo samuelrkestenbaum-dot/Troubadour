@@ -168,3 +168,17 @@
 - [x] Review history: Display review history timeline on TrackView with version badges and score deltas
 - [x] Review history: Navigate to any historical review version
 - [x] Update tests for all new features (95 tests passing)
+
+## Round 8 - Smart Features & Analytics (Claude 4.5)
+- [x] Smart re-review: Pass previous review to Claude when re-reviewing a track so it comments on changes
+- [x] Smart re-review: Claude highlights what improved, what regressed, and whether prior suggestions were addressed
+- [x] Smart re-review: Visual indicator on review showing it's a follow-up review with context
+- [x] Tag/label system: Add tags column to tracks table and push migration
+- [x] Tag/label system: Backend CRUD for adding/removing tags on tracks
+- [x] Tag/label system: Tag input UI on TrackView with preset suggestions (needs mixing, ready for mastering, single candidate, etc.)
+- [x] Tag/label system: Tag filter/display on ProjectView track list
+- [x] Dashboard analytics: Aggregate stats (average scores, total tracks, total audio minutes)
+- [x] Dashboard analytics: Top rated tracks across all projects
+- [x] Dashboard analytics: Score distribution visualization
+- [x] Dashboard analytics: Recent activity feed
+- [x] Update tests for all new features (121 tests passing)

@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
@@ -193,6 +193,150 @@ export async function getTrackVersions(parentTrackId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(tracks).where(eq(tracks.parentTrackId, parentTrackId)).orderBy(asc(tracks.versionNumber));
+}
+
+// ── Dashboard Analytics helpers ──
+
+export async function getDashboardStats(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Total projects
+  const projectCount = await db.select({ count: count() }).from(projects).where(eq(projects.userId, userId));
+  // Total tracks
+  const trackCount = await db.select({ count: count() }).from(tracks).where(eq(tracks.userId, userId));
+  // Total reviews
+  const reviewCount = await db.select({ count: count() }).from(reviews).where(eq(reviews.userId, userId));
+  // Reviewed tracks
+  const reviewedTrackCount = await db.select({ count: count() }).from(tracks).where(and(eq(tracks.userId, userId), eq(tracks.status, "reviewed")));
+
+  return {
+    totalProjects: projectCount[0]?.count ?? 0,
+    totalTracks: trackCount[0]?.count ?? 0,
+    totalReviews: reviewCount[0]?.count ?? 0,
+    reviewedTracks: reviewedTrackCount[0]?.count ?? 0,
+  };
+}
+
+export async function getScoreDistribution(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const allReviews = await db.select({
+    scoresJson: reviews.scoresJson,
+  }).from(reviews).where(and(eq(reviews.userId, userId), eq(reviews.reviewType, "track")));
+
+  // Build distribution buckets 1-10
+  const distribution: Record<number, number> = {};
+  for (let i = 1; i <= 10; i++) distribution[i] = 0;
+
+  for (const r of allReviews) {
+    const scores = r.scoresJson as Record<string, number> | null;
+    const overall = scores?.overall ?? scores?.Overall;
+    if (overall !== undefined && overall !== null) {
+      const bucket = Math.max(1, Math.min(10, Math.round(overall)));
+      distribution[bucket]++;
+    }
+  }
+
+  return Object.entries(distribution).map(([score, count]) => ({
+    score: parseInt(score),
+    count,
+  }));
+}
+
+export async function getRecentActivity(userId: number, limit = 15) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: reviews.id,
+    reviewType: reviews.reviewType,
+    quickTake: reviews.quickTake,
+    scoresJson: reviews.scoresJson,
+    trackId: reviews.trackId,
+    projectId: reviews.projectId,
+    createdAt: reviews.createdAt,
+    reviewVersion: reviews.reviewVersion,
+  }).from(reviews).where(eq(reviews.userId, userId)).orderBy(desc(reviews.createdAt)).limit(limit);
+}
+
+export async function getAverageScores(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const allReviews = await db.select({
+    scoresJson: reviews.scoresJson,
+  }).from(reviews).where(and(eq(reviews.userId, userId), eq(reviews.reviewType, "track")));
+
+  if (allReviews.length === 0) return null;
+
+  const totals: Record<string, { sum: number; count: number }> = {};
+  for (const r of allReviews) {
+    const scores = r.scoresJson as Record<string, number> | null;
+    if (!scores) continue;
+    for (const [key, val] of Object.entries(scores)) {
+      if (typeof val !== "number") continue;
+      if (!totals[key]) totals[key] = { sum: 0, count: 0 };
+      totals[key].sum += val;
+      totals[key].count++;
+    }
+  }
+
+  const averages: Record<string, number> = {};
+  for (const [key, { sum, count }] of Object.entries(totals)) {
+    averages[key] = Math.round((sum / count) * 10) / 10;
+  }
+  return averages;
+}
+
+export async function getTopTracks(userId: number, limit = 5) {
+  const db = await getDb();
+  if (!db) return [];
+  const allReviews = await db.select({
+    trackId: reviews.trackId,
+    scoresJson: reviews.scoresJson,
+    quickTake: reviews.quickTake,
+    reviewVersion: reviews.reviewVersion,
+  }).from(reviews).where(and(eq(reviews.userId, userId), eq(reviews.reviewType, "track"))).orderBy(desc(reviews.createdAt));
+
+  // Get the latest review per track and sort by overall score
+  const trackMap = new Map<number, { trackId: number; overall: number; quickTake: string | null; reviewVersion: number | null }>();
+  for (const r of allReviews) {
+    if (!r.trackId || trackMap.has(r.trackId)) continue;
+    const scores = r.scoresJson as Record<string, number> | null;
+    const overall = scores?.overall ?? scores?.Overall;
+    if (overall !== undefined) {
+      trackMap.set(r.trackId, { trackId: r.trackId, overall, quickTake: r.quickTake, reviewVersion: r.reviewVersion });
+    }
+  }
+
+  const sorted = Array.from(trackMap.values()).sort((a, b) => b.overall - a.overall).slice(0, limit);
+
+  // Enrich with track names
+  const enriched = [];
+  for (const item of sorted) {
+    const track = await getTrackById(item.trackId);
+    enriched.push({
+      ...item,
+      filename: track?.originalFilename ?? "Unknown",
+      genre: track?.detectedGenre ?? null,
+    });
+  }
+  return enriched;
+}
+
+// ── Track Tags helpers ──
+
+export async function updateTrackTags(trackId: number, tags: string[]) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(tracks).set({ tags: tags.join(",") }).where(eq(tracks.id, trackId));
+}
+
+export async function getTrackTags(trackId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select({ tags: tracks.tags }).from(tracks).where(eq(tracks.id, trackId)).limit(1);
+  if (result.length === 0 || !result[0].tags) return [];
+  return result[0].tags.split(",").filter(Boolean).map(t => t.trim());
 }
 
 // ── Lyrics helpers ──

@@ -55,6 +55,7 @@ export const tracks = mysqlTable("tracks", {
   detectedGenre: varchar("detectedGenre", { length: 255 }),
   detectedSubgenres: text("detectedSubgenres"),
   detectedInfluences: text("detectedInfluences"),
+  tags: text("tags"),
   status: mysqlEnum("status", ["uploaded", "analyzing", "analyzed", "reviewing", "reviewed", "error"]).default("uploaded").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

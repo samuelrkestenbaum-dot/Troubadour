@@ -17,6 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap
 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { TrackTags } from "@/components/TrackTags";
 import { ScoreLineChart } from "@/components/ScoreLineChart";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
@@ -542,6 +543,9 @@ export default function TrackView({ id }: { id: number }) {
           )}
         </div>
       )}
+
+      {/* Tags */}
+      <TrackTags trackId={id} />
 
       {/* Audio Player */}
       <AudioPlayer

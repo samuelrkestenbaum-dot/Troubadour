@@ -71,6 +71,13 @@
       "when": 1771009048042,
       "tag": "0009_sweet_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1771011652438,
+      "tag": "0010_worthless_spacker_dave",
+      "breakpoints": true
     }
   ]
 }
