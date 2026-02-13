@@ -6,15 +6,311 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft, Headphones, FileText, Loader2, Music, BarChart3,
-  AlertCircle, GitCompare, Upload, Mic, Save
+  AlertCircle, GitCompare, Upload, Mic, Save, Target, TrendingUp,
+  ArrowUpRight, ArrowDownRight, Minus
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
+
+// ── Reference Track Section ──
+
+function ReferenceTrackSection({ trackId }: { trackId: number }) {
+  const utils = trpc.useUtils();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const { data: references, isLoading } = trpc.reference.list.useQuery({ trackId });
+
+  const uploadRef = trpc.reference.upload.useMutation({
+    onSuccess: () => {
+      utils.reference.list.invalidate({ trackId });
+      toast.success("Reference track uploaded");
+      setUploading(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setUploading(false);
+    },
+  });
+
+  const compareMut = trpc.reference.compare.useMutation({
+    onSuccess: () => {
+      utils.reference.list.invalidate({ trackId });
+      toast.success("Comparison complete");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    const reader = new FileReader();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    uploadRef.mutate({
+      trackId,
+      filename: file.name,
+      mimeType: file.type,
+      fileBase64: base64,
+      fileSize: file.size,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium">Reference Track Comparison</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Upload a reference track to compare against yours
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading || uploadRef.isPending}
+        >
+          {uploading || uploadRef.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Target className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          Add Reference
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleUpload(file);
+          }}
+        />
+      </div>
+
+      {isLoading && <Skeleton className="h-24 w-full" />}
+
+      {(!references || references.length === 0) && !isLoading && (
+        <Card className="border-dashed">
+          <CardContent className="py-10 text-center">
+            <Target className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              No reference tracks yet. Upload a track you want to compare against.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {references?.map((ref) => (
+        <Card key={ref.id} className="overflow-hidden">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{ref.filename}</span>
+              </div>
+              {!ref.comparisonResult && (
+                <Button
+                  size="sm"
+                  onClick={() => compareMut.mutate({ referenceId: ref.id })}
+                  disabled={compareMut.isPending}
+                >
+                  {compareMut.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <GitCompare className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Compare
+                </Button>
+              )}
+            </div>
+
+            <audio controls className="w-full mb-3" src={ref.storageUrl} preload="metadata">
+              Your browser does not support audio playback.
+            </audio>
+
+            {ref.comparisonResult && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <Streamdown>{ref.comparisonResult}</Streamdown>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── Progress Tracker ──
+
+const scoreColor = (score: number) => {
+  if (score >= 8) return "text-green-400";
+  if (score >= 6) return "text-blue-400";
+  if (score >= 4) return "text-yellow-400";
+  return "text-red-400";
+};
+
+const scoreBgColor = (score: number) => {
+  if (score >= 8) return "bg-green-400/20";
+  if (score >= 6) return "bg-blue-400/20";
+  if (score >= 4) return "bg-yellow-400/20";
+  return "bg-red-400/20";
+};
+
+function ProgressTracker({ trackId }: { trackId: number }) {
+  const { data: scoreHistory, isLoading } = trpc.scoreHistory.get.useQuery({ trackId });
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+  if (!scoreHistory || scoreHistory.length < 2) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-10 text-center">
+          <TrendingUp className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">
+            Upload multiple versions to see your improvement trajectory.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            At least 2 reviewed versions needed.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Get all score dimensions across all versions
+  const allDimensions = new Set<string>();
+  scoreHistory.forEach(v => {
+    const scores = typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores;
+    Object.keys(scores).forEach(k => allDimensions.add(k));
+  });
+
+  const dimensionLabels: Record<string, string> = {
+    songwriting: "Songwriting",
+    melody: "Melody & Hooks",
+    structure: "Structure",
+    lyrics: "Lyrics",
+    performance: "Performance",
+    production: "Production",
+    originality: "Originality",
+    commercial: "Commercial",
+    overall: "Overall",
+  };
+
+  const latest = scoreHistory[scoreHistory.length - 1];
+  const previous = scoreHistory[scoreHistory.length - 2];
+  const latestScores = typeof latest.scores === "string" ? JSON.parse(latest.scores) : latest.scores;
+  const previousScores = typeof previous.scores === "string" ? JSON.parse(previous.scores) : previous.scores;
+
+  return (
+    <div className="space-y-4">
+      {/* Score Comparison Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Score Trajectory
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from(allDimensions).map(dim => {
+              const label = dimensionLabels[dim] || dim.replace(/_/g, " ").replace(/^./, s => s.toUpperCase());
+              const currentVal = latestScores[dim] ?? null;
+              const prevVal = previousScores[dim] ?? null;
+              const delta = currentVal !== null && prevVal !== null ? currentVal - prevVal : null;
+
+              return (
+                <div key={dim} className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground w-36 shrink-0">{label}</span>
+                  <div className="flex-1 flex items-center gap-2">
+                    {/* Version bars */}
+                    {scoreHistory.map((v, i) => {
+                      const scores = typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores;
+                      const val = scores[dim];
+                      if (val === undefined) return null;
+                      return (
+                        <div key={i} className="flex items-center gap-1" title={`v${v.versionNumber}: ${val}/10`}>
+                          <span className="text-xs text-muted-foreground w-5">v{v.versionNumber}</span>
+                          <div className="w-16 h-2 rounded-full bg-secondary overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${i === scoreHistory.length - 1 ? "bg-primary" : "bg-muted-foreground/40"}`}
+                              style={{ width: `${(val / 10) * 100}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-semibold w-5 ${i === scoreHistory.length - 1 ? scoreColor(val) : "text-muted-foreground"}`}>
+                            {val}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Delta indicator */}
+                  {delta !== null && (
+                    <div className={`flex items-center gap-0.5 shrink-0 ${
+                      delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-muted-foreground"
+                    }`}>
+                      {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> :
+                       delta < 0 ? <ArrowDownRight className="h-3 w-3" /> :
+                       <Minus className="h-3 w-3" />}
+                      <span className="text-xs font-semibold">
+                        {delta > 0 ? `+${delta}` : delta === 0 ? "—" : delta}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Version Quick Takes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Version Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {scoreHistory.map((v, i) => (
+            <div key={i} className="flex gap-3 py-2 border-b border-border/50 last:border-0">
+              <Badge variant={i === scoreHistory.length - 1 ? "default" : "outline"} className="shrink-0 mt-0.5">
+                v{v.versionNumber}
+              </Badge>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-1">{v.filename}</p>
+                {v.quickTake && (
+                  <p className="text-sm text-foreground/80 line-clamp-2">{v.quickTake}</p>
+                )}
+              </div>
+              {(() => {
+                const scores = typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores;
+                const overall = scores.overall;
+                return overall !== undefined ? (
+                  <span className={`text-lg font-bold shrink-0 ${scoreColor(overall)}`}>
+                    {overall}
+                  </span>
+                ) : null;
+              })()}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Main TrackView ──
 
 export default function TrackView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
@@ -57,7 +353,7 @@ export default function TrackView({ id }: { id: number }) {
   });
 
   const transcribe = trpc.lyrics.transcribe.useMutation({
-    onSuccess: (result) => {
+    onSuccess: () => {
       utils.track.get.invalidate({ id });
       toast.success("Transcription complete");
     },
@@ -96,6 +392,7 @@ export default function TrackView({ id }: { id: number }) {
   const geminiAnalysis = features?.geminiAnalysisJson as any;
   const audioFeaturesData = features?.featuresJson as any;
   const sections = features?.sectionsJson as any[];
+  const hasVersions = versions.length > 0 || track.parentTrackId;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -191,11 +488,13 @@ export default function TrackView({ id }: { id: number }) {
       )}
 
       <Tabs defaultValue={reviews.length > 0 ? "reviews" : "analysis"} className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
           <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
           <TabsTrigger value="lyrics">Lyrics</TabsTrigger>
-          {versions.length > 0 && <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>}
+          <TabsTrigger value="reference">Reference</TabsTrigger>
+          {hasVersions && <TabsTrigger value="versions">Versions</TabsTrigger>}
+          {hasVersions && <TabsTrigger value="progress">Progress</TabsTrigger>}
         </TabsList>
 
         {/* Analysis Tab */}
@@ -397,9 +696,29 @@ export default function TrackView({ id }: { id: number }) {
           )}
         </TabsContent>
 
+        {/* Reference Track Tab */}
+        <TabsContent value="reference">
+          <ReferenceTrackSection trackId={id} />
+        </TabsContent>
+
         {/* Versions Tab */}
-        {versions.length > 0 && (
+        {hasVersions && (
           <TabsContent value="versions" className="space-y-2">
+            {/* Show current track in version list if it's the parent */}
+            {!track.parentTrackId && (
+              <Card className="border-primary/50 bg-primary/5">
+                <CardContent className="py-3 px-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="default">v{track.versionNumber}</Badge>
+                    <span className="text-sm">{track.originalFilename}</span>
+                    <Badge variant="secondary" className="text-xs">Current</Badge>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(track.createdAt), { addSuffix: true })}
+                  </span>
+                </CardContent>
+              </Card>
+            )}
             {versions.map(v => (
               <Card
                 key={v.id}
@@ -410,6 +729,7 @@ export default function TrackView({ id }: { id: number }) {
                   <div className="flex items-center gap-3">
                     <Badge variant={v.id === track.id ? "default" : "outline"}>v{v.versionNumber}</Badge>
                     <span className="text-sm">{v.originalFilename}</span>
+                    {v.id === track.id && <Badge variant="secondary" className="text-xs">Current</Badge>}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(v.createdAt), { addSuffix: true })}
@@ -417,6 +737,13 @@ export default function TrackView({ id }: { id: number }) {
                 </CardContent>
               </Card>
             ))}
+          </TabsContent>
+        )}
+
+        {/* Progress Tracker Tab */}
+        {hasVersions && (
+          <TabsContent value="progress">
+            <ProgressTracker trackId={id} />
           </TabsContent>
         )}
       </Tabs>

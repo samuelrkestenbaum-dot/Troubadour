@@ -279,3 +279,87 @@ Provide your analysis as detailed text with clear section headers. Be honest and
   const result = await response.json();
   return result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || "";
 }
+
+/**
+ * Analyze a reference track against the user's track using Gemini
+ */
+export async function compareReferenceWithGemini(
+  userAudioUrl: string, userMimeType: string,
+  refAudioUrl: string, refMimeType: string
+): Promise<{ referenceAnalysis: string; comparison: string }> {
+  if (!ENV.geminiApiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  const [userAudio, refAudio] = await Promise.all([
+    fetch(userAudioUrl).then(r => r.arrayBuffer()),
+    fetch(refAudioUrl).then(r => r.arrayBuffer()),
+  ]);
+
+  const mapMime = (m: string) => m === "audio/mpeg" ? "audio/mpeg" :
+    m === "audio/wav" ? "audio/wav" :
+    m === "audio/mp4" || m === "audio/m4a" ? "audio/mp4" : "audio/mpeg";
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          { inline_data: { mime_type: mapMime(userMimeType), data: Buffer.from(userAudio).toString("base64") } },
+          { text: "This is the ARTIST'S TRACK that they want feedback on." },
+          { inline_data: { mime_type: mapMime(refMimeType), data: Buffer.from(refAudio).toString("base64") } },
+          { text: "This is the REFERENCE TRACK the artist wants to be compared against." },
+          {
+            text: `You are an expert music producer and audio engineer. Listen carefully to BOTH tracks.
+
+Provide TWO sections in your response:
+
+## REFERENCE TRACK ANALYSIS
+Analyze the reference track: tempo, key, energy, production quality, mix characteristics, arrangement, instrumentation, vocal/melodic qualities, and what makes it work well.
+
+## SIDE-BY-SIDE COMPARISON
+Compare the artist's track to the reference:
+1. Production quality gap (mix clarity, frequency balance, dynamics, stereo image)
+2. Arrangement differences (structure, layering, density, transitions)
+3. Performance comparison (vocal/instrumental delivery)
+4. Energy and dynamics comparison
+5. What the artist is doing well relative to the reference
+6. Specific moments where the gap is most noticeable (with timestamps)
+7. Techniques from the reference the artist should study
+
+Be specific. Reference actual moments in both tracks with timestamps. Be honest but constructive.`,
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.3,
+      topP: 0.95,
+      maxOutputTokens: 8192,
+    },
+  };
+
+  const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${ENV.geminiApiKey}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini reference comparison API error: ${response.status} — ${errorText}`);
+  }
+
+  const result = await response.json();
+  const fullText = result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || "";
+
+  // Split the response into reference analysis and comparison
+  const refAnalysisMatch = fullText.match(/## REFERENCE TRACK ANALYSIS[\s\S]*?(?=## SIDE-BY-SIDE COMPARISON)/i);
+  const comparisonMatch = fullText.match(/## SIDE-BY-SIDE COMPARISON[\s\S]*/i);
+
+  return {
+    referenceAnalysis: refAnalysisMatch ? refAnalysisMatch[0].replace(/## REFERENCE TRACK ANALYSIS\s*/i, "").trim() : fullText,
+    comparison: comparisonMatch ? comparisonMatch[0].replace(/## SIDE-BY-SIDE COMPARISON\s*/i, "").trim() : fullText,
+  };
+}

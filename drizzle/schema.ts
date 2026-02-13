@@ -123,3 +123,36 @@ export const jobs = mysqlTable("jobs", {
 
 export type Job = typeof jobs.$inferSelect;
 export type InsertJob = typeof jobs.$inferInsert;
+
+// ── Follow-up Conversations ──
+
+export const conversationMessages = mysqlTable("conversationMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  reviewId: int("reviewId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
+export type InsertConversationMessage = typeof conversationMessages.$inferInsert;
+
+// ── Reference Tracks ──
+
+export const referenceTracks = mysqlTable("referenceTracks", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  filename: varchar("filename", { length: 500 }).notNull(),
+  originalFilename: varchar("originalFilename", { length: 500 }).notNull(),
+  storageUrl: text("storageUrl").notNull(),
+  storageKey: varchar("storageKey", { length: 500 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  fileSize: bigint("fileSize", { mode: "number" }).notNull(),
+  comparisonResult: text("comparisonResult"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ReferenceTrack = typeof referenceTracks.$inferSelect;
+export type InsertReferenceTrack = typeof referenceTracks.$inferInsert;

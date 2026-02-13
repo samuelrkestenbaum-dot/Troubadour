@@ -15,7 +15,7 @@ interface ClaudeMessage {
   content: string;
 }
 
-async function callClaude(systemPrompt: string, messages: ClaudeMessage[], maxTokens = 8192): Promise<string> {
+export async function callClaude(systemPrompt: string, messages: ClaudeMessage[], maxTokens = 8192): Promise<string> {
   if (!ENV.anthropicApiKey) {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
@@ -338,6 +338,94 @@ function extractScores(markdown: string): Record<string, number> {
   }
 
   return scores;
+}
+
+// ── Follow-up Conversation ──
+
+const FOLLOWUP_SYSTEM = `You are the same music critic who wrote the review the user is asking about. You have access to the full review, the audio analysis data, and the original context.
+
+Rules:
+- Answer questions about your review with the same specificity and honesty.
+- If asked to elaborate on a section, reference timestamps and audio analysis data.
+- If asked to compare to reference artists, draw on your deep knowledge of music history.
+- If asked "what did you mean by X", explain your reasoning clearly.
+- If asked for alternative approaches, be specific and actionable.
+- Stay in character as a knowledgeable, honest music critic.
+- Keep responses focused and concise unless depth is requested.
+- You can revise your opinion if the user provides new context.`;
+
+export interface FollowUpInput {
+  reviewMarkdown: string;
+  audioAnalysisJson: any;
+  trackTitle: string;
+  conversationHistory: ClaudeMessage[];
+  userMessage: string;
+}
+
+export async function generateFollowUp(input: FollowUpInput): Promise<string> {
+  const contextMessage = `Here is the context for this conversation:
+
+## Original Review
+${input.reviewMarkdown}
+
+## Audio Analysis Data
+\`\`\`json
+${JSON.stringify(input.audioAnalysisJson, null, 2)}
+\`\`\`
+
+## Track: "${input.trackTitle}"
+
+The user wants to discuss this review with you. Answer their questions.`;
+
+  const messages: ClaudeMessage[] = [
+    { role: "user", content: contextMessage },
+    { role: "assistant", content: "I\'m ready to discuss my review. What would you like to know?" },
+    ...input.conversationHistory,
+    { role: "user", content: input.userMessage },
+  ];
+
+  return callClaude(FOLLOWUP_SYSTEM, messages, 4096);
+}
+
+// ── Reference Track Comparison ──
+
+const REFERENCE_COMPARISON_SYSTEM = `You are a world-class music producer and A&R executive. You are comparing an artist's track against a reference track they've chosen. Your job is to provide an honest, actionable comparison.
+
+Focus on:
+- How the artist's track measures up to the reference in terms of production quality, arrangement, energy, and overall polish
+- Specific techniques or approaches from the reference that the artist could learn from
+- What the artist is doing well that the reference doesn't (if anything)
+- Concrete, actionable steps to close the gap between the two tracks
+- Be honest but constructive — the goal is growth, not discouragement
+
+Output format (Markdown):
+1. **At a Glance** (one-paragraph comparison summary)
+2. **Production Gap Analysis** (mix quality, frequency balance, dynamics, spatial characteristics)
+3. **Arrangement Comparison** (structure, layering, transitions, density)
+4. **Performance & Delivery** (vocal/instrumental quality comparison)
+5. **What You're Doing Better** (areas where the artist's track excels)
+6. **Key Takeaways from the Reference** (specific techniques to study)
+7. **Action Items** (ranked list of what to focus on to close the gap)
+8. **Scores** (table comparing both tracks on key dimensions)`;
+
+export interface ReferenceComparisonInput {
+  trackTitle: string;
+  referenceFilename: string;
+  trackAudioAnalysis: any;
+  referenceAudioAnalysis: string;
+  geminiComparison: string;
+}
+
+export async function generateReferenceComparison(input: ReferenceComparisonInput): Promise<string> {
+  let prompt = `# Reference Track Comparison\n\n`;
+  prompt += `**Your Track:** "${input.trackTitle}"\n`;
+  prompt += `**Reference Track:** "${input.referenceFilename}"\n\n`;
+  prompt += `## Your Track's Audio Analysis\n\`\`\`json\n${JSON.stringify(input.trackAudioAnalysis, null, 2)}\n\`\`\`\n\n`;
+  prompt += `## Reference Track Audio Analysis\n${input.referenceAudioAnalysis}\n\n`;
+  prompt += `## Side-by-Side Listening Comparison\n${input.geminiComparison}\n\n`;
+  prompt += `Now write your comparison. Be specific, reference actual moments, and provide actionable feedback.`;
+
+  return callClaude(REFERENCE_COMPARISON_SYSTEM, [{ role: "user", content: prompt }]);
 }
 
 function extractAlbumScores(markdown: string): Record<string, number> {

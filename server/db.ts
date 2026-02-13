@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -296,4 +296,81 @@ export async function getActiveJobForTrack(trackId: number) {
     .where(and(eq(jobs.trackId, trackId), sql`${jobs.status} IN ('queued', 'running')`))
     .orderBy(desc(jobs.createdAt)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ── Conversation helpers ──
+
+export async function createConversationMessage(data: InsertConversationMessage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(conversationMessages).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getConversationByReview(reviewId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(conversationMessages).where(eq(conversationMessages.reviewId, reviewId)).orderBy(asc(conversationMessages.createdAt));
+}
+
+// ── Reference Track helpers ──
+
+export async function createReferenceTrack(data: InsertReferenceTrack) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(referenceTracks).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getReferenceTracksByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(referenceTracks).where(eq(referenceTracks.trackId, trackId)).orderBy(desc(referenceTracks.createdAt));
+}
+
+export async function getReferenceTrackById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(referenceTracks).where(eq(referenceTracks.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateReferenceTrackComparison(id: number, comparisonResult: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(referenceTracks).set({ comparisonResult }).where(eq(referenceTracks.id, id));
+}
+
+// ── Score history for progress tracking ──
+
+export async function getScoreHistoryForTrack(parentTrackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all versions of this track and their latest review scores
+  const allVersions = await db.select({
+    trackId: tracks.id,
+    versionNumber: tracks.versionNumber,
+    originalFilename: tracks.originalFilename,
+    createdAt: tracks.createdAt,
+  }).from(tracks).where(
+    sql`(${tracks.id} = ${parentTrackId} OR ${tracks.parentTrackId} = ${parentTrackId})`
+  ).orderBy(asc(tracks.versionNumber));
+
+  const scoreHistory = [];
+  for (const version of allVersions) {
+    const latestReview = await db.select().from(reviews)
+      .where(and(eq(reviews.trackId, version.trackId), eq(reviews.reviewType, "track")))
+      .orderBy(desc(reviews.createdAt)).limit(1);
+    if (latestReview.length > 0 && latestReview[0].scoresJson) {
+      scoreHistory.push({
+        trackId: version.trackId,
+        versionNumber: version.versionNumber,
+        filename: version.originalFilename,
+        createdAt: version.createdAt,
+        scores: latestReview[0].scoresJson,
+        quickTake: latestReview[0].quickTake,
+      });
+    }
+  }
+  return scoreHistory;
 }

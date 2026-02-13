@@ -4,11 +4,27 @@ import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import {
   Music, Headphones, BarChart3, GitCompare, FileText, Zap, ArrowRight,
-  PenLine, Sliders, Layers, Mic, Briefcase, Star
+  PenLine, Sliders, Layers, Mic, Briefcase, Star, Target, TrendingUp, MessageCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const roles = [
+  {
+    id: "anr",
+    label: "A&R & Labels",
+    icon: Briefcase,
+    color: "text-violet-400",
+    bg: "bg-violet-400/10 border-violet-400/20",
+    headline: "Is this a hit or a miss?",
+    description: "Commercial potential, playlist readiness, sync opportunities, and market positioning. The internal A&R memo you'd write — but faster and backed by audio intelligence.",
+    bullets: [
+      "Skip test — first 7 seconds analysis",
+      "Playlist & market positioning strategy",
+      "Sync potential for film, TV, and ads",
+      "Artist development & release strategy notes",
+    ],
+    featured: true,
+  },
   {
     id: "songwriter",
     label: "Songwriters",
@@ -67,21 +83,6 @@ const roles = [
       "Emotional authenticity evaluation",
       "Artistic identity & distinctiveness analysis",
       "Performance development roadmap",
-    ],
-  },
-  {
-    id: "anr",
-    label: "A&R & Labels",
-    icon: Briefcase,
-    color: "text-violet-400",
-    bg: "bg-violet-400/10 border-violet-400/20",
-    headline: "Is this a hit or a miss?",
-    description: "Commercial potential, playlist readiness, sync opportunities, and market positioning. The internal A&R memo you'd write — but faster.",
-    bullets: [
-      "Skip test — first 7 seconds analysis",
-      "Playlist & market positioning strategy",
-      "Sync potential for film, TV, and ads",
-      "Artist development & release strategy notes",
     ],
   },
 ];
@@ -237,6 +238,30 @@ export default function Home() {
         </div>
       </section>
 
+      {/* A&R Featured Callout */}
+      <section className="py-16 border-t border-border/50">
+        <div className="container max-w-5xl mx-auto">
+          <div className="rounded-2xl border-2 border-violet-400/30 bg-violet-400/5 p-8 md:p-10">
+            <div className="grid md:grid-cols-[1fr_auto] gap-8 items-center">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Briefcase className="h-5 w-5 text-violet-400" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-violet-400">For A&R Professionals</span>
+                </div>
+                <h3 className="text-2xl font-bold mb-3">Your AI A&R desk</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Evaluate demos at scale. Get instant skip tests, singles picks, playlist positioning, sync potential, and artist development notes — all grounded in what the engine actually heard in the audio, not just metadata.
+                </p>
+              </div>
+              <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="bg-violet-500 hover:bg-violet-600 text-white shrink-0">
+                Try A&R Mode
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
       <section className="py-20 border-t border-border/50">
         <div className="container max-w-5xl mx-auto">
@@ -249,6 +274,9 @@ export default function Home() {
               { icon: Music, title: "Section-by-Section", desc: "Every intro, verse, chorus, and bridge analyzed with timestamps, energy levels, and specific notes tailored to your focus." },
               { icon: Headphones, title: "Lyrics Integration", desc: "Paste lyrics or auto-transcribe. Songwriting craft evaluated alongside the audio for a complete picture." },
               { icon: Zap, title: "Export & Share", desc: "Download your reviews as formatted reports. Track your improvement across iterations." },
+              { icon: Target, title: "Reference Comparison", desc: "Upload a reference track alongside yours. Get a side-by-side audio comparison showing exactly where your mix differs." },
+              { icon: TrendingUp, title: "Progress Tracking", desc: "Visual score trajectory across versions. See which dimensions improved, which regressed, and what to focus on next." },
+              { icon: MessageCircle, title: "Follow-Up Questions", desc: "Ask the engine to clarify any part of the review. 'What did you mean by the chorus not lifting?' — and get a grounded answer." },
             ].map((f) => (
               <div key={f.title} className="p-5 rounded-xl border border-border/60 bg-card/50 hover:bg-card transition-colors">
                 <f.icon className="h-5 w-5 text-primary mb-3" />

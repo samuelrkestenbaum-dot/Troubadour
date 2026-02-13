@@ -79,6 +79,19 @@ vi.mock("./db", () => {
     updateJob: vi.fn().mockResolvedValue(undefined),
     getActiveJobForTrack: vi.fn().mockResolvedValue(null),
     incrementAudioMinutes: vi.fn().mockResolvedValue(undefined),
+    getConversationByReview: vi.fn().mockResolvedValue([]),
+    createConversationMessage: vi.fn().mockImplementation(async (data: any) => {
+      const id = nextId++;
+      return { id, ...data, createdAt: new Date() };
+    }),
+    getReferenceTracksByTrack: vi.fn().mockResolvedValue([]),
+    getReferenceTrackById: vi.fn().mockResolvedValue(null),
+    createReferenceTrack: vi.fn().mockImplementation(async (data: any) => {
+      const id = nextId++;
+      return { id, ...data, createdAt: new Date() };
+    }),
+    updateReferenceTrackComparison: vi.fn().mockResolvedValue(undefined),
+    getScoreHistoryForTrack: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -95,6 +108,26 @@ vi.mock("./services/jobProcessor", () => ({
 // Mock voice transcription
 vi.mock("./_core/voiceTranscription", () => ({
   transcribeAudio: vi.fn().mockResolvedValue({ text: "Hello world lyrics", language: "en" }),
+}));
+
+// Mock Claude critic follow-up and reference comparison
+vi.mock("./services/claudeCritic", () => ({
+  CLAUDE_MODEL: "claude-4-5-sonnet-20250514",
+  generateFollowUp: vi.fn().mockResolvedValue("Here's more detail about the chorus..."),
+  generateReferenceComparison: vi.fn().mockResolvedValue("## Comparison\nYour track vs reference..."),
+  generateTrackReview: vi.fn(),
+  generateAlbumReview: vi.fn(),
+  generateVersionComparison: vi.fn(),
+}));
+
+// Mock Gemini reference comparison
+vi.mock("./services/geminiAudio", () => ({
+  analyzeAudioWithGemini: vi.fn(),
+  compareAudioWithGemini: vi.fn(),
+  compareReferenceWithGemini: vi.fn().mockResolvedValue({
+    referenceAnalysis: { tempo: 120, key: "C major" },
+    comparison: "Both tracks share similar tempo but differ in frequency balance.",
+  }),
 }));
 
 // ── Helpers ──
@@ -411,6 +444,119 @@ describe("jobProcessor", () => {
   it("exports enqueueJob function", async () => {
     const mod = await import("./services/jobProcessor");
     expect(typeof mod.enqueueJob).toBe("function");
+  });
+});
+
+// ── Conversation tests ──
+
+describe("conversation", () => {
+  it("requires authentication to list messages", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.conversation.list({ reviewId: 1 })
+    ).rejects.toThrow();
+  });
+
+  it("requires authentication to send messages", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.conversation.send({ reviewId: 1, message: "Tell me more" })
+    ).rejects.toThrow();
+  });
+
+  it("rejects empty messages", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.conversation.send({ reviewId: 1, message: "" })
+    ).rejects.toThrow();
+  });
+
+  it("rejects messages over 2000 chars", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.conversation.send({ reviewId: 1, message: "a".repeat(2001) })
+    ).rejects.toThrow();
+  });
+});
+
+// ── Reference track tests ──
+
+describe("reference", () => {
+  it("requires authentication to list references", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.reference.list({ trackId: 1 })
+    ).rejects.toThrow();
+  });
+
+  it("requires authentication to upload references", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.reference.upload({
+        trackId: 1,
+        filename: "ref.mp3",
+        mimeType: "audio/mpeg",
+        fileBase64: "dGVzdA==",
+        fileSize: 4,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("requires authentication to compare references", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.reference.compare({ referenceId: 1 })
+    ).rejects.toThrow();
+  });
+});
+
+// ── Score history tests ──
+
+describe("scoreHistory", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.scoreHistory.get({ trackId: 1 })
+    ).rejects.toThrow();
+  });
+});
+
+// ── Gemini reference comparison export ──
+
+describe("geminiAudio reference comparison", () => {
+  it("exports compareReferenceWithGemini function", async () => {
+    const mod = await import("./services/geminiAudio");
+    expect(typeof mod.compareReferenceWithGemini).toBe("function");
+  });
+});
+
+// ── Claude follow-up export ──
+
+describe("claudeCritic follow-up", () => {
+  it("exports generateFollowUp function", async () => {
+    const mod = await import("./services/claudeCritic");
+    expect(typeof mod.generateFollowUp).toBe("function");
+  });
+
+  it("exports generateReferenceComparison function", async () => {
+    const mod = await import("./services/claudeCritic");
+    expect(typeof mod.generateReferenceComparison).toBe("function");
   });
 });
 

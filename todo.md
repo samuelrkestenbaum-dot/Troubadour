@@ -70,3 +70,13 @@
 - [x] Update landing page with user story-driven value propositions per role
 - [x] Update review display to highlight role-relevant sections
 - [x] Tests for new role-based functionality
+
+## Feedback Improvements - Round 2
+- [x] Contextual follow-up conversation after critiques (ask Claude 4.5 follow-up questions about the review)
+- [x] Conversation history stored in DB with review context
+- [x] Reference track comparison (upload your track + a reference, get comparative Gemini analysis)
+- [x] Reference track upload UI and comparison view
+- [x] Visual progress tracking across versions (improvement trajectory chart)
+- [x] Score history timeline showing dimension changes across versions
+- [x] Elevate A&R role prominence in landing page marketing
+- [x] Tests for follow-up conversation, reference comparison, and progress tracking

@@ -9,6 +9,8 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { enqueueJob } from "./services/jobProcessor";
 import { transcribeAudio } from "./_core/voiceTranscription";
+import { generateFollowUp, generateReferenceComparison } from "./services/claudeCritic";
+import { compareReferenceWithGemini } from "./services/geminiAudio";
 
 export const appRouter = router({
   system: systemRouter,
@@ -352,6 +354,157 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
         return db.getAlbumReview(input.projectId);
+      }),
+  }),
+
+  conversation: router({
+    list: protectedProcedure
+      .input(z.object({ reviewId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const review = await db.getReviewById(input.reviewId);
+        if (!review || review.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+        }
+        return db.getConversationByReview(input.reviewId);
+      }),
+
+    send: protectedProcedure
+      .input(z.object({
+        reviewId: z.number(),
+        message: z.string().min(1).max(2000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const review = await db.getReviewById(input.reviewId);
+        if (!review || review.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+        }
+        // Save user message
+        await db.createConversationMessage({
+          reviewId: input.reviewId,
+          userId: ctx.user.id,
+          role: "user",
+          content: input.message,
+        });
+
+        // Get conversation history
+        const history = await db.getConversationByReview(input.reviewId);
+        const conversationHistory = history.slice(0, -1).map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+
+        // Get track and audio features for context
+        const track = review.trackId ? await db.getTrackById(review.trackId) : null;
+        const features = review.trackId ? await db.getAudioFeaturesByTrack(review.trackId) : null;
+
+        // Generate follow-up response
+        const response = await generateFollowUp({
+          reviewMarkdown: review.reviewMarkdown || "",
+          audioAnalysisJson: features?.geminiAnalysisJson || {},
+          trackTitle: track?.originalFilename || "Unknown Track",
+          conversationHistory,
+          userMessage: input.message,
+        });
+
+        // Save assistant response
+        await db.createConversationMessage({
+          reviewId: input.reviewId,
+          userId: ctx.user.id,
+          role: "assistant",
+          content: response,
+        });
+
+        return { response };
+      }),
+  }),
+
+  reference: router({
+    upload: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        filename: z.string(),
+        mimeType: z.string(),
+        fileBase64: z.string(),
+        fileSize: z.number(),
+        artistName: z.string().optional(),
+        trackTitle: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const fileBuffer = Buffer.from(input.fileBase64, "base64");
+        const fileKey = `reference/${ctx.user.id}/${input.trackId}/${nanoid()}-${input.filename}`;
+        const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+
+        const ref = await db.createReferenceTrack({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          filename: input.filename,
+          originalFilename: input.filename,
+          storageUrl: url,
+          storageKey: fileKey,
+          mimeType: input.mimeType,
+          fileSize: input.fileSize,
+        });
+        return { id: ref.id, storageUrl: url };
+      }),
+
+    list: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        return db.getReferenceTracksByTrack(input.trackId);
+      }),
+
+    compare: protectedProcedure
+      .input(z.object({ referenceId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const ref = await db.getReferenceTrackById(input.referenceId);
+        if (!ref || ref.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Reference track not found" });
+        }
+        const track = await db.getTrackById(ref.trackId);
+        if (!track) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const features = await db.getAudioFeaturesByTrack(track.id);
+
+        // Use Gemini to listen to both tracks side-by-side
+        const geminiResult = await compareReferenceWithGemini(
+          track.storageUrl, track.mimeType,
+          ref.storageUrl, ref.mimeType
+        );
+
+        // Use Claude to write the comparison critique
+        const comparisonMarkdown = await generateReferenceComparison({
+          trackTitle: track.originalFilename,
+          referenceFilename: ref.filename,
+          trackAudioAnalysis: features?.geminiAnalysisJson || {},
+          referenceAudioAnalysis: geminiResult.referenceAnalysis,
+          geminiComparison: geminiResult.comparison,
+        });
+
+        await db.updateReferenceTrackComparison(ref.id, comparisonMarkdown);
+        return { comparisonResult: comparisonMarkdown };
+      }),
+  }),
+
+  scoreHistory: router({
+    get: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const parentId = track.parentTrackId || track.id;
+        return db.getScoreHistoryForTrack(parentId);
       }),
   }),
 
