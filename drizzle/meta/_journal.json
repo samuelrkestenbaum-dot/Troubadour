@@ -64,6 +64,13 @@
       "when": 1771007616791,
       "tag": "0008_ancient_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1771009048042,
+      "tag": "0009_sweet_hitman",
+      "breakpoints": true
     }
   ]
 }

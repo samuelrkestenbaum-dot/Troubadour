@@ -241,6 +241,39 @@ export async function getAudioFeaturesByTrack(trackId: number) {
 export async function createReview(data: InsertReview) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // If this is a track review, handle versioning
+  if (data.trackId && data.reviewType === "track") {
+    // Get the current latest version number for this track
+    const existing = await db.select({ reviewVersion: reviews.reviewVersion })
+      .from(reviews)
+      .where(and(
+        eq(reviews.trackId, data.trackId),
+        eq(reviews.reviewType, "track"),
+        eq(reviews.isLatest, true)
+      ))
+      .orderBy(desc(reviews.reviewVersion))
+      .limit(1);
+
+    const nextVersion = existing.length > 0 ? (existing[0].reviewVersion ?? 1) + 1 : 1;
+
+    // Mark all previous reviews for this track as not latest
+    await db.update(reviews).set({ isLatest: false })
+      .where(and(
+        eq(reviews.trackId, data.trackId),
+        eq(reviews.reviewType, "track")
+      ));
+
+    // Insert with version info
+    const result = await db.insert(reviews).values({
+      ...data,
+      reviewVersion: nextVersion,
+      isLatest: true,
+    });
+    return { id: result[0].insertId };
+  }
+
+  // For album/comparison reviews, just insert normally
   const result = await db.insert(reviews).values(data);
   return { id: result[0].insertId };
 }
@@ -255,6 +288,22 @@ export async function getReviewsByTrack(trackId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(reviews).where(eq(reviews.trackId, trackId)).orderBy(desc(reviews.createdAt));
+}
+
+export async function getReviewHistory(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: reviews.id,
+    reviewVersion: reviews.reviewVersion,
+    isLatest: reviews.isLatest,
+    modelUsed: reviews.modelUsed,
+    scoresJson: reviews.scoresJson,
+    quickTake: reviews.quickTake,
+    createdAt: reviews.createdAt,
+  }).from(reviews)
+    .where(and(eq(reviews.trackId, trackId), eq(reviews.reviewType, "track")))
+    .orderBy(desc(reviews.reviewVersion));
 }
 
 export async function getReviewById(id: number) {

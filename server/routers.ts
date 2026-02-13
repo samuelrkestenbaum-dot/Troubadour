@@ -574,6 +574,16 @@ export const appRouter = router({
         return { shareToken: token };
       }),
 
+    history: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        return db.getReviewHistory(input.trackId);
+      }),
+
     getPublic: publicProcedure
       .input(z.object({ token: z.string().min(1) }))
       .query(async ({ input }) => {

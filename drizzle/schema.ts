@@ -102,6 +102,8 @@ export const reviews = mysqlTable("reviews", {
   quickTake: mediumtext("quickTake"),
   comparedTrackId: int("comparedTrackId"),
   shareToken: varchar("shareToken", { length: 64 }),
+  reviewVersion: int("reviewVersion").default(1).notNull(),
+  isLatest: boolean("isLatest").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

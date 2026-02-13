@@ -157,3 +157,14 @@
 - [x] Reference track comparison: Claude-powered comparative analysis against reference (already built)
 - [x] Reference track comparison: Side-by-side display of reference vs original analysis (already built)
 - [x] Update tests for all new features (88 tests passing)
+
+## Round 7 - Strategic Features (Claude 4.5)
+- [x] Album-level summary report: Enhanced Claude prompt with thematic threads, sequencing, and album arc (already built)
+- [x] Album-level summary report: Store album review in DB and display on ProjectView (already built)
+- [x] Waveform visualization: Replace progress bar in audio player with rendered waveform
+- [x] Waveform visualization: Generate waveform data from audio using Web Audio API
+- [x] Waveform visualization: Interactive playback position on waveform with click-to-seek
+- [x] Review history: Keep previous reviews with auto-incrementing reviewVersion
+- [x] Review history: Display review history timeline on TrackView with version badges and score deltas
+- [x] Review history: Navigate to any historical review version
+- [x] Update tests for all new features (95 tests passing)

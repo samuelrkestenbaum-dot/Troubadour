@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -20,6 +20,122 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Downsample audio buffer to N bars for waveform display */
+function generateWaveformData(audioBuffer: AudioBuffer, bars: number): number[] {
+  const rawData = audioBuffer.getChannelData(0);
+  const samplesPerBar = Math.floor(rawData.length / bars);
+  const waveform: number[] = [];
+
+  for (let i = 0; i < bars; i++) {
+    let sum = 0;
+    const start = i * samplesPerBar;
+    for (let j = 0; j < samplesPerBar; j++) {
+      sum += Math.abs(rawData[start + j] || 0);
+    }
+    waveform.push(sum / samplesPerBar);
+  }
+
+  // Normalize to 0-1
+  const max = Math.max(...waveform, 0.001);
+  return waveform.map(v => v / max);
+}
+
+function Waveform({
+  data,
+  progress,
+  duration,
+  onSeek,
+  isLoading,
+  compact,
+}: {
+  data: number[];
+  progress: number;
+  duration: number;
+  onSeek: (time: number) => void;
+  isLoading: boolean;
+  compact?: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const barCount = data.length;
+  const height = compact ? 40 : 56;
+  const barWidth = 2;
+  const gap = 1.5;
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || duration <= 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const fraction = Math.max(0, Math.min(1, x / rect.width));
+    onSeek(fraction * duration);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.buttons !== 1) return; // Only while dragging
+    handleClick(e);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative cursor-pointer group select-none"
+      style={{ height }}
+      onClick={handleClick}
+      onMouseMove={handleMouseMove}
+    >
+      {/* Waveform bars */}
+      <svg
+        width="100%"
+        height={height}
+        preserveAspectRatio="none"
+        viewBox={`0 0 ${barCount * (barWidth + gap)} ${height}`}
+        className="block"
+      >
+        {data.map((amplitude, i) => {
+          const barHeight = Math.max(2, amplitude * (height - 4));
+          const x = i * (barWidth + gap);
+          const y = (height - barHeight) / 2;
+          const barProgress = i / barCount;
+          const isPlayed = barProgress <= progress / 100;
+
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              rx={1}
+              className={`transition-colors duration-75 ${
+                isPlayed
+                  ? "fill-primary"
+                  : "fill-muted-foreground/25 group-hover:fill-muted-foreground/40"
+              }`}
+            />
+          );
+        })}
+      </svg>
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm rounded">
+          <div className="flex gap-1">
+            {[0, 1, 2, 3, 4].map(i => (
+              <div
+                key={i}
+                className="w-1 bg-primary/60 rounded-full animate-pulse"
+                style={{
+                  height: 12 + Math.random() * 16,
+                  animationDelay: `${i * 0.15}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AudioPlayer({ src, title, subtitle, compact = false, className = "", seekTo }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,7 +145,55 @@ export function AudioPlayer({ src, title, subtitle, compact = false, className =
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [waveformData, setWaveformData] = useState<number[]>([]);
+  const [waveformLoading, setWaveformLoading] = useState(true);
   const animationRef = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Generate placeholder waveform for initial display
+  const placeholderWaveform = useMemo(() => {
+    const bars = compact ? 60 : 120;
+    return Array.from({ length: bars }, (_, i) => {
+      // Create a natural-looking fake waveform with some randomness
+      const base = 0.3 + 0.4 * Math.sin(i * 0.08) * Math.sin(i * 0.03);
+      return Math.max(0.05, Math.min(1, base + (Math.random() * 0.3 - 0.15)));
+    });
+  }, [compact]);
+
+  // Decode audio and generate waveform data
+  useEffect(() => {
+    if (!src) return;
+    let cancelled = false;
+
+    const loadWaveform = async () => {
+      setWaveformLoading(true);
+      try {
+        const response = await fetch(src);
+        if (cancelled) return;
+        const arrayBuffer = await response.arrayBuffer();
+        if (cancelled) return;
+
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+
+        const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+        if (cancelled) return;
+
+        const bars = compact ? 60 : 120;
+        const data = generateWaveformData(audioBuffer, bars);
+        setWaveformData(data);
+      } catch (err) {
+        console.warn("[AudioPlayer] Waveform generation failed:", err);
+        // Keep placeholder waveform on error
+      } finally {
+        if (!cancelled) setWaveformLoading(false);
+      }
+    };
+
+    loadWaveform();
+    return () => { cancelled = true; };
+  }, [src, compact]);
 
   // Update time display via requestAnimationFrame for smooth progress
   const updateTime = useCallback(() => {
@@ -60,6 +224,15 @@ export function AudioPlayer({ src, title, subtitle, compact = false, className =
     }
   }, [seekTo, duration]);
 
+  // Cleanup AudioContext on unmount
+  useEffect(() => {
+    return () => {
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+        audioContextRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
+
   const togglePlay = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
@@ -71,11 +244,14 @@ export function AudioPlayer({ src, title, subtitle, compact = false, className =
     }
   };
 
-  const handleSeek = (value: number[]) => {
+  const handleSeek = (time: number) => {
     if (!audioRef.current) return;
-    const newTime = value[0];
-    audioRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  const handleSliderSeek = (value: number[]) => {
+    handleSeek(value[0]);
   };
 
   const handleVolumeChange = (value: number[]) => {
@@ -103,6 +279,7 @@ export function AudioPlayer({ src, title, subtitle, compact = false, className =
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const displayWaveform = waveformData.length > 0 ? waveformData : placeholderWaveform;
 
   if (error) {
     return (
@@ -148,16 +325,15 @@ export function AudioPlayer({ src, title, subtitle, compact = false, className =
           </div>
         )}
 
-        {/* Progress bar */}
-        <div className="group relative mb-2">
-          <Slider
-            value={[currentTime]}
-            min={0}
-            max={duration || 100}
-            step={0.1}
-            onValueChange={handleSeek}
-            className="cursor-pointer"
-            disabled={isLoading}
+        {/* Waveform visualization */}
+        <div className="mb-2">
+          <Waveform
+            data={displayWaveform}
+            progress={progress}
+            duration={duration}
+            onSeek={handleSeek}
+            isLoading={isLoading && waveformLoading}
+            compact={compact}
           />
         </div>
 

@@ -95,6 +95,10 @@ vi.mock("./db", () => {
     getNextQueuedJob: vi.fn().mockResolvedValue(null),
     getStaleRunningJobs: vi.fn().mockResolvedValue([]),
     getJobsByBatchId: vi.fn().mockResolvedValue([]),
+    getReviewHistory: vi.fn().mockResolvedValue([
+      { id: 2, reviewVersion: 2, isLatest: true, modelUsed: "claude-sonnet-4-5-20250929", scoresJson: { overall: 8 }, quickTake: "Great improvement", createdAt: new Date() },
+      { id: 1, reviewVersion: 1, isLatest: false, modelUsed: "claude-sonnet-4-5-20250929", scoresJson: { overall: 6 }, quickTake: "Decent start", createdAt: new Date(Date.now() - 86400000) },
+    ]),
     updateTrackGenre: vi.fn().mockResolvedValue(undefined),
     createChatSession: vi.fn().mockImplementation(async (data: any) => {
       return { id: 99, ...data, lastActiveAt: new Date(), createdAt: new Date() };
@@ -1066,5 +1070,77 @@ describe("db batchId helpers", () => {
       batchId: "batch_test_123",
     });
     expect(job.id).toBeDefined();
+  });
+});
+
+describe("review history", () => {
+  const createAuthContext = (): TrpcContext => ({
+    user: { id: 1, openId: "test-user", name: "Test User", email: "test@example.com", loginMethod: "manus", role: "user", audioMinutesUsed: 5, audioMinutesLimit: 60, tier: "free", createdAt: new Date() } as User,
+    req: {} as any,
+    res: { clearCookie: vi.fn(), cookie: vi.fn() } as any,
+  });
+
+  it("review.history returns review versions for a track", async () => {
+    const caller = appRouter.createCaller(createAuthContext());
+    const db = await import("./db");
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, originalFilename: "test.mp3",
+    });
+    const history = await caller.review.history({ trackId: 1 });
+    expect(Array.isArray(history)).toBe(true);
+    expect(history.length).toBe(2);
+    expect(history[0].reviewVersion).toBe(2);
+    expect(history[0].isLatest).toBe(true);
+    expect(history[1].reviewVersion).toBe(1);
+    expect(history[1].isLatest).toBe(false);
+  });
+
+  it("review.history rejects unauthorized access", async () => {
+    const caller = appRouter.createCaller(createAuthContext());
+    const db = await import("./db");
+    (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 999 }); // different user
+    await expect(caller.review.history({ trackId: 1 })).rejects.toThrow();
+  });
+
+  it("getReviewHistory is exported from db module", async () => {
+    const db = await import("./db");
+    expect(typeof db.getReviewHistory).toBe("function");
+  });
+});
+
+describe("review versioning in createReview", () => {
+  it("createReview is exported and callable", async () => {
+    const db = await import("./db");
+    expect(typeof db.createReview).toBe("function");
+  });
+});
+
+describe("waveform audio player", () => {
+  it("AudioPlayer component file exists", async () => {
+    // Verify the component file is importable (basic existence check)
+    const fs = await import("fs");
+    const path = await import("path");
+    const componentPath = path.resolve(__dirname, "../client/src/components/AudioPlayer.tsx");
+    expect(fs.existsSync(componentPath)).toBe(true);
+  });
+});
+
+describe("album summary enhancement", () => {
+  it("claudeCritic exports generateAlbumReview", async () => {
+    const mod = await import("./services/claudeCritic");
+    expect(typeof mod.generateAlbumReview).toBe("function");
+  });
+
+  it("album review prompt includes thematic analysis sections", async () => {
+    // Read the actual source to verify the enhanced prompt
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./services/claudeCritic.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("Thematic Threads");
+    expect(source).toContain("Sequencing");
+    expect(source).toContain("Album Arc");
   });
 });

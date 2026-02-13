@@ -172,6 +172,124 @@ const scoreBgColor = (score: number) => {
   return "bg-red-400/20";
 };
 
+// ── Review History Section ──
+
+function ReviewHistorySection({ trackId, reviews, onNavigate }: { trackId: number; reviews: any[]; onNavigate: (path: string) => void }) {
+  const { data: history } = trpc.review.history.useQuery({ trackId });
+
+  // If we have history data with versions, show the enhanced view
+  const hasMultipleVersions = history && history.length > 1;
+
+  if (reviews.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center">
+          <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No reviews yet. Analyze the track first, then request a review.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {hasMultipleVersions && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span className="text-primary font-medium">{history.length} review versions</span>
+              <span className="text-muted-foreground">— re-running critique preserves previous reviews for comparison</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Show history entries if available, otherwise fall back to reviews list */}
+      {history && history.length > 0 ? (
+        history.map((entry, idx) => {
+          const scores = entry.scoresJson as Record<string, number> | null;
+          const overall = scores?.overall ?? scores?.Overall ?? null;
+          const prevEntry = history[idx + 1]; // history is desc order, so idx+1 is older
+          const prevScores = prevEntry?.scoresJson as Record<string, number> | null;
+          const prevOverall = prevScores?.overall ?? prevScores?.Overall ?? null;
+          const delta = overall !== null && prevOverall !== null ? overall - prevOverall : null;
+
+          return (
+            <Card
+              key={entry.id}
+              className={`cursor-pointer transition-colors ${
+                entry.isLatest ? "border-primary/30 hover:border-primary/50" : "hover:border-primary/20 opacity-80"
+              }`}
+              onClick={() => onNavigate(`/reviews/${entry.id}`)}
+            >
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <BarChart3 className={`h-5 w-5 flex-shrink-0 ${entry.isLatest ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Review v{entry.reviewVersion}</p>
+                        {entry.isLatest && <Badge variant="default" className="text-xs">Latest</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.modelUsed} — {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {overall !== null && (
+                      <div className="flex items-center gap-2">
+                        <span className={`text-lg font-bold ${
+                          overall >= 8 ? "text-green-500" : overall >= 6 ? "text-yellow-500" : "text-red-500"
+                        }`}>{overall}/10</span>
+                        {delta !== null && delta !== 0 && (
+                          <span className={`text-xs flex items-center gap-0.5 ${
+                            delta > 0 ? "text-green-500" : "text-red-500"
+                          }`}>
+                            {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                            {delta > 0 ? "+" : ""}{delta}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {entry.quickTake && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{entry.quickTake}</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })
+      ) : (
+        reviews.map(review => (
+          <Card key={review.id} className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => onNavigate(`/reviews/${review.id}`)}>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium capitalize">{review.reviewType} Review</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                    </p>
+                  </div>
+                </div>
+                {review.quickTake && (
+                  <p className="text-sm text-muted-foreground max-w-xs truncate hidden sm:block">{review.quickTake}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+}
+
 function ProgressTracker({ trackId }: { trackId: number }) {
   const { data: scoreHistory, isLoading } = trpc.scoreHistory.get.useQuery({ trackId });
 
@@ -650,35 +768,7 @@ export default function TrackView({ id }: { id: number }) {
 
         {/* Reviews Tab */}
         <TabsContent value="reviews" className="space-y-4">
-          {reviews.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-12 text-center">
-                <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No reviews yet. Analyze the track first, then request a review.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            reviews.map(review => (
-              <Card key={review.id} className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setLocation(`/reviews/${review.id}`)}>
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <BarChart3 className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium capitalize">{review.reviewType} Review</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
-                        </p>
-                      </div>
-                    </div>
-                    {review.quickTake && (
-                      <p className="text-sm text-muted-foreground max-w-xs truncate hidden sm:block">{review.quickTake}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+          <ReviewHistorySection trackId={track.id} reviews={reviews} onNavigate={setLocation} />
         </TabsContent>
 
         {/* Lyrics Tab */}
