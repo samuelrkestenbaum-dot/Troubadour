@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -373,4 +373,67 @@ export async function getScoreHistoryForTrack(parentTrackId: number) {
     }
   }
   return scoreHistory;
+}
+
+// ── Chat Session helpers ──
+
+export async function createChatSession(data: InsertChatSession) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(chatSessions).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getChatSessionsByUser(userId: number, projectId?: number, trackId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(chatSessions.userId, userId)];
+  if (projectId) conditions.push(eq(chatSessions.projectId, projectId));
+  if (trackId) conditions.push(eq(chatSessions.trackId, trackId));
+  return db.select().from(chatSessions).where(and(...conditions)).orderBy(desc(chatSessions.lastActiveAt));
+}
+
+export async function getChatSessionById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(chatSessions).where(eq(chatSessions.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateChatSessionTitle(id: number, title: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(chatSessions).set({ title, lastActiveAt: new Date() }).where(eq(chatSessions.id, id));
+}
+
+export async function touchChatSession(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(chatSessions).set({ lastActiveAt: new Date() }).where(eq(chatSessions.id, id));
+}
+
+export async function deleteChatSession(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(chatMessages).where(eq(chatMessages.sessionId, id));
+  await db.delete(chatSessions).where(eq(chatSessions.id, id));
+}
+
+export async function createChatMessage(data: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(chatMessages).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getChatMessagesBySession(sessionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatMessages).where(eq(chatMessages.sessionId, sessionId)).orderBy(asc(chatMessages.createdAt));
+}
+
+export async function getRecentChatMessages(sessionId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatMessages).where(eq(chatMessages.sessionId, sessionId)).orderBy(desc(chatMessages.createdAt)).limit(limit);
 }

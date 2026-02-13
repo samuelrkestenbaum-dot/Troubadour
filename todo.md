@@ -80,3 +80,14 @@
 - [x] Score history timeline showing dimension changes across versions
 - [x] Elevate A&R role prominence in landing page marketing
 - [x] Tests for follow-up conversation, reference comparison, and progress tracking
+
+## Persistent AI Chatbot Sidebar
+- [x] Create chat_sessions and chat_messages DB tables for persistent conversations per project/track
+- [x] Backend: Claude 4.5 contextual chat API that receives project/track/review context
+- [x] Backend: Chat session CRUD (create, list messages, send message with AI response)
+- [x] Frontend: Right-side collapsible chatbot toolbar component
+- [x] Frontend: Chat UI with message history, streaming-style display, input box
+- [x] Frontend: Context awareness - chatbot knows which project/track/review you're viewing
+- [x] Frontend: Integrate chatbot into ProjectView, TrackView, and ReviewView pages
+- [x] Frontend: Toggle button to open/close the chatbot panel
+- [x] Tests for chat session management and message validation

@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
+import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Headphones, FileText, Loader2, Music, BarChart3,
@@ -318,6 +319,11 @@ export default function TrackView({ id }: { id: number }) {
   const [lyricsText, setLyricsText] = useState("");
   const [lyricsEditing, setLyricsEditing] = useState(false);
   const versionInputRef = useRef<HTMLInputElement>(null);
+  const { setContext } = useChat();
+
+  useEffect(() => {
+    setContext({ trackId: id });
+  }, [id, setContext]);
 
   const { data, isLoading, error } = trpc.track.get.useQuery({ id }, {
     refetchInterval: (query) => {

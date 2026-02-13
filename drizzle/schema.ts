@@ -156,3 +156,29 @@ export const referenceTracks = mysqlTable("referenceTracks", {
 
 export type ReferenceTrack = typeof referenceTracks.$inferSelect;
 export type InsertReferenceTrack = typeof referenceTracks.$inferInsert;
+
+// ── Chat Sessions (persistent sidebar chatbot) ──
+
+export const chatSessions = mysqlTable("chatSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  projectId: int("projectId"),
+  trackId: int("trackId"),
+  title: varchar("title", { length: 255 }).default("New conversation").notNull(),
+  lastActiveAt: timestamp("lastActiveAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type InsertChatSession = typeof chatSessions.$inferInsert;
+
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;

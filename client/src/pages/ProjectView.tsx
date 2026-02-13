@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useLocation } from "wouter";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
@@ -30,6 +31,11 @@ export default function ProjectView({ id }: { id: number }) {
   const versionInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingVersion, setUploadingVersion] = useState<number | null>(null);
+  const { setContext } = useChat();
+
+  useEffect(() => {
+    setContext({ projectId: id, trackId: null });
+  }, [id, setContext]);
 
   const { data, isLoading, error } = trpc.project.get.useQuery({ id }, {
     refetchInterval: (query) => {

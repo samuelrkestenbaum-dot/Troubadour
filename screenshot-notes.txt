@@ -1,0 +1,5 @@
+Screenshot observation: Dashboard renders correctly with dark theme, FirstSpin.ai branding in sidebar.
+Purple chat toggle button (MessageSquare icon) visible in bottom-right corner.
+Sidebar shows: Dashboard, Projects, New Project, Usage menu items.
+User profile shows in sidebar footer.
+Empty state with "No projects yet" and "Create First Project" CTA button.

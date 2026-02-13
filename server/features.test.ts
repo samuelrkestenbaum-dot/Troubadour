@@ -92,6 +92,23 @@ vi.mock("./db", () => {
     }),
     updateReferenceTrackComparison: vi.fn().mockResolvedValue(undefined),
     getScoreHistoryForTrack: vi.fn().mockResolvedValue([]),
+    createChatSession: vi.fn().mockImplementation(async (data: any) => {
+      return { id: 99, ...data, lastActiveAt: new Date(), createdAt: new Date() };
+    }),
+    getChatSessionsByUser: vi.fn().mockResolvedValue([]),
+    getChatSessionById: vi.fn().mockImplementation(async (id: number) => {
+      if (id === 99) return { id: 99, userId: 1, projectId: null, trackId: null, title: "Test chat", lastActiveAt: new Date(), createdAt: new Date() };
+      return null;
+    }),
+    getChatMessagesBySession: vi.fn().mockResolvedValue([
+      { id: 1, sessionId: 99, role: "system", content: "You are FirstSpin.ai's music advisor.", createdAt: new Date() },
+    ]),
+    createChatMessage: vi.fn().mockImplementation(async (data: any) => {
+      return { id: 100, ...data, createdAt: new Date() };
+    }),
+    updateChatSessionTitle: vi.fn().mockResolvedValue(undefined),
+    touchChatSession: vi.fn().mockResolvedValue(undefined),
+    deleteChatSession: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -118,6 +135,7 @@ vi.mock("./services/claudeCritic", () => ({
   generateTrackReview: vi.fn(),
   generateAlbumReview: vi.fn(),
   generateVersionComparison: vi.fn(),
+  callClaude: vi.fn().mockResolvedValue("Great question! Here's my analysis of your track..."),
 }));
 
 // Mock Gemini reference comparison
@@ -561,6 +579,67 @@ describe("claudeCritic follow-up", () => {
 });
 
 // ── Input validation tests ──
+
+// ── Chat sidebar tests ──
+
+describe("chat", () => {
+  it("requires auth to create a chat session", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.chat.createSession({})).rejects.toThrow();
+  });
+
+  it("creates a chat session with project context", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.createSession({ projectId: 1 });
+    expect(result).toHaveProperty("id");
+    expect(result).toHaveProperty("title");
+  });
+
+  it("creates a chat session without context", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.createSession({});
+    expect(result.id).toBeDefined();
+    expect(result.title).toBe("New conversation");
+  });
+
+  it("lists chat sessions", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.listSessions({});
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("gets messages for a session", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const messages = await caller.chat.getMessages({ sessionId: 99 });
+    expect(Array.isArray(messages)).toBe(true);
+  });
+
+  it("sends a message and gets a Claude response", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.sendMessage({ sessionId: 99, message: "How can I improve my mix?" });
+    expect(result.response).toBeDefined();
+    expect(typeof result.response).toBe("string");
+  });
+
+  it("rejects getting messages for non-existent session", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.chat.getMessages({ sessionId: 999 })).rejects.toThrow();
+  });
+
+  it("deletes a chat session", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.deleteSession({ sessionId: 99 });
+    expect(result.success).toBe(true);
+  });
+});
 
 describe("input validation", () => {
   it("rejects project creation with invalid type", async () => {

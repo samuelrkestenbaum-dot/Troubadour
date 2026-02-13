@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useState, useRef, useEffect } from "react";
+import { useChat } from "@/contexts/ChatContext";
 import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
   MessageCircle, Send, Loader2, ChevronDown, ChevronUp
@@ -206,6 +207,15 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
 export default function ReviewView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const { data: review, isLoading, error } = trpc.review.get.useQuery({ id });
+  const { setContext } = useChat();
+
+  useEffect(() => {
+    if (review?.trackId) {
+      setContext({ trackId: review.trackId });
+    } else if (review?.projectId) {
+      setContext({ projectId: review.projectId, trackId: null });
+    }
+  }, [review, setContext]);
 
   const handleExport = () => {
     if (!review) return;
