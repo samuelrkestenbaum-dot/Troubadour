@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -40,6 +41,106 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // ── Rate Limiting ──
+  // Trust proxy for X-Forwarded-For behind reverse proxies
+  app.set("trust proxy", 1);
+
+  // Global baseline: 200 requests per minute per IP
+  const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please try again later." },
+    validate: { xForwardedForHeader: false },
+  });
+  app.use("/api/trpc", globalLimiter);
+
+  // Strict limiter for file uploads: 10 per minute per IP
+  const uploadLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Upload rate limit exceeded. Please wait before uploading more files." },
+    validate: { xForwardedForHeader: false },
+  });
+  app.use("/api/trpc/track.upload", uploadLimiter);
+
+  // Strict limiter for job creation: 20 per minute per IP
+  const jobLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Job creation rate limit exceeded. Please wait before submitting more jobs." },
+    validate: { xForwardedForHeader: false },
+  });
+  app.use("/api/trpc/job.analyze", jobLimiter);
+  app.use("/api/trpc/job.review", jobLimiter);
+  app.use("/api/trpc/job.compare", jobLimiter);
+  app.use("/api/trpc/job.analyzeAndReview", jobLimiter);
+  app.use("/api/trpc/job.albumReview", jobLimiter);
+  app.use("/api/trpc/job.batchReviewAll", jobLimiter);
+  app.use("/api/trpc/job.retry", jobLimiter);
+
+  // Strict limiter for chat: 30 per minute per IP
+  const chatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Chat rate limit exceeded. Please slow down." },
+    validate: { xForwardedForHeader: false },
+  });
+  app.use("/api/trpc/chat.sendMessage", chatLimiter);
+  app.use("/api/trpc/conversation.sendMessage", chatLimiter);
+
+  // ── Health Check ──
+  app.get("/health", async (_req, res) => {
+    const checks: Record<string, { status: string; detail?: string }> = {};
+
+    // Database connectivity
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (db) {
+        const result = await db.execute("SELECT 1 as ok");
+        checks.database = { status: "healthy" };
+      } else {
+        checks.database = { status: "degraded", detail: "Database not connected" };
+      }
+    } catch (e: any) {
+      checks.database = { status: "unhealthy", detail: e.message?.substring(0, 200) };
+    }
+
+    // Job queue status
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (db) {
+        const [queued] = await db.execute("SELECT COUNT(*) as c FROM jobs WHERE status = 'queued'");
+        const [running] = await db.execute("SELECT COUNT(*) as c FROM jobs WHERE status = 'running'");
+        const [errored] = await db.execute("SELECT COUNT(*) as c FROM jobs WHERE status = 'error'");
+        checks.jobQueue = {
+          status: "healthy",
+          detail: `queued=${(queued as any)[0]?.c ?? 0}, running=${(running as any)[0]?.c ?? 0}, errored=${(errored as any)[0]?.c ?? 0}`,
+        };
+      } else {
+        checks.jobQueue = { status: "degraded", detail: "Cannot query jobs without DB" };
+      }
+    } catch (e: any) {
+      checks.jobQueue = { status: "unhealthy", detail: e.message?.substring(0, 200) };
+    }
+
+    const overallHealthy = Object.values(checks).every(c => c.status !== "unhealthy");
+    res.status(overallHealthy ? 200 : 503).json({
+      status: overallHealthy ? "healthy" : "unhealthy",
+      timestamp: new Date().toISOString(),
+      checks,
+    });
+  });
   // OG meta tags for shared review pages (crawlers don't run JS)
   app.get("/shared/:token", async (req, res, next) => {
     const ua = (req.headers["user-agent"] || "").toLowerCase();

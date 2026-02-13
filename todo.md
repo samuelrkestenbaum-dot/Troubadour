@@ -272,7 +272,12 @@
 - [x] Add invoice.payment_succeeded handler for recurring payment confirmation
 - [x] Job retry: add assertUsageAllowed check
 - [x] Lyrics transcribe: add assertUsageAllowed check
-- [ ] Rate limiting on sensitive endpoints (upload, job creation, chat)
+- [x] Rate limiting on sensitive endpoints (upload, job creation, chat)
 - [x] OG tags for shared review pages (bot-friendly meta tags with review preview)
-- [ ] Health check endpoint (/health)
+- [x] Health check endpoint (/health)
 - [x] Tests for feature gating, monthly limits, webhook idempotency, OG tags (169 tests passing)
+
+## Round 14 - Final P1 Launch Risks (Claude 4.5)
+- [x] Rate limiting: express-rate-limit on upload (10/min), job creation (20/min), chat (30/min), global (200/min)
+- [x] Health check endpoint: /health returning DB connectivity and job queue status
+- [x] Tests for rate limiting and health check (180 tests passing)

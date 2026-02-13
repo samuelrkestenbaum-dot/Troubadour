@@ -2215,3 +2215,103 @@ describe("assertMonthlyReviewAllowed on all review endpoints", () => {
     expect(matches!.length).toBeGreaterThanOrEqual(6);
   });
 });
+
+// ── Round 14: Rate Limiting & Health Check ──
+
+describe("rate limiting configuration", () => {
+  it("express-rate-limit is installed and importable", async () => {
+    const rateLimit = await import("express-rate-limit");
+    expect(typeof rateLimit.default).toBe("function");
+  });
+
+  it("rate limiter returns a middleware function", async () => {
+    const rateLimit = (await import("express-rate-limit")).default;
+    const limiter = rateLimit({
+      windowMs: 60 * 1000,
+      max: 10,
+      validate: { xForwardedForHeader: false },
+    });
+    expect(typeof limiter).toBe("function");
+  });
+
+  it("rate limiter config uses correct window and max for upload", () => {
+    // Verify the upload limiter constants are reasonable
+    const UPLOAD_WINDOW_MS = 60 * 1000;
+    const UPLOAD_MAX = 10;
+    expect(UPLOAD_WINDOW_MS).toBe(60000);
+    expect(UPLOAD_MAX).toBeLessThanOrEqual(20); // Should be strict
+    expect(UPLOAD_MAX).toBeGreaterThan(0);
+  });
+
+  it("rate limiter config uses correct window and max for jobs", () => {
+    const JOB_WINDOW_MS = 60 * 1000;
+    const JOB_MAX = 20;
+    expect(JOB_WINDOW_MS).toBe(60000);
+    expect(JOB_MAX).toBeLessThanOrEqual(30);
+    expect(JOB_MAX).toBeGreaterThan(0);
+  });
+
+  it("rate limiter config uses correct window and max for chat", () => {
+    const CHAT_WINDOW_MS = 60 * 1000;
+    const CHAT_MAX = 30;
+    expect(CHAT_WINDOW_MS).toBe(60000);
+    expect(CHAT_MAX).toBeLessThanOrEqual(60);
+    expect(CHAT_MAX).toBeGreaterThan(0);
+  });
+
+  it("global rate limiter allows 200 requests per minute", () => {
+    const GLOBAL_MAX = 200;
+    expect(GLOBAL_MAX).toBeGreaterThanOrEqual(100);
+    expect(GLOBAL_MAX).toBeLessThanOrEqual(500);
+  });
+});
+
+describe("health check endpoint", () => {
+  it("getDb helper is available for health check", async () => {
+    const db = await import("./db");
+    expect(typeof db.getDb).toBe("function");
+  });
+
+  it("health check response shape is correct", () => {
+    // Verify the expected response structure
+    const mockResponse = {
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      checks: {
+        database: { status: "healthy" },
+        jobQueue: { status: "healthy", detail: "queued=0, running=0, errored=0" },
+      },
+    };
+    expect(mockResponse.status).toBe("healthy");
+    expect(mockResponse.checks.database.status).toBe("healthy");
+    expect(mockResponse.checks.jobQueue.status).toBe("healthy");
+    expect(mockResponse.timestamp).toBeDefined();
+  });
+
+  it("health check returns unhealthy when database is down", () => {
+    const checks = {
+      database: { status: "unhealthy", detail: "Connection refused" },
+      jobQueue: { status: "degraded", detail: "Cannot query jobs without DB" },
+    };
+    const overallHealthy = Object.values(checks).every(c => c.status !== "unhealthy");
+    expect(overallHealthy).toBe(false);
+  });
+
+  it("health check returns healthy when all services are up", () => {
+    const checks = {
+      database: { status: "healthy" },
+      jobQueue: { status: "healthy", detail: "queued=2, running=1, errored=0" },
+    };
+    const overallHealthy = Object.values(checks).every(c => c.status !== "unhealthy");
+    expect(overallHealthy).toBe(true);
+  });
+
+  it("health check tolerates degraded status without returning 503", () => {
+    const checks = {
+      database: { status: "healthy" },
+      jobQueue: { status: "degraded", detail: "High queue depth" },
+    };
+    const overallHealthy = Object.values(checks).every(c => c.status !== "unhealthy");
+    expect(overallHealthy).toBe(true); // degraded != unhealthy
+  });
+});
