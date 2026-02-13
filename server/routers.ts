@@ -333,7 +333,19 @@ export const appRouter = router({
         if (!review || review.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
         }
-        return review;
+        // Include detected genre from the track if this is a track review
+        let genreInsight: { detectedGenre: string | null; detectedSubgenres: string | null; detectedInfluences: string | null } | null = null;
+        if (review.trackId) {
+          const track = await db.getTrackById(review.trackId);
+          if (track) {
+            genreInsight = {
+              detectedGenre: track.detectedGenre,
+              detectedSubgenres: track.detectedSubgenres,
+              detectedInfluences: track.detectedInfluences,
+            };
+          }
+        }
+        return { ...review, genreInsight };
       }),
 
     listByTrack: protectedProcedure

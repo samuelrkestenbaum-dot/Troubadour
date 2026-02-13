@@ -114,6 +114,16 @@ async function processAnalyzeJob(jobId: number, job: any) {
     }
   }
 
+  // Save detected genre to the track for easy access
+  if (geminiAnalysis.genre) {
+    await db.updateTrackGenre(
+      track.id,
+      geminiAnalysis.genre.primary || "Unknown",
+      geminiAnalysis.genre.secondary || [],
+      geminiAnalysis.genre.influences || [],
+    );
+  }
+
   // Update audio minutes used
   const minutes = Math.ceil(duration / 60);
   await db.incrementAudioMinutes(job.userId, minutes);
@@ -165,14 +175,21 @@ async function processReviewJob(jobId: number, job: any) {
   const reviewFocus = (project.reviewFocus as any) || "full";
   await db.updateJob(jobId, { progress: 30, progressMessage: "Writing your critique..." });
 
-  // Step: Claude generates the review (guided by reviewFocus)
+  // Use auto-detected genre from Gemini analysis, falling back to user-provided genre
+  const geminiAnalysis = features.geminiAnalysisJson as GeminiAudioAnalysis;
+  const detectedGenre = geminiAnalysis.genre;
+  const genreContext = detectedGenre
+    ? `${detectedGenre.primary}${detectedGenre.secondary?.length ? ` / ${detectedGenre.secondary.join(", ")}` : ""}${detectedGenre.influences?.length ? ` (influences: ${detectedGenre.influences.join(", ")})` : ""}`
+    : project.genre || undefined;
+
+  // Step: Claude generates the review (guided by reviewFocus and detected genre)
   const reviewResult = await generateTrackReview({
     trackTitle: track.originalFilename.replace(/\.[^.]+$/, ""),
     projectTitle: project.title,
-    audioAnalysis: features.geminiAnalysisJson as GeminiAudioAnalysis,
+    audioAnalysis: geminiAnalysis,
     lyrics: lyricsText,
     intentNotes: project.intentNotes || undefined,
-    genre: project.genre || undefined,
+    genre: genreContext,
     referenceArtists: project.referenceArtists || undefined,
     reviewFocus,
   });

@@ -201,7 +201,6 @@ export default function ProjectView({ id }: { id: number }) {
                    (project as any).reviewFocus === "anr" ? "A&R Focus" : "Full Review"}
                 </Badge>
               )}
-              {project.genre && <span>{project.genre}</span>}
               <span>{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</span>
             </div>
           </div>
@@ -327,6 +326,9 @@ export default function ProjectView({ id }: { id: number }) {
                           </span>
                           <span>{(track.fileSize / (1024 * 1024)).toFixed(1)} MB</span>
                           {track.duration && <span>{Math.floor(track.duration / 60)}:{String(track.duration % 60).padStart(2, "0")}</span>}
+                          {track.detectedGenre && (
+                            <span className="text-primary/70 italic">{track.detectedGenre}</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

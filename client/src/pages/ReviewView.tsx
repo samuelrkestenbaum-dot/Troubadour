@@ -312,6 +312,26 @@ export default function ReviewView({ id }: { id: number }) {
         </div>
       </div>
 
+      {/* Genre Insight */}
+      {review.genreInsight?.detectedGenre && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground italic">We hear:</span>
+          <Badge variant="secondary" className="font-normal">
+            {review.genreInsight.detectedGenre}
+          </Badge>
+          {review.genreInsight.detectedSubgenres && review.genreInsight.detectedSubgenres.split(", ").filter(Boolean).map((sub: string) => (
+            <Badge key={sub} variant="outline" className="font-normal text-xs">
+              {sub}
+            </Badge>
+          ))}
+          {review.genreInsight.detectedInfluences && (
+            <span className="text-xs text-muted-foreground ml-1 italic">
+              touches of {review.genreInsight.detectedInfluences}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Quick Take */}
       {review.quickTake && (
         <Card className="border-primary/30 bg-primary/5">

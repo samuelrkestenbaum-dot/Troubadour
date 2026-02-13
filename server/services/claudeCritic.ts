@@ -274,7 +274,7 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
   }
 
   if (input.genre) {
-    prompt += `**Genre context:** ${input.genre}\n`;
+    prompt += `## Detected Genre\n\n**Genre:** ${input.genre}\n\nUse this genre context to inform your critique naturally. Reference genre-specific conventions, production standards, and comparable artists/tracks within this space. Evaluate the track against the expectations and standards of this genre — but don't be heavy-handed about it. Let the genre inform your vocabulary, reference points, and what "good" looks like for this style of music.\n\n`;
   }
 
   if (input.referenceArtists) {

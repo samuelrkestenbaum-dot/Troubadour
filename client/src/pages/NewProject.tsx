@@ -68,7 +68,6 @@ export default function NewProject() {
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"single" | "album">("single");
-  const [genre, setGenre] = useState("");
   const [description, setDescription] = useState("");
   const [intentNotes, setIntentNotes] = useState("");
   const [referenceArtists, setReferenceArtists] = useState("");
@@ -93,7 +92,6 @@ export default function NewProject() {
     createProject.mutate({
       title: title.trim(),
       type,
-      genre: genre.trim() || undefined,
       description: description.trim() || undefined,
       intentNotes: intentNotes.trim() || undefined,
       referenceArtists: referenceArtists.trim() || undefined,
@@ -178,29 +176,20 @@ export default function NewProject() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Project Type</Label>
-                <Select value={type} onValueChange={(v) => setType(v as "single" | "album")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="single">Single / Track</SelectItem>
-                    <SelectItem value="album">Album / EP</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="genre">Genre</Label>
-                <Input
-                  id="genre"
-                  placeholder="e.g., Hip-Hop, Pop, Rock"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Project Type</Label>
+              <Select value={type} onValueChange={(v) => setType(v as "single" | "album")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Single / Track</SelectItem>
+                  <SelectItem value="album">Album / EP</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Genre is automatically detected when we listen to your audio.
+              </p>
             </div>
 
             <div className="space-y-2">

@@ -179,6 +179,16 @@ export async function updateTrackStatus(id: number, status: "uploaded" | "analyz
   await db.update(tracks).set({ status }).where(eq(tracks.id, id));
 }
 
+export async function updateTrackGenre(id: number, detectedGenre: string, detectedSubgenres: string[], detectedInfluences: string[]) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(tracks).set({
+    detectedGenre,
+    detectedSubgenres: detectedSubgenres.join(", "),
+    detectedInfluences: detectedInfluences.join(", "),
+  }).where(eq(tracks.id, id));
+}
+
 export async function getTrackVersions(parentTrackId: number) {
   const db = await getDb();
   if (!db) return [];

@@ -100,3 +100,13 @@
 - [x] Fix score extraction regex to handle markdown table format from Claude
 - [x] Update schema.ts to use mediumtext import from drizzle-orm
 - [x] Validate full end-to-end pipeline: Upload → Gemini Analysis → Claude Critique → Review Display
+
+## Automatic Genre Detection
+- [x] Update Gemini prompt to explicitly detect genre/subgenre from audio (already returns genre.primary/secondary/influences)
+- [x] Store detected genre in tracks table (detectedGenre, detectedSubgenres, detectedInfluences columns)
+- [x] Pass detected genre to Claude so critique uses genre-appropriate vocabulary and references
+- [x] Remove user-facing genre input field from NewProject form
+- [x] Display detected genre as an insight badge on track/project views ("We hear: Indie Rock / Alternative")
+- [x] Show genre detection in the review as contextual framing
+- [x] Update Claude critique prompt to reference genre conventions and comparable artists naturally
+- [x] Tests for genre detection and integration (7 tests passing)

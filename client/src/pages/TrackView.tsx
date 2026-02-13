@@ -419,6 +419,26 @@ export default function TrackView({ id }: { id: number }) {
         </div>
       </div>
 
+      {/* Genre Insight - shown after analysis */}
+      {track.detectedGenre && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground italic">We hear:</span>
+          <Badge variant="secondary" className="font-normal">
+            {track.detectedGenre}
+          </Badge>
+          {track.detectedSubgenres && track.detectedSubgenres.split(", ").filter(Boolean).map((sub: string) => (
+            <Badge key={sub} variant="outline" className="font-normal text-xs">
+              {sub}
+            </Badge>
+          ))}
+          {track.detectedInfluences && (
+            <span className="text-xs text-muted-foreground ml-1 italic">
+              touches of {track.detectedInfluences}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Audio Player */}
       <Card>
         <CardContent className="py-4">
