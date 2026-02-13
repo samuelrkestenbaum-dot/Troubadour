@@ -376,6 +376,53 @@ export const appRouter = router({
         return { analyzeJobId: analyzeJob.id, reviewJobId: reviewJob.id };
       }),
 
+    batchReviewAll: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const tracks = await db.getTracksByProject(input.projectId);
+        const unreviewedTracks = tracks.filter(t => t.status !== "reviewed" && t.status !== "reviewing" && t.status !== "analyzing");
+        if (unreviewedTracks.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "All tracks have already been reviewed" });
+        }
+        const queuedJobs: { trackId: number; analyzeJobId: number; reviewJobId: number }[] = [];
+        for (const track of unreviewedTracks) {
+          const activeJob = await db.getActiveJobForTrack(track.id);
+          if (activeJob) continue; // skip tracks already being processed
+          const needsAnalysis = track.status === "uploaded" || track.status === "error";
+          if (needsAnalysis) {
+            const analyzeJob = await db.createJob({
+              projectId: track.projectId,
+              trackId: track.id,
+              userId: ctx.user.id,
+              type: "analyze",
+            });
+            const reviewJob = await db.createJob({
+              projectId: track.projectId,
+              trackId: track.id,
+              userId: ctx.user.id,
+              type: "review",
+            });
+            enqueueJob(analyzeJob.id);
+            enqueueJob(reviewJob.id);
+            queuedJobs.push({ trackId: track.id, analyzeJobId: analyzeJob.id, reviewJobId: reviewJob.id });
+          } else if (track.status === "analyzed") {
+            const reviewJob = await db.createJob({
+              projectId: track.projectId,
+              trackId: track.id,
+              userId: ctx.user.id,
+              type: "review",
+            });
+            enqueueJob(reviewJob.id);
+            queuedJobs.push({ trackId: track.id, analyzeJobId: 0, reviewJobId: reviewJob.id });
+          }
+        }
+        return { queued: queuedJobs.length, jobs: queuedJobs };
+      }),
+
     listByProject: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
@@ -430,6 +477,51 @@ export const appRouter = router({
         return db.getAlbumReview(input.projectId);
       }),
 
+    versionDiff: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        if (!track.parentTrackId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This track has no previous version to compare" });
+        }
+        const parentTrack = await db.getTrackById(track.parentTrackId);
+        if (!parentTrack) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Parent track not found" });
+        }
+        const currentReviews = await db.getReviewsByTrack(track.id);
+        const parentReviews = await db.getReviewsByTrack(parentTrack.id);
+        const currentReview = currentReviews.find(r => r.reviewType === "track");
+        const parentReview = parentReviews.find(r => r.reviewType === "track");
+        // Find comparison review
+        const comparisonReviews = currentReviews.filter(r => r.reviewType === "comparison");
+        const comparisonReview = comparisonReviews.length > 0 ? comparisonReviews[comparisonReviews.length - 1] : null;
+        // Calculate score deltas
+        const currentScores = (currentReview?.scoresJson as Record<string, number>) || {};
+        const parentScores = (parentReview?.scoresJson as Record<string, number>) || {};
+        const allKeys = Array.from(new Set([...Object.keys(currentScores), ...Object.keys(parentScores)]));
+        const deltas: Record<string, { previous: number | null; current: number | null; delta: number }> = {};
+        for (const key of allKeys) {
+          const prev = parentScores[key] ?? null;
+          const curr = currentScores[key] ?? null;
+          deltas[key] = {
+            previous: prev,
+            current: curr,
+            delta: (curr ?? 0) - (prev ?? 0),
+          };
+        }
+        return {
+          currentTrack: { id: track.id, filename: track.originalFilename, versionNumber: track.versionNumber, genre: track.detectedGenre },
+          parentTrack: { id: parentTrack.id, filename: parentTrack.originalFilename, versionNumber: parentTrack.versionNumber, genre: parentTrack.detectedGenre },
+          currentReview: currentReview ? { id: currentReview.id, quickTake: currentReview.quickTake, scores: currentScores } : null,
+          parentReview: parentReview ? { id: parentReview.id, quickTake: parentReview.quickTake, scores: parentScores } : null,
+          comparisonReview: comparisonReview ? { id: comparisonReview.id, markdown: comparisonReview.reviewMarkdown, quickTake: comparisonReview.quickTake } : null,
+          deltas,
+        };
+      }),
+
     exportMarkdown: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
@@ -460,6 +552,52 @@ export const appRouter = router({
         }
         const exportMd = `# FirstSpin.ai Review — ${trackName}\n\n${genreLine}${review.quickTake ? `> ${review.quickTake}\n\n` : ""}${scoresTable}\n${review.reviewMarkdown || ""}\n\n---\n*Generated by FirstSpin.ai on ${new Date(review.createdAt).toLocaleDateString()}*\n`;
         return { markdown: exportMd, filename: `firstspin-review-${trackName.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.md` };
+      }),
+
+    generateShareLink: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const review = await db.getReviewById(input.id);
+        if (!review || review.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+        }
+        if (review.shareToken) {
+          return { shareToken: review.shareToken };
+        }
+        const token = nanoid(24);
+        await db.setReviewShareToken(input.id, token);
+        return { shareToken: token };
+      }),
+
+    getPublic: publicProcedure
+      .input(z.object({ token: z.string().min(1) }))
+      .query(async ({ input }) => {
+        const review = await db.getReviewByShareToken(input.token);
+        if (!review) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review not found or link has expired" });
+        }
+        let trackName = "Unknown Track";
+        let genreInsight: { detectedGenre: string | null; detectedSubgenres: string | null; detectedInfluences: string | null } | null = null;
+        if (review.trackId) {
+          const track = await db.getTrackById(review.trackId);
+          if (track) {
+            trackName = track.originalFilename;
+            genreInsight = {
+              detectedGenre: track.detectedGenre,
+              detectedSubgenres: track.detectedSubgenres,
+              detectedInfluences: track.detectedInfluences,
+            };
+          }
+        }
+        return {
+          reviewType: review.reviewType,
+          reviewMarkdown: review.reviewMarkdown,
+          scoresJson: review.scoresJson,
+          quickTake: review.quickTake,
+          createdAt: review.createdAt,
+          trackName,
+          genreInsight,
+        };
       }),
   }),
 

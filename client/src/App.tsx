@@ -10,7 +10,9 @@ import NewProject from "./pages/NewProject";
 import ProjectView from "./pages/ProjectView";
 import TrackView from "./pages/TrackView";
 import ReviewView from "./pages/ReviewView";
+import VersionDiff from "./pages/VersionDiff";
 import Usage from "./pages/Usage";
+import SharedReview from "./pages/SharedReview";
 import DashboardLayout from "./components/DashboardLayout";
 
 function DashboardRoutes() {
@@ -29,6 +31,9 @@ function DashboardRoutes() {
         <Route path="/reviews/:id">
           {(params) => <ReviewView id={parseInt(params.id)} />}
         </Route>
+        <Route path="/tracks/:id/diff">
+          {(params) => <VersionDiff trackId={parseInt(params.id)} />}
+        </Route>
         <Route path="/usage" component={Usage} />
         <Route component={NotFound} />
       </Switch>
@@ -40,6 +45,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/shared/:token">
+        {(params) => <SharedReview token={params.token} />}
+      </Route>
       <Route path="/404" component={NotFound} />
       <Route>
         <DashboardRoutes />

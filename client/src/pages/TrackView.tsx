@@ -488,10 +488,16 @@ export default function TrackView({ id }: { id: number }) {
           </Button>
         )}
         {track.parentTrackId && track.status === "reviewed" && (
-          <Button variant="secondary" onClick={() => compareMut.mutate({ trackId: id })} disabled={compareMut.isPending}>
-            <GitCompare className="h-4 w-4 mr-2" />
-            Compare Versions
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setLocation(`/tracks/${id}/diff`)}>
+              <GitCompare className="h-4 w-4 mr-2" />
+              Version Diff
+            </Button>
+            <Button variant="outline" onClick={() => compareMut.mutate({ trackId: id })} disabled={compareMut.isPending}>
+              <GitCompare className="h-4 w-4 mr-2" />
+              AI Compare
+            </Button>
+          </>
         )}
         <Button
           variant="outline"

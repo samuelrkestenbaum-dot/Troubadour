@@ -12,7 +12,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { RadarChart } from "@/components/RadarChart";
 import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
-  MessageCircle, Send, Loader2, ChevronDown, ChevronUp
+  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check
 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
@@ -281,6 +281,17 @@ export default function ReviewView({ id }: { id: number }) {
     }
   };
 
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const shareMut = trpc.review.generateShareLink.useMutation({
+    onSuccess: (data) => {
+      const url = `${window.location.origin}/shared/${data.shareToken}`;
+      setShareUrl(url);
+      navigator.clipboard.writeText(url);
+      toast.success("Share link copied to clipboard!");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const handleCopy = () => {
     if (!review) return;
     navigator.clipboard.writeText(review.reviewMarkdown);
@@ -350,6 +361,28 @@ export default function ReviewView({ id }: { id: number }) {
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-3.5 w-3.5 mr-1.5" />
             Export .md
+          </Button>
+          <Button
+            variant={shareUrl ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              if (shareUrl) {
+                navigator.clipboard.writeText(shareUrl);
+                toast.success("Link copied again!");
+              } else {
+                shareMut.mutate({ id });
+              }
+            }}
+            disabled={shareMut.isPending}
+          >
+            {shareMut.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : shareUrl ? (
+              <Check className="h-3.5 w-3.5 mr-1.5" />
+            ) : (
+              <Share2 className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {shareUrl ? "Link Copied" : "Share"}
           </Button>
         </div>
       </div>

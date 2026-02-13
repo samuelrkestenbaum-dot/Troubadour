@@ -101,6 +101,7 @@ export const reviews = mysqlTable("reviews", {
   scoresJson: json("scoresJson"),
   quickTake: mediumtext("quickTake"),
   comparedTrackId: int("comparedTrackId"),
+  shareToken: varchar("shareToken", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

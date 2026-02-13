@@ -271,6 +271,21 @@ export async function getAlbumReview(projectId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+// ── Share token helpers ──
+
+export async function getReviewByShareToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(reviews).where(eq(reviews.shareToken, token)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function setReviewShareToken(reviewId: number, token: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reviews).set({ shareToken: token }).where(eq(reviews.id, reviewId));
+}
+
 // ── Job helpers ──
 
 export async function createJob(data: InsertJob) {

@@ -133,3 +133,15 @@
 - [ ] P1: Batch processing for multiple tracks
 - [ ] Cleanup: Remove unused Map.tsx component
 - [x] Update tests for all new features (69 tests passing)
+
+## Round 5 - Strategic Features (Claude 4.5)
+- [x] Batch processing: "Review All Tracks" button on ProjectView to queue Full Review on all unreviewed tracks
+- [x] Batch processing: Progress indicator showing how many tracks are processing vs complete
+- [x] Version diff view: Side-by-side score comparison between track versions
+- [x] Version diff view: Visual delta indicators (arrows up/down with color) for each dimension
+- [x] Version diff view: Claude-generated summary of what improved/regressed between versions
+- [x] Shareable review links: Add shareToken column to reviews table
+- [x] Shareable review links: Public read-only endpoint that doesn't require auth
+- [x] Shareable review links: Share button on ReviewView that generates/copies the public URL
+- [x] Shareable review links: Public review page with clean, branded layout
+- [x] Update tests for all new features (82 tests passing)

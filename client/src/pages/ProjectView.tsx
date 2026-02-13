@@ -102,6 +102,14 @@ export default function ProjectView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const batchReviewAll = trpc.job.batchReviewAll.useMutation({
+    onSuccess: (result) => {
+      utils.project.get.invalidate({ id });
+      toast.success(`Queued ${result.queued} track${result.queued !== 1 ? "s" : ""} for full review`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const deleteProject = trpc.project.delete.useMutation({
     onSuccess: () => {
       toast.success("Project deleted");
@@ -274,13 +282,12 @@ export default function ProjectView({ id }: { id: number }) {
           compact
           className="flex-1 max-w-xs"
         />
-        <Button variant="secondary" onClick={handleAnalyzeAll} disabled={analyzeTrack.isPending}>
-          <Headphones className="h-4 w-4 mr-2" />
-          Analyze All
-        </Button>
-        <Button variant="secondary" onClick={handleReviewAll} disabled={reviewTrack.isPending || !hasAnalyzedTracks}>
-          <FileText className="h-4 w-4 mr-2" />
-          Review All
+        <Button
+          onClick={() => batchReviewAll.mutate({ projectId: id })}
+          disabled={batchReviewAll.isPending || allReviewed}
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          {batchReviewAll.isPending ? "Queuing..." : allReviewed ? "All Reviewed" : "Review All Tracks"}
         </Button>
         {project.type === "album" && allReviewed && (
           <Button variant="secondary" onClick={() => albumReview.mutate({ projectId: id })} disabled={albumReview.isPending}>

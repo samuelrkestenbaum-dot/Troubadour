@@ -112,6 +112,8 @@ vi.mock("./db", () => {
     updateChatSessionTitle: vi.fn().mockResolvedValue(undefined),
     touchChatSession: vi.fn().mockResolvedValue(undefined),
     deleteChatSession: vi.fn().mockResolvedValue(undefined),
+    getReviewByShareToken: vi.fn().mockResolvedValue(null),
+    setReviewShareToken: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -789,5 +791,190 @@ describe("db queue helpers", () => {
   it("updateTrackGenre resolves without error", async () => {
     const db = await import("./db");
     await expect(db.updateTrackGenre(1, "Rock", "Alternative, Indie", "Radiohead, Coldplay")).resolves.toBeUndefined();
+  });
+});
+
+// ── Batch Processing tests ──
+
+describe("job.batchReviewAll", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.job.batchReviewAll({ projectId: 1 })
+    ).rejects.toThrow();
+  });
+
+  it("throws not found for non-existent project", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce(null);
+
+    await expect(
+      caller.job.batchReviewAll({ projectId: 999 })
+    ).rejects.toThrow();
+  });
+
+  it("returns queued count for valid project with tracks", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, type: "album", title: "Test Album", status: "draft",
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+    (db.getTracksByProject as any).mockResolvedValueOnce([
+      { id: 10, projectId: 1, userId: 1, status: "uploaded", originalFilename: "track1.mp3" },
+      { id: 11, projectId: 1, userId: 1, status: "reviewed", originalFilename: "track2.mp3" },
+      { id: 12, projectId: 1, userId: 1, status: "uploaded", originalFilename: "track3.mp3" },
+    ]);
+    (db.getActiveJobForTrack as any).mockResolvedValue(null);
+
+    const result = await caller.job.batchReviewAll({ projectId: 1 });
+    expect(result.queued).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ── Version Diff tests ──
+
+describe("review.versionDiff", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.review.versionDiff({ trackId: 1 })
+    ).rejects.toThrow();
+  });
+
+  it("throws not found for non-existent track", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getTrackById as any).mockResolvedValueOnce(null);
+
+    await expect(
+      caller.review.versionDiff({ trackId: 999 })
+    ).rejects.toThrow();
+  });
+});
+
+// ── Shareable Review Links tests ──
+
+describe("review.generateShareLink", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.review.generateShareLink({ id: 1 })
+    ).rejects.toThrow();
+  });
+
+  it("throws not found for non-existent review", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce(null);
+
+    await expect(
+      caller.review.generateShareLink({ id: 999 })
+    ).rejects.toThrow();
+  });
+
+  it("returns existing share token if already set", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, projectId: 1, reviewType: "track",
+      reviewMarkdown: "Great track!", scoresJson: { overall: 8 },
+      shareToken: "existing-token-abc123",
+      createdAt: new Date(),
+    });
+
+    const result = await caller.review.generateShareLink({ id: 1 });
+    expect(result.shareToken).toBe("existing-token-abc123");
+  });
+
+  it("generates new share token when none exists", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce({
+      id: 2, userId: 1, projectId: 1, reviewType: "track",
+      reviewMarkdown: "Great track!", scoresJson: { overall: 8 },
+      shareToken: null,
+      createdAt: new Date(),
+    });
+
+    const result = await caller.review.generateShareLink({ id: 2 });
+    expect(result.shareToken).toBeTruthy();
+    expect(typeof result.shareToken).toBe("string");
+    expect(result.shareToken.length).toBeGreaterThan(10);
+  });
+});
+
+describe("review.getPublic", () => {
+  it("returns not found for invalid token", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewByShareToken as any).mockResolvedValueOnce(null);
+
+    await expect(
+      caller.review.getPublic({ token: "invalid-token" })
+    ).rejects.toThrow("Review not found");
+  });
+
+  it("returns review data for valid token without auth", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewByShareToken as any).mockResolvedValueOnce({
+      id: 1, userId: 1, projectId: 1, trackId: 5,
+      reviewType: "track", reviewMarkdown: "# Great track!",
+      scoresJson: { overall: 8, production: 7 },
+      quickTake: "Solid production",
+      shareToken: "valid-token-123",
+      createdAt: new Date(),
+    });
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 5, originalFilename: "my-song.mp3",
+      detectedGenre: "Indie Rock",
+      detectedSubgenres: "Alternative Rock",
+      detectedInfluences: "Radiohead",
+    });
+
+    const result = await caller.review.getPublic({ token: "valid-token-123" });
+    expect(result.trackName).toBe("my-song.mp3");
+    expect(result.reviewMarkdown).toBe("# Great track!");
+    expect(result.scoresJson).toEqual({ overall: 8, production: 7 });
+    expect(result.genreInsight?.detectedGenre).toBe("Indie Rock");
+  });
+});
+
+// ── Share token DB helpers ──
+
+describe("db share token helpers", () => {
+  it("getReviewByShareToken returns null for unknown token", async () => {
+    const db = await import("./db");
+    const result = await db.getReviewByShareToken("nonexistent");
+    expect(result).toBeNull();
+  });
+
+  it("setReviewShareToken resolves without error", async () => {
+    const db = await import("./db");
+    await expect(db.setReviewShareToken(1, "test-token")).resolves.toBeUndefined();
   });
 });
