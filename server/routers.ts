@@ -21,6 +21,8 @@ const ALLOWED_AUDIO_TYPES = new Set([
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 async function assertUsageAllowed(userId: number) {
+  // Auto-reset monthly counters if needed
+  await db.resetMonthlyUsageIfNeeded(userId);
   const user = await db.getUserById(userId);
   if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
   if (user.audioMinutesUsed >= user.audioMinutesLimit) {
@@ -28,6 +30,32 @@ async function assertUsageAllowed(userId: number) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `You've used ${user.audioMinutesUsed} of your ${user.audioMinutesLimit} minute ${tierLabel} plan limit. Upgrade your plan for more capacity.`,
+    });
+  }
+}
+
+// ── Feature gating helper ──
+import { isFeatureGated, PLANS, getPlanByTier } from "./stripe/products";
+
+function assertFeatureAllowed(tier: string, feature: string) {
+  if (isFeatureGated(tier, feature)) {
+    const requiredTier = (PLANS.artist.gatedFeatures as readonly string[]).includes(feature) ? "Artist" : "Pro";
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `This feature requires the ${requiredTier} plan. Upgrade at /pricing to unlock it.`,
+    });
+  }
+}
+
+async function assertMonthlyReviewAllowed(userId: number) {
+  await db.resetMonthlyUsageIfNeeded(userId);
+  const user = await db.getUserById(userId);
+  if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+  const plan = getPlanByTier(user.tier);
+  if (user.monthlyReviewCount >= plan.monthlyReviewLimit) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You've used ${user.monthlyReviewCount} of your ${plan.monthlyReviewLimit} monthly reviews on the ${plan.name} plan. Upgrade for unlimited reviews.`,
     });
   }
 }
@@ -356,6 +384,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
         await assertUsageAllowed(ctx.user.id);
+        await assertMonthlyReviewAllowed(ctx.user.id);
         const features = await db.getAudioFeaturesByTrack(input.trackId);
         if (!features?.geminiAnalysisJson) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Track must be analyzed first." });
@@ -377,7 +406,10 @@ export const appRouter = router({
         if (!project || project.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "album_review");
         await assertUsageAllowed(ctx.user.id);
+        await assertMonthlyReviewAllowed(ctx.user.id);
         const job = await db.createJob({
           projectId: input.projectId,
           trackId: null,
@@ -395,6 +427,9 @@ export const appRouter = router({
         if (!track || track.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "version_comparison");
+        await assertMonthlyReviewAllowed(ctx.user.id);
         if (!track.parentTrackId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "No previous version to compare" });
         }
@@ -458,6 +493,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
         await assertUsageAllowed(ctx.user.id);
+        await assertMonthlyReviewAllowed(ctx.user.id);
         const activeJob = await db.getActiveJobForTrack(input.trackId);
         if (activeJob) {
           throw new TRPCError({ code: "CONFLICT", message: "Track is already being processed" });
@@ -488,6 +524,9 @@ export const appRouter = router({
         if (!project || project.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "batch_review");
+        await assertMonthlyReviewAllowed(ctx.user.id);
         const tracks = await db.getTracksByProject(input.projectId);
         const unreviewedTracks = tracks.filter(t => t.status !== "reviewed" && t.status !== "reviewing" && t.status !== "analyzing");
         if (unreviewedTracks.length === 0) {
@@ -639,6 +678,8 @@ export const appRouter = router({
         if (!review || review.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "export");
         let trackName = "Unknown Track";
         let genreLine = "";
         if (review.trackId) {
@@ -671,6 +712,8 @@ export const appRouter = router({
         if (!review || review.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "share");
         if (review.shareToken) {
           return { shareToken: review.shareToken };
         }
@@ -729,6 +772,8 @@ export const appRouter = router({
         if (!review || review.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "chat");
         return db.getConversationByReview(input.reviewId);
       }),
 
@@ -742,6 +787,8 @@ export const appRouter = router({
         if (!review || review.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "chat");
         // Save user message
         await db.createConversationMessage({
           reviewId: input.reviewId,
@@ -806,6 +853,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         if (!track || track.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "reference");
         const fileBuffer = Buffer.from(input.fileBase64, "base64");
         const fileKey = `reference/${ctx.user.id}/${input.trackId}/${nanoid()}-${input.filename}`;
         const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
@@ -840,6 +889,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         if (!ref || ref.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Reference track not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "reference");
         const track = await db.getTrackById(ref.trackId);
         if (!track) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
@@ -885,6 +936,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         trackId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "chat");
         // Build a title based on context
         let title = "New conversation";
         if (input.trackId) {
@@ -992,6 +1045,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         if (!session || session.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
         }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "chat");
 
         // Save user message
         await db.createChatMessage({
@@ -1044,6 +1099,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
 
   analytics: router({
     dashboard: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      assertFeatureAllowed(user?.tier || "free", "analytics");
       const [stats, scoreDistribution, recentActivity, averageScores, topTracks] = await Promise.all([
         db.getDashboardStats(ctx.user.id),
         db.getScoreDistribution(ctx.user.id),

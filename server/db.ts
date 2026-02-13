@@ -1,6 +1,6 @@
 import { eq, and, desc, asc, sql, count, avg } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -781,4 +781,60 @@ export async function getRecentChatMessages(sessionId: number, limit = 50) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(chatMessages).where(eq(chatMessages.sessionId, sessionId)).orderBy(desc(chatMessages.createdAt)).limit(limit);
+}
+
+// ── Webhook Idempotency ──
+
+export async function isWebhookEventProcessed(eventId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select().from(processedWebhookEvents).where(eq(processedWebhookEvents.eventId, eventId)).limit(1);
+  return result.length > 0;
+}
+
+export async function markWebhookEventProcessed(eventId: string, eventType: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.insert(processedWebhookEvents).values({ eventId, eventType });
+  } catch {
+    // Duplicate key — already processed, ignore
+  }
+}
+
+// ── Monthly Review Tracking ──
+
+export async function incrementMonthlyReviewCount(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users)
+    .set({ monthlyReviewCount: sql`${users.monthlyReviewCount} + 1` })
+    .where(eq(users.id, userId));
+}
+
+export async function resetMonthlyUsageIfNeeded(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const user = await getUserById(userId);
+  if (!user) return;
+  
+  const now = new Date();
+  const resetAt = new Date(user.monthlyResetAt);
+  
+  // If monthlyResetAt is in the past, reset counters and set next reset date
+  if (now >= resetAt) {
+    const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1); // 1st of next month
+    await db.update(users)
+      .set({
+        monthlyReviewCount: 0,
+        audioMinutesUsed: 0,
+        monthlyResetAt: nextReset,
+      })
+      .where(eq(users.id, userId));
+  }
+}
+
+export async function getMonthlyReviewCount(userId: number): Promise<number> {
+  const user = await getUserById(userId);
+  return user?.monthlyReviewCount ?? 0;
 }

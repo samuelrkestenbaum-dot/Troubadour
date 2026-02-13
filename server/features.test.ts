@@ -27,6 +27,8 @@ vi.mock("./db", () => {
       audioMinutesUsed: 5,
       audioMinutesLimit: 60,
       tier: "free",
+      monthlyReviewCount: 0,
+      monthlyResetAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
@@ -123,6 +125,18 @@ vi.mock("./db", () => {
     getLatestJobForTrack: vi.fn().mockResolvedValue(null),
     getReviewByShareToken: vi.fn().mockResolvedValue(null),
     setReviewShareToken: vi.fn().mockResolvedValue(undefined),
+    // Monthly review tracking
+    resetMonthlyUsageIfNeeded: vi.fn().mockResolvedValue(undefined),
+    incrementMonthlyReviewCount: vi.fn().mockResolvedValue(undefined),
+    getMonthlyReviewCount: vi.fn().mockResolvedValue(0),
+    // Webhook idempotency
+    isWebhookEventProcessed: vi.fn().mockResolvedValue(false),
+    markWebhookEventProcessed: vi.fn().mockResolvedValue(undefined),
+    // Atomic job claiming
+    claimNextQueuedJob: vi.fn().mockResolvedValue(null),
+    // Stripe
+    getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
+    updateUserSubscription: vi.fn().mockResolvedValue(undefined),
     // Tags
     updateTrackTags: vi.fn().mockResolvedValue(undefined),
     getTrackTags: vi.fn().mockResolvedValue([]),
@@ -206,6 +220,8 @@ function createTestUser(): User {
     audioMinutesUsed: 5,
     audioMinutesLimit: 60,
     tier: "free",
+    monthlyReviewCount: 0,
+    monthlyResetAt: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
@@ -634,17 +650,23 @@ describe("chat", () => {
     await expect(caller.chat.createSession({})).rejects.toThrow();
   });
 
-  it("creates a chat session with project context", async () => {
-    const ctx = createAuthContext();
+  it("creates a chat session with project context (artist tier)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" } as User;
+    const ctx = createAuthContext(artistUser);
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
     const result = await caller.chat.createSession({ projectId: 1 });
     expect(result).toHaveProperty("id");
     expect(result).toHaveProperty("title");
   });
 
-  it("creates a chat session without context", async () => {
-    const ctx = createAuthContext();
+  it("creates a chat session without context (artist tier)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" } as User;
+    const ctx = createAuthContext(artistUser);
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
     const result = await caller.chat.createSession({});
     expect(result.id).toBeDefined();
     expect(result.title).toBe("New conversation");
@@ -664,9 +686,13 @@ describe("chat", () => {
     expect(Array.isArray(messages)).toBe(true);
   });
 
-  it("sends a message and gets a Claude response", async () => {
-    const ctx = createAuthContext();
+  it("sends a message and gets a Claude response (artist tier)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" } as User;
+    const ctx = createAuthContext(artistUser);
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
+    (db.getChatSessionById as any).mockResolvedValueOnce({ id: 99, userId: 1, projectId: null, trackId: null, title: "Test chat", lastActiveAt: new Date(), createdAt: new Date() });
     const result = await caller.chat.sendMessage({ sessionId: 99, message: "How can I improve my mix?" });
     expect(result.response).toBeDefined();
     expect(typeof result.response).toBe("string");
@@ -855,8 +881,9 @@ describe("job.batchReviewAll", () => {
     ).rejects.toThrow();
   });
 
-  it("returns queued count for valid project with tracks", async () => {
-    const ctx = createAuthContext();
+  it("returns queued count for valid project with tracks (pro tier)", async () => {
+    const proUser = { ...createTestUser(), tier: "pro", audioMinutesLimit: 720 } as User;
+    const ctx = createAuthContext(proUser);
     const caller = appRouter.createCaller(ctx);
 
     const db = await import("./db");
@@ -864,6 +891,8 @@ describe("job.batchReviewAll", () => {
       id: 1, userId: 1, type: "album", title: "Test Album", status: "draft",
       createdAt: new Date(), updatedAt: new Date(),
     });
+    (db.getUserById as any).mockResolvedValueOnce(proUser);
+    (db.getUserById as any).mockResolvedValueOnce(proUser);
     (db.getTracksByProject as any).mockResolvedValueOnce([
       { id: 10, projectId: 1, userId: 1, status: "uploaded", originalFilename: "track1.mp3" },
       { id: 11, projectId: 1, userId: 1, status: "reviewed", originalFilename: "track2.mp3" },
@@ -925,8 +954,9 @@ describe("review.generateShareLink", () => {
     ).rejects.toThrow();
   });
 
-  it("returns existing share token if already set", async () => {
-    const ctx = createAuthContext();
+  it("returns existing share token if already set (artist tier)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" } as User;
+    const ctx = createAuthContext(artistUser);
     const caller = appRouter.createCaller(ctx);
 
     const db = await import("./db");
@@ -936,13 +966,15 @@ describe("review.generateShareLink", () => {
       shareToken: "existing-token-abc123",
       createdAt: new Date(),
     });
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
 
     const result = await caller.review.generateShareLink({ id: 1 });
     expect(result.shareToken).toBe("existing-token-abc123");
   });
 
-  it("generates new share token when none exists", async () => {
-    const ctx = createAuthContext();
+  it("generates new share token when none exists (artist tier)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" } as User;
+    const ctx = createAuthContext(artistUser);
     const caller = appRouter.createCaller(ctx);
 
     const db = await import("./db");
@@ -952,6 +984,7 @@ describe("review.generateShareLink", () => {
       shareToken: null,
       createdAt: new Date(),
     });
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
 
     const result = await caller.review.generateShareLink({ id: 2 });
     expect(result.shareToken).toBeTruthy();
@@ -1019,7 +1052,7 @@ describe("db share token helpers", () => {
 // ── Round 6: Batch Completion Notification, Score Line Chart, Progress Tracking ──
 
 describe("batch completion notification", () => {
-  it("batchReviewAll assigns batchId to all created jobs", async () => {
+  it("batchReviewAll assigns batchId to all created jobs (pro tier)", async () => {
     const db = await import("./db");
     // Create a project and track first
     const project = await db.createProject({
@@ -1038,7 +1071,11 @@ describe("batch completion notification", () => {
       fileSize: 1024,
     });
 
-    const caller = appRouter.createCaller(createAuthContext());
+    const proUser = { ...createTestUser(), tier: "pro", audioMinutesLimit: 720 } as User;
+    const ctx = createAuthContext(proUser);
+    (db.getUserById as any).mockResolvedValueOnce(proUser);
+    (db.getUserById as any).mockResolvedValueOnce(proUser);
+    const caller = appRouter.createCaller(ctx);
     const result = await caller.job.batchReviewAll({ projectId: project.id });
     expect(result.queued).toBeGreaterThanOrEqual(1);
     expect(result.batchId).toBeDefined();
@@ -1260,9 +1297,16 @@ describe("tags.update", () => {
 });
 
 describe("analytics.dashboard", () => {
-  it("returns dashboard analytics data", async () => {
-    const ctx = createAuthContext();
+  function createArtistContext() {
+    const artistUser = { ...createTestUser(), tier: "artist" } as User;
+    return createAuthContext(artistUser);
+  }
+
+  it("returns dashboard analytics data (artist tier)", async () => {
+    const ctx = createArtistContext();
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce({ ...createTestUser(), tier: "artist" });
 
     const result = await caller.analytics.dashboard();
     expect(result).toBeDefined();
@@ -1273,9 +1317,11 @@ describe("analytics.dashboard", () => {
     expect(result.stats?.reviewedTracks).toBe(7);
   });
 
-  it("returns score distribution", async () => {
-    const ctx = createAuthContext();
+  it("returns score distribution (artist tier)", async () => {
+    const ctx = createArtistContext();
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce({ ...createTestUser(), tier: "artist" });
 
     const result = await caller.analytics.dashboard();
     expect(result.scoreDistribution).toBeDefined();
@@ -1285,9 +1331,11 @@ describe("analytics.dashboard", () => {
     expect(result.scoreDistribution[0]).toHaveProperty("count");
   });
 
-  it("returns average scores", async () => {
-    const ctx = createAuthContext();
+  it("returns average scores (artist tier)", async () => {
+    const ctx = createArtistContext();
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce({ ...createTestUser(), tier: "artist" });
 
     const result = await caller.analytics.dashboard();
     expect(result.averageScores).toBeDefined();
@@ -1295,9 +1343,11 @@ describe("analytics.dashboard", () => {
     expect(result.averageScores?.production).toBe(6.8);
   });
 
-  it("returns top tracks", async () => {
-    const ctx = createAuthContext();
+  it("returns top tracks (artist tier)", async () => {
+    const ctx = createArtistContext();
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce({ ...createTestUser(), tier: "artist" });
 
     const result = await caller.analytics.dashboard();
     expect(result.topTracks).toBeDefined();
@@ -1306,9 +1356,11 @@ describe("analytics.dashboard", () => {
     expect(result.topTracks[0].filename).toBe("hit-song.wav");
   });
 
-  it("returns recent activity", async () => {
-    const ctx = createAuthContext();
+  it("returns recent activity (artist tier)", async () => {
+    const ctx = createArtistContext();
     const caller = appRouter.createCaller(ctx);
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce({ ...createTestUser(), tier: "artist" });
 
     const result = await caller.analytics.dashboard();
     expect(result.recentActivity).toBeDefined();
@@ -1730,5 +1782,436 @@ describe("new db helpers for audit fixes", () => {
   it("resetStaleRunningJobs is exported", async () => {
     const db = await import("./db");
     expect(typeof db.resetStaleRunningJobs).toBe("function");
+  });
+});
+
+
+// ── Round 13: P0 Ship Blocker Tests ──
+
+describe("feature gating - free tier blocks", () => {
+  it("blocks free users from chat", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, projectId: 1, reviewType: "track",
+      reviewMarkdown: "Great track!", scoresJson: { overall: 8 },
+    });
+    (db.getUserById as any).mockResolvedValueOnce({
+      ...createTestUser(),
+      tier: "free",
+    });
+
+    await expect(
+      caller.conversation.list({ reviewId: 1 })
+    ).rejects.toThrow(/Artist plan/i);
+  });
+
+  it("blocks free users from sharing reviews", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, projectId: 1, reviewType: "track",
+      reviewMarkdown: "Great track!", scoresJson: { overall: 8 },
+      shareToken: null,
+    });
+    (db.getUserById as any).mockResolvedValueOnce({
+      ...createTestUser(),
+      tier: "free",
+    });
+
+    await expect(
+      caller.review.generateShareLink({ id: 1 })
+    ).rejects.toThrow(/Artist plan/i);
+  });
+
+  it("blocks free users from exporting reviews", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, projectId: 1, reviewType: "track",
+      reviewMarkdown: "Great track!", scoresJson: { overall: 8 },
+    });
+    (db.getUserById as any).mockResolvedValueOnce({
+      ...createTestUser(),
+      tier: "free",
+    });
+
+    await expect(
+      caller.review.exportMarkdown({ id: 1 })
+    ).rejects.toThrow(/Pro plan/i);
+  });
+
+  it("blocks free users from analytics", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce({
+      ...createTestUser(),
+      tier: "free",
+    });
+
+    await expect(
+      caller.analytics.dashboard()
+    ).rejects.toThrow(/Artist plan/i);
+  });
+});
+
+describe("feature gating - artist tier access", () => {
+  it("allows artist users to access chat", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" };
+    const ctx = createAuthContext(artistUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getReviewById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, projectId: 1, reviewType: "track",
+      reviewMarkdown: "Great track!", scoresJson: { overall: 8 },
+    });
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
+
+    const result = await caller.conversation.list({ reviewId: 1 });
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("blocks artist users from batch review (pro only)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" };
+    const ctx = createAuthContext(artistUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
+
+    await expect(
+      caller.job.batchReviewAll({ projectId: 1 })
+    ).rejects.toThrow(/Pro plan/i);
+  });
+
+  it("blocks artist users from album review (pro only)", async () => {
+    const artistUser = { ...createTestUser(), tier: "artist" };
+    const ctx = createAuthContext(artistUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(artistUser);
+
+    await expect(
+      caller.job.albumReview({ projectId: 1 })
+    ).rejects.toThrow(/Pro plan/i);
+  });
+});
+
+describe("feature gating - pro tier access", () => {
+  it("allows pro users to access all features", async () => {
+    const proUser = { ...createTestUser(), tier: "pro", audioMinutesLimit: 720 };
+    const ctx = createAuthContext(proUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(proUser);
+
+    // Pro users should access analytics without error
+    const result = await caller.analytics.dashboard();
+    expect(result).toBeDefined();
+    expect(result.stats).toBeDefined();
+  });
+});
+
+describe("monthly review limits", () => {
+  it("blocks review when monthly limit reached for free tier", async () => {
+    const overLimitUser = {
+      ...createTestUser(),
+      tier: "free",
+      monthlyReviewCount: 3,
+    };
+    const ctx = createAuthContext(overLimitUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "analyzed",
+      originalFilename: "test.mp3",
+    });
+    (db.getAudioFeaturesByTrack as any).mockResolvedValueOnce({
+      geminiAnalysisJson: { tempo: 120 },
+    });
+
+    await expect(
+      caller.job.review({ trackId: 1 })
+    ).rejects.toThrow(/monthly reviews/i);
+  });
+
+  it("allows review when under monthly limit", async () => {
+    const underLimitUser = {
+      ...createTestUser(),
+      tier: "free",
+      monthlyReviewCount: 1,
+      audioMinutesUsed: 5,
+      audioMinutesLimit: 60,
+    };
+    const ctx = createAuthContext(underLimitUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    // Reset mocks to avoid interference from prior tests
+    (db.getUserById as any).mockReset();
+    (db.getTrackById as any).mockReset();
+    (db.getAudioFeaturesByTrack as any).mockReset();
+    // getTrackById is called first in the review endpoint
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "analyzed",
+      originalFilename: "test.mp3",
+      storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000,
+    });
+    // assertUsageAllowed calls getUserById
+    (db.getUserById as any).mockResolvedValueOnce(underLimitUser);
+    // assertMonthlyReviewAllowed calls getUserById
+    (db.getUserById as any).mockResolvedValueOnce(underLimitUser);
+    // getAudioFeaturesByTrack is called after usage checks
+    (db.getAudioFeaturesByTrack as any).mockResolvedValueOnce({
+      geminiAnalysisJson: { tempo: 120, key: "C major" },
+    });
+
+    const result = await caller.job.review({ trackId: 1 });
+    expect(result.jobId).toBeDefined();
+  });
+});
+
+describe("monthly review limit on analyzeAndReview", () => {
+  it("blocks analyzeAndReview when monthly limit reached", async () => {
+    const overLimitUser = {
+      ...createTestUser(),
+      tier: "free",
+      monthlyReviewCount: 3,
+    };
+    const ctx = createAuthContext(overLimitUser as any);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "uploaded",
+      originalFilename: "test.mp3",
+    });
+    (db.getActiveJobForTrack as any).mockResolvedValueOnce(null);
+
+    await expect(
+      caller.job.analyzeAndReview({ trackId: 1 })
+    ).rejects.toThrow(/monthly reviews/i);
+  });
+});
+
+describe("isFeatureGated logic", () => {
+  it("free users are gated from artist features", async () => {
+    const { isFeatureGated } = await import("./stripe/products");
+    expect(isFeatureGated("free", "chat")).toBe(true);
+    expect(isFeatureGated("free", "share")).toBe(true);
+    expect(isFeatureGated("free", "analytics")).toBe(true);
+    expect(isFeatureGated("free", "reference")).toBe(true);
+    expect(isFeatureGated("free", "version_comparison")).toBe(true);
+  });
+
+  it("free users are gated from pro features", async () => {
+    const { isFeatureGated } = await import("./stripe/products");
+    expect(isFeatureGated("free", "album_review")).toBe(true);
+    expect(isFeatureGated("free", "batch_review")).toBe(true);
+    expect(isFeatureGated("free", "export")).toBe(true);
+  });
+
+  it("artist users can access artist features", async () => {
+    const { isFeatureGated } = await import("./stripe/products");
+    expect(isFeatureGated("artist", "chat")).toBe(false);
+    expect(isFeatureGated("artist", "share")).toBe(false);
+    expect(isFeatureGated("artist", "analytics")).toBe(false);
+    expect(isFeatureGated("artist", "reference")).toBe(false);
+  });
+
+  it("artist users are gated from pro features", async () => {
+    const { isFeatureGated } = await import("./stripe/products");
+    expect(isFeatureGated("artist", "album_review")).toBe(true);
+    expect(isFeatureGated("artist", "batch_review")).toBe(true);
+    expect(isFeatureGated("artist", "export")).toBe(true);
+  });
+
+  it("pro users have access to everything", async () => {
+    const { isFeatureGated } = await import("./stripe/products");
+    expect(isFeatureGated("pro", "chat")).toBe(false);
+    expect(isFeatureGated("pro", "share")).toBe(false);
+    expect(isFeatureGated("pro", "album_review")).toBe(false);
+    expect(isFeatureGated("pro", "batch_review")).toBe(false);
+    expect(isFeatureGated("pro", "export")).toBe(false);
+    expect(isFeatureGated("pro", "analytics")).toBe(false);
+  });
+});
+
+describe("getPlanByTier", () => {
+  it("returns correct plan for each tier", async () => {
+    const { getPlanByTier } = await import("./stripe/products");
+    expect(getPlanByTier("free").name).toBe("Free");
+    expect(getPlanByTier("free").monthlyReviewLimit).toBe(3);
+    expect(getPlanByTier("artist").name).toBe("Artist");
+    expect(getPlanByTier("pro").name).toBe("Pro");
+    expect(getPlanByTier("unknown").name).toBe("Free"); // fallback
+  });
+});
+
+describe("webhook idempotency helpers", () => {
+  it("isWebhookEventProcessed is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.isWebhookEventProcessed).toBe("function");
+  });
+
+  it("markWebhookEventProcessed is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.markWebhookEventProcessed).toBe("function");
+  });
+});
+
+describe("monthly usage tracking helpers", () => {
+  it("incrementMonthlyReviewCount is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.incrementMonthlyReviewCount).toBe("function");
+  });
+
+  it("resetMonthlyUsageIfNeeded is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.resetMonthlyUsageIfNeeded).toBe("function");
+  });
+
+  it("getMonthlyReviewCount is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getMonthlyReviewCount).toBe("function");
+  });
+});
+
+describe("stripe subscription management helpers", () => {
+  it("getUserByStripeCustomerId is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getUserByStripeCustomerId).toBe("function");
+  });
+
+  it("updateUserSubscription is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.updateUserSubscription).toBe("function");
+  });
+});
+
+describe("webhook handler", () => {
+  it("webhook module exports handleStripeWebhook", async () => {
+    const mod = await import("./stripe/webhook");
+    expect(typeof mod.handleStripeWebhook).toBe("function");
+  });
+});
+
+describe("OG meta tags for shared reviews", () => {
+  it("server index includes OG tag middleware for /shared/:token", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./_core/index.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("og:title");
+    expect(source).toContain("og:description");
+    expect(source).toContain("twitter:card");
+    expect(source).toContain("FirstSpin.ai");
+    expect(source).toContain("/shared/:token");
+    expect(source).toContain("isBot");
+  });
+});
+
+describe("stripe webhook handler features", () => {
+  it("webhook handler includes idempotency check", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./stripe/webhook.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("isWebhookEventProcessed");
+    expect(source).toContain("markWebhookEventProcessed");
+    expect(source).toContain("Duplicate event");
+  });
+
+  it("webhook handler includes invoice.payment_failed handler", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./stripe/webhook.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("invoice.payment_failed");
+    expect(source).toContain("handleInvoicePaymentFailed");
+    expect(source).toContain("attempt_count");
+  });
+
+  it("webhook handler includes smart tierFromPriceId", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./stripe/webhook.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("tierFromPriceId");
+    expect(source).toContain("prices.retrieve");
+    expect(source).toContain("unit_amount");
+  });
+
+  it("webhook handler handles subscription deletion", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./stripe/webhook.ts"),
+      "utf-8"
+    );
+    expect(source).toContain("customer.subscription.deleted");
+    expect(source).toContain("handleSubscriptionDeleted");
+    expect(source).toContain("downgraded to free");
+  });
+});
+
+describe("incrementMonthlyReviewCount wired in job processor", () => {
+  it("job processor calls incrementMonthlyReviewCount after review completion", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./services/jobProcessor.ts"),
+      "utf-8"
+    );
+    // Should be called in processReviewJob, processAlbumReviewJob, and processCompareJob
+    const matches = source.match(/incrementMonthlyReviewCount/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("assertMonthlyReviewAllowed on all review endpoints", () => {
+  it("routers.ts calls assertMonthlyReviewAllowed on review, albumReview, compare, analyzeAndReview, batchReviewAll", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "./routers.ts"),
+      "utf-8"
+    );
+    const matches = source.match(/assertMonthlyReviewAllowed/g);
+    expect(matches).not.toBeNull();
+    // At least: definition + review + albumReview + compare + analyzeAndReview + batchReviewAll = 6
+    expect(matches!.length).toBeGreaterThanOrEqual(6);
   });
 });

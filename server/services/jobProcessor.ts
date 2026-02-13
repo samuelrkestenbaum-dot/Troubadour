@@ -431,6 +431,7 @@ async function processReviewJob(jobId: number, job: any) {
   });
 
   await db.updateTrackStatus(track.id, "reviewed");
+  await db.incrementMonthlyReviewCount(job.userId);
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,
@@ -513,6 +514,7 @@ async function processAlbumReviewJob(jobId: number, job: any) {
   });
 
   await db.updateProjectStatus(project.id, "reviewed");
+  await db.incrementMonthlyReviewCount(job.userId);
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,
@@ -594,6 +596,7 @@ async function processCompareJob(jobId: number, job: any) {
     comparedTrackId: v1Track.id,
   });
 
+  await db.incrementMonthlyReviewCount(job.userId);
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,

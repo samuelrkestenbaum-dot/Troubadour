@@ -1,19 +1,33 @@
 import { Request, Response } from "express";
 import Stripe from "stripe";
-import { constructWebhookEvent } from "./stripe";
+import { constructWebhookEvent, getStripe } from "./stripe";
 import { PLANS } from "./products";
 import * as db from "../db";
 
 /**
  * Map a Stripe Price ID to our tier.
- * In test mode, we look up by subscription metadata.
+ * First checks configured price IDs, then falls back to looking up
+ * the price amount from Stripe API to determine the correct tier.
  */
-function tierFromPriceId(priceId: string): "artist" | "pro" | "free" {
+async function tierFromPriceId(priceId: string): Promise<"artist" | "pro" | "free"> {
   // Check against configured price IDs (set at runtime)
   if (PLANS.artist.stripePriceId && priceId === PLANS.artist.stripePriceId) return "artist";
   if (PLANS.pro.stripePriceId && priceId === PLANS.pro.stripePriceId) return "pro";
-  // Fallback: if price amount matches
-  return "artist"; // default to artist for unknown prices
+
+  // Fallback: look up the price amount from Stripe to determine tier
+  try {
+    const stripe = getStripe();
+    const price = await stripe.prices.retrieve(priceId);
+    const amount = price.unit_amount ?? 0;
+
+    // Pro is $49/mo (4900 cents), Artist is $19/mo (1900 cents)
+    if (amount >= PLANS.pro.priceMonthly) return "pro";
+    if (amount >= PLANS.artist.priceMonthly) return "artist";
+    return "free";
+  } catch (e) {
+    console.warn(`[Webhook] Could not look up price ${priceId}, defaulting to artist:`, e);
+    return "artist";
+  }
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -37,12 +51,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     // Determine tier from the subscription's price
     let tier: "artist" | "pro" = "artist";
     try {
-      const { getStripe } = await import("./stripe");
       const stripe = getStripe();
       const sub = await stripe.subscriptions.retrieve(subscriptionId);
       const priceId = sub.items.data[0]?.price?.id;
       if (priceId) {
-        const detected = tierFromPriceId(priceId);
+        const detected = await tierFromPriceId(priceId);
         if (detected !== "free") tier = detected;
       }
     } catch (e) {
@@ -77,7 +90,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price?.id;
 
   if (status === "active" || status === "trialing") {
-    const tier = priceId ? tierFromPriceId(priceId) : "artist";
+    const tier = priceId ? await tierFromPriceId(priceId) : "artist";
     if (tier !== "free") {
       const plan = PLANS[tier];
       await db.updateUserSubscription(user.id, {
@@ -116,6 +129,30 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log(`[Webhook] User ${user.id} subscription deleted, downgraded to free`);
 }
 
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  const customerId = typeof invoice.customer === "string"
+    ? invoice.customer
+    : (invoice.customer as any)?.id;
+
+  if (!customerId) return;
+
+  const user = await db.getUserByStripeCustomerId(customerId);
+  if (!user) return;
+
+  // Check attempt count — Stripe sends this on each retry
+  const attemptCount = invoice.attempt_count ?? 1;
+  console.warn(`[Webhook] Invoice payment failed for user ${user.id}, attempt ${attemptCount}`);
+
+  // After 3 failed attempts, downgrade to free
+  if (attemptCount >= 3) {
+    await db.updateUserSubscription(user.id, {
+      tier: "free",
+      audioMinutesLimit: PLANS.free.audioMinutesLimit,
+    });
+    console.log(`[Webhook] User ${user.id} downgraded to free after ${attemptCount} failed payment attempts`);
+  }
+}
+
 export async function handleStripeWebhook(req: Request, res: Response) {
   const signature = req.headers["stripe-signature"];
   if (!signature) {
@@ -136,6 +173,14 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return res.json({ verified: true });
   }
 
+  // ── Idempotency check ──
+  // Stripe can send duplicate events; skip if already processed
+  const alreadyProcessed = await db.isWebhookEventProcessed(event.id);
+  if (alreadyProcessed) {
+    console.log(`[Webhook] Duplicate event ${event.id}, skipping`);
+    return res.json({ received: true, duplicate: true });
+  }
+
   console.log(`[Webhook] Received event: ${event.type} (${event.id})`);
 
   try {
@@ -153,11 +198,14 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         console.log(`[Webhook] Invoice paid: ${(event.data.object as any).id}`);
         break;
       case "invoice.payment_failed":
-        console.log(`[Webhook] Invoice payment failed: ${(event.data.object as any).id}`);
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
         break;
       default:
         console.log(`[Webhook] Unhandled event type: ${event.type}`);
     }
+
+    // Mark event as processed after successful handling
+    await db.markWebhookEventProcessed(event.id, event.type);
   } catch (err: any) {
     console.error(`[Webhook] Error processing ${event.type}:`, err);
     return res.status(500).json({ error: "Webhook processing failed" });

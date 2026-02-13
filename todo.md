@@ -248,3 +248,31 @@
 - [x] Onboarding flow (3-step How It Works cards on empty Dashboard, AI engine branding fixed)
 - [ ] PostHog analytics tracking (DEFERRED - user to provide API key later)
 - [x] Tests for payment and tier enforcement (137 tests passing)
+
+## Round 13 - Infrastructure Audit Fixes (Claude 4.5)
+
+### P0 - Ship Blockers
+- [x] assertFeatureAllowed helper: check user tier against gated features
+- [x] Gate chat endpoints (conversation.sendMessage, chat.createSession, chat.sendMessage)
+- [x] Gate version comparison (job.compare, review.versionDiff)
+- [x] Gate reference comparison (reference.compare)
+- [x] Gate share links (review.generateShareLink)
+- [x] Gate analytics (analytics.dashboard, analytics.topTracks, analytics.recentActivity)
+- [x] Gate album review (job.albumReview)
+- [x] Gate batch review (job.batchReviewAll)
+- [x] Gate export (review.exportMarkdown)
+- [x] Monthly review count: add column, increment on review jobs, enforce limit for free users
+- [x] Usage counter monthly reset: add monthlyResetAt column, reset logic
+- [x] Webhook idempotency: processedWebhookEvents table, check before processing
+- [x] Stripe price ID persistence: save created price IDs for tier mapping
+- [x] tierFromPriceId: smart lookup via Stripe API price amount instead of hardcoded IDs
+
+### P1 - Launch Risks
+- [x] Add invoice.payment_failed handler with user notification and attempt tracking
+- [x] Add invoice.payment_succeeded handler for recurring payment confirmation
+- [x] Job retry: add assertUsageAllowed check
+- [x] Lyrics transcribe: add assertUsageAllowed check
+- [ ] Rate limiting on sensitive endpoints (upload, job creation, chat)
+- [x] OG tags for shared review pages (bot-friendly meta tags with review preview)
+- [ ] Health check endpoint (/health)
+- [x] Tests for feature gating, monthly limits, webhook idempotency, OG tags (169 tests passing)

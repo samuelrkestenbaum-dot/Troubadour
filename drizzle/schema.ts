@@ -15,6 +15,8 @@ export const users = mysqlTable("users", {
   tier: mysqlEnum("tier", ["free", "artist", "pro"]).default("free").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  monthlyReviewCount: int("monthlyReviewCount").default(0).notNull(),
+  monthlyResetAt: timestamp("monthlyResetAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -248,3 +250,14 @@ export const chatMessages = mysqlTable("chatMessages", {
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+// ── Webhook Idempotency ──
+
+export const processedWebhookEvents = mysqlTable("processedWebhookEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("eventId", { length: 255 }).notNull().unique(),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  processedAt: timestamp("processedAt").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_processedWebhookEvents_eventId").on(t.eventId),
+]);
