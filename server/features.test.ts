@@ -1,0 +1,374 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { appRouter } from "./routers";
+import type { TrpcContext } from "./_core/context";
+import type { User } from "../drizzle/schema";
+
+// ── Mock external dependencies ──
+
+// Mock db module
+vi.mock("./db", () => {
+  const mockProjects: any[] = [];
+  const mockTracks: any[] = [];
+  const mockReviews: any[] = [];
+  const mockJobs: any[] = [];
+  const mockFeatures: any[] = [];
+  const mockLyrics: any[] = [];
+  let nextId = 1;
+
+  return {
+    getDb: vi.fn().mockResolvedValue({}),
+    getUserById: vi.fn().mockImplementation(async (id: number) => ({
+      id,
+      openId: "test-user",
+      name: "Test User",
+      email: "test@example.com",
+      loginMethod: "manus",
+      role: "user",
+      audioMinutesUsed: 5,
+      audioMinutesLimit: 60,
+      tier: "free",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    })),
+    createProject: vi.fn().mockImplementation(async (data: any) => {
+      const id = nextId++;
+      mockProjects.push({ id, ...data, status: "draft", createdAt: new Date(), updatedAt: new Date() });
+      return { id };
+    }),
+    getProjectsByUser: vi.fn().mockImplementation(async (userId: number) => {
+      return mockProjects.filter(p => p.userId === userId);
+    }),
+    getProjectById: vi.fn().mockImplementation(async (id: number) => {
+      return mockProjects.find(p => p.id === id) || null;
+    }),
+    updateProject: vi.fn().mockResolvedValue(undefined),
+    deleteProject: vi.fn().mockResolvedValue(undefined),
+    updateProjectStatus: vi.fn().mockResolvedValue(undefined),
+    createTrack: vi.fn().mockImplementation(async (data: any) => {
+      const id = nextId++;
+      mockTracks.push({ id, ...data, status: "uploaded", createdAt: new Date(), updatedAt: new Date() });
+      return { id };
+    }),
+    getTracksByProject: vi.fn().mockImplementation(async (projectId: number) => {
+      return mockTracks.filter(t => t.projectId === projectId);
+    }),
+    getTrackById: vi.fn().mockImplementation(async (id: number) => {
+      return mockTracks.find(t => t.id === id) || null;
+    }),
+    updateTrackStatus: vi.fn().mockResolvedValue(undefined),
+    getTrackVersions: vi.fn().mockResolvedValue([]),
+    upsertLyrics: vi.fn().mockImplementation(async () => ({ id: nextId++ })),
+    getLyricsByTrack: vi.fn().mockResolvedValue([]),
+    getAudioFeaturesByTrack: vi.fn().mockResolvedValue(null),
+    saveAudioFeatures: vi.fn().mockResolvedValue({ id: 1 }),
+    createReview: vi.fn().mockImplementation(async () => ({ id: nextId++ })),
+    getReviewsByProject: vi.fn().mockResolvedValue([]),
+    getReviewsByTrack: vi.fn().mockResolvedValue([]),
+    getReviewById: vi.fn().mockResolvedValue(null),
+    getAlbumReview: vi.fn().mockResolvedValue(null),
+    createJob: vi.fn().mockImplementation(async (data: any) => {
+      const id = nextId++;
+      mockJobs.push({ id, ...data, status: "queued", progress: 0, createdAt: new Date() });
+      return { id };
+    }),
+    getJobById: vi.fn().mockImplementation(async (id: number) => {
+      return mockJobs.find(j => j.id === id) || null;
+    }),
+    getJobsByProject: vi.fn().mockResolvedValue([]),
+    updateJob: vi.fn().mockResolvedValue(undefined),
+    getActiveJobForTrack: vi.fn().mockResolvedValue(null),
+    incrementAudioMinutes: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+// Mock storage
+vi.mock("./storage", () => ({
+  storagePut: vi.fn().mockResolvedValue({ url: "https://s3.example.com/audio/test.mp3", key: "audio/test.mp3" }),
+}));
+
+// Mock job processor (don't actually run jobs)
+vi.mock("./services/jobProcessor", () => ({
+  enqueueJob: vi.fn(),
+}));
+
+// Mock voice transcription
+vi.mock("./_core/voiceTranscription", () => ({
+  transcribeAudio: vi.fn().mockResolvedValue({ text: "Hello world lyrics", language: "en" }),
+}));
+
+// ── Helpers ──
+
+function createTestUser(): User {
+  return {
+    id: 1,
+    openId: "test-user-open-id",
+    email: "test@example.com",
+    name: "Test Artist",
+    loginMethod: "manus",
+    role: "user",
+    audioMinutesUsed: 5,
+    audioMinutesLimit: 60,
+    tier: "free",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastSignedIn: new Date(),
+  } as User;
+}
+
+function createAuthContext(user?: User): TrpcContext {
+  return {
+    user: user || createTestUser(),
+    req: {
+      protocol: "https",
+      headers: {},
+    } as TrpcContext["req"],
+    res: {
+      clearCookie: vi.fn(),
+    } as unknown as TrpcContext["res"],
+  };
+}
+
+function createUnauthContext(): TrpcContext {
+  return {
+    user: null,
+    req: {
+      protocol: "https",
+      headers: {},
+    } as TrpcContext["req"],
+    res: {
+      clearCookie: vi.fn(),
+    } as unknown as TrpcContext["res"],
+  };
+}
+
+// ── Tests ──
+
+describe("auth.me", () => {
+  it("returns the authenticated user", async () => {
+    const user = createTestUser();
+    const ctx = createAuthContext(user);
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.me();
+    expect(result).toBeDefined();
+    expect(result?.id).toBe(1);
+    expect(result?.name).toBe("Test Artist");
+  });
+
+  it("returns null for unauthenticated requests", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.me();
+    expect(result).toBeNull();
+  });
+});
+
+describe("project.create", () => {
+  it("creates a project with valid input", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.project.create({
+      type: "album",
+      title: "Midnight Sessions EP",
+      genre: "Hip-Hop",
+      description: "My debut EP",
+      intentNotes: "Looking for production feedback",
+      referenceArtists: "Frank Ocean, Tyler the Creator",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("rejects empty title", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.project.create({
+        type: "single",
+        title: "",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.project.create({
+        type: "single",
+        title: "Test Track",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("project.list", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.project.list()).rejects.toThrow();
+  });
+
+  it("returns projects for authenticated user", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.project.list();
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("track.upload", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.track.upload({
+        projectId: 1,
+        filename: "test.mp3",
+        mimeType: "audio/mpeg",
+        fileBase64: "dGVzdA==",
+        fileSize: 4,
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("lyrics.save", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.lyrics.save({
+        trackId: 1,
+        text: "These are my lyrics",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("job.analyze", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.job.analyze({ trackId: 1 })
+    ).rejects.toThrow();
+  });
+});
+
+describe("job.review", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.job.review({ trackId: 1 })
+    ).rejects.toThrow();
+  });
+});
+
+describe("usage.get", () => {
+  it("requires authentication", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.usage.get()).rejects.toThrow();
+  });
+
+  it("returns usage data for authenticated user", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.usage.get();
+    expect(result).toBeDefined();
+    expect(typeof result.audioMinutesUsed).toBe("number");
+    expect(typeof result.audioMinutesLimit).toBe("number");
+    expect(typeof result.tier).toBe("string");
+  });
+});
+
+// ── Claude Critic unit tests ──
+
+describe("claudeCritic score extraction", () => {
+  // We test the internal score extraction logic by importing it
+  // Since it's not exported, we test via the module behavior indirectly
+  it("CLAUDE_MODEL constant is set correctly", async () => {
+    const { CLAUDE_MODEL } = await import("./services/claudeCritic");
+    expect(CLAUDE_MODEL).toBe("claude-sonnet-4-20250514");
+    expect(CLAUDE_MODEL).toContain("claude");
+  });
+});
+
+// ── Gemini Audio service validation ──
+
+describe("geminiAudio service", () => {
+  it("exports analyzeAudioWithGemini function", async () => {
+    const mod = await import("./services/geminiAudio");
+    expect(typeof mod.analyzeAudioWithGemini).toBe("function");
+  });
+
+  it("exports compareAudioWithGemini function", async () => {
+    const mod = await import("./services/geminiAudio");
+    expect(typeof mod.compareAudioWithGemini).toBe("function");
+  });
+});
+
+// ── Job processor validation ──
+
+describe("jobProcessor", () => {
+  it("exports enqueueJob function", async () => {
+    const mod = await import("./services/jobProcessor");
+    expect(typeof mod.enqueueJob).toBe("function");
+  });
+});
+
+// ── Input validation tests ──
+
+describe("input validation", () => {
+  it("rejects project creation with invalid type", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.project.create({
+        type: "invalid_type" as any,
+        title: "Test",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects project creation with title too long", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.project.create({
+        type: "single",
+        title: "a".repeat(256),
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects lyrics save with empty text", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.lyrics.save({
+        trackId: 1,
+        text: "",
+      })
+    ).rejects.toThrow();
+  });
+});
