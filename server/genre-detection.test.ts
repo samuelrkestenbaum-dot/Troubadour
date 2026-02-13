@@ -179,6 +179,20 @@ vi.mock("./db", () => {
     updateChatSessionTitle: vi.fn().mockResolvedValue(undefined),
     touchChatSession: vi.fn().mockResolvedValue(undefined),
     deleteChatSession: vi.fn().mockResolvedValue(undefined),
+    getLatestJobForTrack: vi.fn().mockResolvedValue(null),
+    getReviewByShareToken: vi.fn().mockResolvedValue(null),
+    setReviewShareToken: vi.fn().mockResolvedValue(undefined),
+    getNextQueuedJob: vi.fn().mockResolvedValue(null),
+    getStaleRunningJobs: vi.fn().mockResolvedValue([]),
+    getJobsByBatchId: vi.fn().mockResolvedValue([]),
+    getReviewHistory: vi.fn().mockResolvedValue([]),
+    updateTrackTags: vi.fn().mockResolvedValue(undefined),
+    getTrackTags: vi.fn().mockResolvedValue([]),
+    getDashboardStats: vi.fn().mockResolvedValue({ totalProjects: 0, totalTracks: 0, totalReviews: 0, reviewedTracks: 0 }),
+    getScoreDistribution: vi.fn().mockResolvedValue([]),
+    getRecentActivity: vi.fn().mockResolvedValue([]),
+    getAverageScores: vi.fn().mockResolvedValue({}),
+    getTopTracks: vi.fn().mockResolvedValue([]),
   };
 });
 

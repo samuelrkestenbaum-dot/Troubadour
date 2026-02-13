@@ -1,0 +1,86 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'jobs' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'jobs' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "projectId",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "trackId",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "userId",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "type",
+      "DATA_TYPE": "enum"
+    },
+    {
+      "COLUMN_NAME": "status",
+      "DATA_TYPE": "enum"
+    },
+    {
+      "COLUMN_NAME": "progress",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "progressMessage",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "errorMessage",
+      "DATA_TYPE": "mediumtext"
+    },
+    {
+      "COLUMN_NAME": "resultId",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "notificationSent",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "completedAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "batchId",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "heartbeatAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "maxAttempts",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "attempts",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "dependsOnJobId",
+      "DATA_TYPE": "int"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\nid\tint\nprojectId\tint\ntrackId\tint\nuserId\tint\ntype\tenum\nstatus\tenum\nprogress\tint\nprogressMessage\tvarchar\nerrorMessage\tmediumtext\nresultId\tint\nnotificationSent\ttinyint\ncreatedAt\ttimestamp\nupdatedAt\ttimestamp\ncompletedAt\ttimestamp\nbatchId\tvarchar\nheartbeatAt\ttimestamp\nmaxAttempts\tint\nattempts\tint\ndependsOnJobId\tint\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

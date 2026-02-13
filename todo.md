@@ -190,3 +190,40 @@
 - [x] Simplified sidebar: removed redundant "New Project" nav item (already a button on Dashboard)
 - [x] Analytics empty state now guides user to create a project and upload first track
 - [x] Consistent loading states and error handling across pages
+
+## Round 10 - GPT-5 Audit Fixes (P0 + P1)
+
+### P0 - Database Integrity
+- [x] Add foreign key constraints with ON DELETE CASCADE for all relationship columns
+- [x] Add missing indexes for all frequent query patterns (userId, projectId, trackId, status, batchId)
+- [x] Add UNIQUE constraints (reviews.shareToken, lyrics trackId+source, audioFeatures trackId)
+- [x] Fix deleteProject to rely on FK cascades (simplified from manual multi-table delete)
+- [x] Wrap createReview versioning in a transaction with row locking
+
+### P0 - Job Queue Safety
+- [x] Implement atomic job claiming with UPDATE...WHERE status=queued (atomic swap)
+- [x] Add heartbeat/lease fields to jobs table (heartbeatAt, maxAttempts, attempts columns)
+- [x] Add job dependency handling (dependsOnJobId column, skip jobs whose dependency isn't complete)
+- [x] Add stale job recovery (resetStaleRunningJobs checks heartbeatAt)
+
+### P0 - Usage Enforcement
+- [x] Gate job creation (analyze, review, compare, analyzeAndReview) with assertUsageAllowed check
+- [x] Block operations when over limit with clear message showing used/limit
+
+### P0 - Security
+- [x] Add server-side file validation (MIME allowlist of 11 audio types, 50MB size cap)
+- [x] Add LLM call timeouts (Claude: 120s, Gemini: 180s) and retry with exponential backoff (2 retries)
+- [x] Server-side version numbering (compute next version on server, ignore client-sent value)
+
+### P1 - Frontend Quality
+- [x] Normalize score keys server-side (camelCase) to eliminate overall/Overall duality
+- [x] Add keyboard accessibility to clickable cards (Dashboard project cards, ProjectView track names)
+- [x] Add aria-labels to icon-only buttons (back arrow, file inputs)
+- [x] Surface job error messages in UI (TrackView shows error banner with job errorMessage)
+- [ ] Extract shared score color/glow utility to avoid duplication across files
+
+### P1 - Test Coverage
+- [x] Add tests for usage gating on job creation (4 tests: blocks analyze/review/analyzeAndReview over limit, allows under limit)
+- [x] Add tests for server-side file validation (4 tests: rejects bad MIME, rejects >50MB, accepts MP3, accepts WAV)
+- [x] Add tests for server-side version numbering, job error surfacing, score normalization, new db helpers (10 tests)
+- [x] All 137 tests passing

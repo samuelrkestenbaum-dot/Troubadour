@@ -7,6 +7,49 @@ import { ENV } from "../_core/env";
 import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const GEMINI_TIMEOUT_MS = 180_000; // 3 minutes (audio analysis is slow)
+const GEMINI_MAX_RETRIES = 2;
+const GEMINI_RETRY_DELAY_MS = 5000;
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function geminiFetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[Gemini] Retry attempt ${attempt}/${GEMINI_MAX_RETRIES}...`);
+        await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS * attempt));
+      }
+      const response = await fetchWithTimeout(url, init, GEMINI_TIMEOUT_MS);
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status >= 500 || response.status === 429) {
+          lastError = new Error(`Gemini API error: ${response.status} ${response.statusText} \u2014 ${errorText}`);
+          continue;
+        }
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText} \u2014 ${errorText}`);
+      }
+      return response;
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        lastError = new Error(`Gemini API timed out after ${GEMINI_TIMEOUT_MS / 1000}s`);
+        continue;
+      }
+      if (err.message?.includes("Gemini API error: 4")) throw err;
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Gemini API failed after retries");
+}
 
 export interface GeminiAudioAnalysis {
   overview: string;
@@ -175,16 +218,11 @@ export async function analyzeAudioWithGemini(audioUrl: string, mimeType: string,
 
   const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${ENV.geminiApiKey}`;
 
-  const response = await fetch(url, {
+  const response = await geminiFetchWithRetry(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error: ${response.status} ${response.statusText} — ${errorText}`);
-  }
 
   const result = await response.json();
 
@@ -265,16 +303,11 @@ Provide your analysis as detailed text with clear section headers. Be honest and
 
   const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${ENV.geminiApiKey}`;
 
-  const response = await fetch(url, {
+  const response = await geminiFetchWithRetry(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini comparison API error: ${response.status} — ${errorText}`);
-  }
 
   const result = await response.json();
   return result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || "";
@@ -340,16 +373,11 @@ Be specific. Reference actual moments in both tracks with timestamps. Be honest 
 
   const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${ENV.geminiApiKey}`;
 
-  const response = await fetch(url, {
+  const response = await geminiFetchWithRetry(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini reference comparison API error: ${response.status} — ${errorText}`);
-  }
 
   const result = await response.json();
   const fullText = result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || "";

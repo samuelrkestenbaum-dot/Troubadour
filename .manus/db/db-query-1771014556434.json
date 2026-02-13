@@ -1,0 +1,67 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'jobs' AND TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'jobs' AND TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "projectId"
+    },
+    {
+      "COLUMN_NAME": "trackId"
+    },
+    {
+      "COLUMN_NAME": "userId"
+    },
+    {
+      "COLUMN_NAME": "type"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "progress"
+    },
+    {
+      "COLUMN_NAME": "progressMessage"
+    },
+    {
+      "COLUMN_NAME": "errorMessage"
+    },
+    {
+      "COLUMN_NAME": "resultId"
+    },
+    {
+      "COLUMN_NAME": "notificationSent"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "completedAt"
+    },
+    {
+      "COLUMN_NAME": "batchId"
+    },
+    {
+      "COLUMN_NAME": "heartbeatAt"
+    },
+    {
+      "COLUMN_NAME": "maxAttempts"
+    },
+    {
+      "COLUMN_NAME": "attempts"
+    },
+    {
+      "COLUMN_NAME": "dependsOnJobId"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nprojectId\ntrackId\nuserId\ntype\nstatus\nprogress\nprogressMessage\nerrorMessage\nresultId\nnotificationSent\ncreatedAt\nupdatedAt\ncompletedAt\nbatchId\nheartbeatAt\nmaxAttempts\nattempts\ndependsOnJobId\n",
+  "stderr": "",
+  "execution_time_ms": 69
+}

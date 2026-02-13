@@ -134,14 +134,7 @@ export async function updateProjectStatus(id: number, status: "draft" | "process
 export async function deleteProject(id: number) {
   const db = await getDb();
   if (!db) return;
-  await db.delete(jobs).where(eq(jobs.projectId, id));
-  await db.delete(reviews).where(eq(reviews.projectId, id));
-  const projectTracks = await db.select({ id: tracks.id }).from(tracks).where(eq(tracks.projectId, id));
-  for (const t of projectTracks) {
-    await db.delete(audioFeatures).where(eq(audioFeatures.trackId, t.id));
-    await db.delete(lyrics).where(eq(lyrics.trackId, t.id));
-  }
-  await db.delete(tracks).where(eq(tracks.projectId, id));
+  // FK ON DELETE CASCADE handles all child rows (tracks, reviews, jobs, etc.)
   await db.delete(projects).where(eq(projects.id, id));
 }
 
@@ -514,22 +507,100 @@ export async function updateJob(id: number, data: Partial<InsertJob>) {
   await db.update(jobs).set(data).where(eq(jobs.id, id));
 }
 
-export async function getNextQueuedJob() {
+/**
+ * Atomically claim the next queued job using UPDATE...WHERE to prevent races.
+ * Also checks job dependencies (dependsOnJobId must be done before claiming).
+ */
+export async function claimNextQueuedJob(): Promise<any | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(jobs)
+
+  // Find candidates: queued jobs ordered by creation time
+  const candidates = await db.select().from(jobs)
     .where(eq(jobs.status, "queued"))
     .orderBy(asc(jobs.createdAt))
-    .limit(1);
-  return result.length > 0 ? result[0] : undefined;
+    .limit(5);
+
+  for (const candidate of candidates) {
+    // Check dependency: if this job depends on another, that job must be done
+    if (candidate.dependsOnJobId) {
+      const depJob = await db.select().from(jobs)
+        .where(eq(jobs.id, candidate.dependsOnJobId))
+        .limit(1);
+      if (depJob.length > 0 && depJob[0].status !== "done") {
+        // Dependency not met — skip for now
+        if (depJob[0].status === "error") {
+          // Dependency failed — fail this job too
+          await db.update(jobs).set({
+            status: "error",
+            errorMessage: `Dependency job #${candidate.dependsOnJobId} failed`,
+            completedAt: new Date(),
+          }).where(eq(jobs.id, candidate.id));
+        }
+        continue;
+      }
+    }
+
+    // Check max attempts
+    if (candidate.attempts >= (candidate.maxAttempts || 3)) {
+      await db.update(jobs).set({
+        status: "error",
+        errorMessage: `Exceeded max attempts (${candidate.maxAttempts || 3})`,
+        completedAt: new Date(),
+      }).where(eq(jobs.id, candidate.id));
+      continue;
+    }
+
+    // Atomic claim: UPDATE only if still queued (prevents race conditions)
+    const result = await db.update(jobs).set({
+      status: "running",
+      progress: 5,
+      progressMessage: "Starting...",
+      heartbeatAt: new Date(),
+      attempts: (candidate.attempts || 0) + 1,
+    }).where(and(eq(jobs.id, candidate.id), eq(jobs.status, "queued")));
+
+    // Check if we actually claimed it (affectedRows > 0)
+    // Drizzle returns the result directly; if another worker claimed it first, no rows updated
+    // Re-fetch to confirm status
+    const claimed = await db.select().from(jobs)
+      .where(and(eq(jobs.id, candidate.id), eq(jobs.status, "running")))
+      .limit(1);
+    if (claimed.length > 0) {
+      return claimed[0];
+    }
+    // Someone else claimed it — try next candidate
+  }
+
+  return undefined;
 }
 
+/** @deprecated Use claimNextQueuedJob instead */
+export async function getNextQueuedJob() {
+  return claimNextQueuedJob();
+}
+
+/**
+ * Find jobs that are "running" but have a stale heartbeat (>5 min) or no heartbeat.
+ * These are likely from crashed server instances.
+ */
 export async function getStaleRunningJobs() {
   const db = await getDb();
   if (!db) return [];
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   return db.select().from(jobs)
-    .where(eq(jobs.status, "running"))
+    .where(and(
+      eq(jobs.status, "running"),
+      sql`(${jobs.heartbeatAt} IS NULL OR ${jobs.heartbeatAt} < ${fiveMinAgo})`
+    ))
     .orderBy(asc(jobs.createdAt));
+}
+
+/** Update heartbeat timestamp for a running job */
+export async function updateJobHeartbeat(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(jobs).set({ heartbeatAt: new Date() }).where(eq(jobs.id, id));
 }
 
 export async function getActiveJobForTrack(trackId: number) {
@@ -537,6 +608,15 @@ export async function getActiveJobForTrack(trackId: number) {
   if (!db) return undefined;
   const result = await db.select().from(jobs)
     .where(and(eq(jobs.trackId, trackId), sql`${jobs.status} IN ('queued', 'running')`))
+    .orderBy(desc(jobs.createdAt)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getLatestJobForTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(jobs)
+    .where(eq(jobs.trackId, trackId))
     .orderBy(desc(jobs.createdAt)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -658,7 +738,7 @@ export async function touchChatSession(id: number) {
 export async function deleteChatSession(id: number) {
   const db = await getDb();
   if (!db) return;
-  await db.delete(chatMessages).where(eq(chatMessages.sessionId, id));
+  // FK ON DELETE CASCADE handles chatMessages
   await db.delete(chatSessions).where(eq(chatSessions.id, id));
 }
 

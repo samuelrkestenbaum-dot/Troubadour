@@ -16,6 +16,9 @@ import { generateTrackReview, generateAlbumReview, generateVersionComparison, ex
 import { notifyOwner } from "../_core/notification";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 
+// Heartbeat interval for long-running jobs (every 30s)
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
 // ── Persistent Queue State ──
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
@@ -105,24 +108,30 @@ async function recoverStaleJobs() {
 
 /**
  * Pick the next queued job from the DB and process it.
+ * Uses atomic claiming to prevent race conditions.
  */
 async function processNextJob() {
   if (processing) return;
 
   try {
-    const nextJob = await db.getNextQueuedJob();
-    if (!nextJob) return; // No jobs to process
+    // Atomic claim: only one instance can claim a job
+    const claimedJob = await db.claimNextQueuedJob();
+    if (!claimedJob) return; // No jobs to process
 
     processing = true;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
     try {
-      const job = nextJob;
-      if (job.status === "done" || job.status === "error") {
-        processing = false;
-        return;
-      }
+      const job = claimedJob;
 
-      await db.updateJob(job.id, { status: "running", progress: 5, progressMessage: "Starting..." });
+      // Start heartbeat to signal we're still alive
+      heartbeatTimer = setInterval(async () => {
+        try {
+          await db.updateJobHeartbeat(job.id);
+        } catch (e) {
+          console.warn(`[JobQueue] Heartbeat update failed for job ${job.id}:`, e);
+        }
+      }, HEARTBEAT_INTERVAL_MS);
 
       switch (job.type) {
         case "analyze":
@@ -141,34 +150,62 @@ async function processNextJob() {
           throw new Error(`Unknown job type: ${job.type}`);
       }
     } catch (error: any) {
-      console.error(`[JobQueue] Job ${nextJob.id} failed:`, error);
+      console.error(`[JobQueue] Job ${claimedJob.id} failed (attempt ${claimedJob.attempts}):`, error);
       const rawMessage = error.message || "Unknown error";
       const errorMessage = rawMessage.length > 2000
         ? rawMessage.substring(0, 2000) + "... (truncated)"
         : rawMessage;
-      try {
-        await db.updateJob(nextJob.id, {
-          status: "error",
-          errorMessage,
-          completedAt: new Date(),
-        });
-      } catch (updateError) {
-        console.error(`[JobQueue] Failed to update job ${nextJob.id} error status:`, updateError);
+
+      // If we have retries left, re-queue instead of failing permanently
+      const maxAttempts = claimedJob.maxAttempts || 3;
+      if (claimedJob.attempts < maxAttempts) {
+        console.log(`[JobQueue] Re-queuing job ${claimedJob.id} (attempt ${claimedJob.attempts}/${maxAttempts})`);
         try {
-          await db.updateJob(nextJob.id, {
+          await db.updateJob(claimedJob.id, {
+            status: "queued",
+            progressMessage: `Retry ${claimedJob.attempts}/${maxAttempts}: ${errorMessage.substring(0, 200)}`,
+          });
+          // Reset track status for retry
+          if (claimedJob.trackId) {
+            const track = await db.getTrackById(claimedJob.trackId);
+            if (track) {
+              if (claimedJob.type === "analyze" && track.status === "analyzing") {
+                await db.updateTrackStatus(track.id, "uploaded");
+              } else if (claimedJob.type === "review" && track.status === "reviewing") {
+                await db.updateTrackStatus(track.id, "analyzed");
+              }
+            }
+          }
+        } catch (requeueError) {
+          console.error(`[JobQueue] Failed to re-queue job ${claimedJob.id}:`, requeueError);
+          await db.updateJob(claimedJob.id, { status: "error", errorMessage, completedAt: new Date() }).catch(() => {});
+        }
+      } else {
+        try {
+          await db.updateJob(claimedJob.id, {
+            status: "error",
+            errorMessage: `Failed after ${maxAttempts} attempts. Last error: ${errorMessage}`,
+            completedAt: new Date(),
+          });
+        } catch (updateError) {
+          console.error(`[JobQueue] Failed to update job ${claimedJob.id} error status:`, updateError);
+          await db.updateJob(claimedJob.id, {
             status: "error",
             errorMessage: "Job failed — see server logs for details",
             completedAt: new Date(),
-          });
-        } catch { /* give up */ }
+          }).catch(() => {});
+        }
       }
+    } finally {
+      // Always clear heartbeat timer
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
     }
 
     processing = false;
 
     // Check if this job was part of a batch and if the batch is now complete
-    if (nextJob.batchId) {
-      await checkBatchCompletion(nextJob.batchId, nextJob.projectId);
+    if (claimedJob.batchId) {
+      await checkBatchCompletion(claimedJob.batchId, claimedJob.projectId);
     }
 
     // Immediately check for more jobs

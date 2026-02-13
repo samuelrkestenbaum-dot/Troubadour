@@ -12,6 +12,25 @@ import { transcribeAudio } from "./_core/voiceTranscription";
 import { generateFollowUp, generateReferenceComparison } from "./services/claudeCritic";
 import { compareReferenceWithGemini } from "./services/geminiAudio";
 
+// ── Usage gating helper ──
+const ALLOWED_AUDIO_TYPES = new Set([
+  "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
+  "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/aac",
+  "audio/ogg", "audio/flac", "audio/webm",
+]);
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+async function assertUsageAllowed(userId: number) {
+  const user = await db.getUserById(userId);
+  if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+  if (user.audioMinutesUsed >= user.audioMinutesLimit) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You've used ${user.audioMinutesUsed} of your ${user.audioMinutesLimit} minute limit. Upgrade for more.`,
+    });
+  }
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -133,17 +152,28 @@ export const appRouter = router({
         if (!project || project.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
-        const user = await db.getUserById(ctx.user.id);
-        if (user && user.audioMinutesUsed >= user.audioMinutesLimit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: `Audio limit reached (${user.audioMinutesLimit} min). Upgrade for more.` });
+        // Usage gating
+        await assertUsageAllowed(ctx.user.id);
+        // File validation
+        if (!ALLOWED_AUDIO_TYPES.has(input.mimeType.toLowerCase())) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Unsupported audio format: ${input.mimeType}. Supported: MP3, WAV, M4A, AAC, OGG, FLAC, WebM.` });
+        }
+        if (input.fileSize > MAX_FILE_SIZE) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `File too large (${Math.round(input.fileSize / 1024 / 1024)}MB). Maximum: 50MB.` });
         }
         const fileBuffer = Buffer.from(input.fileBase64, "base64");
         const fileKey = `audio/${ctx.user.id}/${input.projectId}/${nanoid()}-${input.filename}`;
         const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
         let trackOrder = input.trackOrder ?? 0;
+        const existingTracks = await db.getTracksByProject(input.projectId);
         if (trackOrder === 0) {
-          const existingTracks = await db.getTracksByProject(input.projectId);
           trackOrder = existingTracks.length + 1;
+        }
+        // Server-side version numbering: compute from DB, ignore client-sent value
+        let versionNumber = 1;
+        if (input.parentTrackId) {
+          const siblings = existingTracks.filter(t => t.parentTrackId === input.parentTrackId || t.id === input.parentTrackId);
+          versionNumber = siblings.length + 1;
         }
         const track = await db.createTrack({
           projectId: input.projectId,
@@ -155,7 +185,7 @@ export const appRouter = router({
           mimeType: input.mimeType,
           fileSize: input.fileSize,
           trackOrder,
-          versionNumber: input.versionNumber ?? 1,
+          versionNumber,
           parentTrackId: input.parentTrackId ?? null,
         });
         return { trackId: track.id, storageUrl: url };
@@ -173,7 +203,10 @@ export const appRouter = router({
         const trackLyrics = await db.getLyricsByTrack(track.id);
         const childVersions = await db.getTrackVersions(track.id);
         const parentVersions = track.parentTrackId ? await db.getTrackVersions(track.parentTrackId) : [];
-        return { track, features, reviews, lyrics: trackLyrics, versions: [...parentVersions, ...childVersions] };
+        // Include latest job error for error surfacing in UI
+        const latestJob = await db.getLatestJobForTrack(track.id);
+        const jobError = latestJob?.status === "error" ? latestJob.errorMessage : null;
+        return { track, features, reviews, lyrics: trackLyrics, versions: [...parentVersions, ...childVersions], jobError };
       }),
 
     getVersions: protectedProcedure
@@ -299,6 +332,7 @@ export const appRouter = router({
         if (!track || track.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
+        await assertUsageAllowed(ctx.user.id);
         const activeJob = await db.getActiveJobForTrack(input.trackId);
         if (activeJob) {
           throw new TRPCError({ code: "CONFLICT", message: "Track is already being processed" });
@@ -320,6 +354,7 @@ export const appRouter = router({
         if (!track || track.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
+        await assertUsageAllowed(ctx.user.id);
         const features = await db.getAudioFeaturesByTrack(input.trackId);
         if (!features?.geminiAnalysisJson) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Track must be analyzed first." });
@@ -341,6 +376,7 @@ export const appRouter = router({
         if (!project || project.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
+        await assertUsageAllowed(ctx.user.id);
         const job = await db.createJob({
           projectId: input.projectId,
           trackId: null,
@@ -420,6 +456,7 @@ export const appRouter = router({
         if (!track || track.userId !== ctx.user.id) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
+        await assertUsageAllowed(ctx.user.id);
         const activeJob = await db.getActiveJobForTrack(input.trackId);
         if (activeJob) {
           throw new TRPCError({ code: "CONFLICT", message: "Track is already being processed" });

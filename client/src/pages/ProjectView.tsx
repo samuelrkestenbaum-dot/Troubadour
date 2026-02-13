@@ -328,6 +328,10 @@ export default function ProjectView({ id }: { id: number }) {
                           <span
                             className="font-medium truncate cursor-pointer hover:text-primary transition-colors"
                             onClick={() => setLocation(`/tracks/${track.id}`)}
+                            role="link"
+                            tabIndex={0}
+                            aria-label={`Open track: ${track.originalFilename}`}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocation(`/tracks/${track.id}`); } }}
                           >
                             {track.originalFilename}
                           </span>

@@ -27,6 +27,24 @@ function assertApiKey(): void {
   }
 }
 
+const LLM_TIMEOUT_MS = 120_000; // 2 minutes per LLM call
+const LLM_MAX_RETRIES = 2;
+const LLM_RETRY_DELAY_MS = 3000;
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function callClaude(systemPrompt: string, messages: ClaudeMessage[], maxTokens = 4096): Promise<string> {
   assertApiKey();
 
@@ -35,41 +53,69 @@ export async function callClaude(systemPrompt: string, messages: ClaudeMessage[]
     ...messages,
   ];
 
-  const response = await fetch(resolveApiUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: maxTokens,
-      messages: allMessages,
-    }),
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Claude API error: ${response.status} ${response.statusText} — ${errorText}`);
+  for (let attempt = 0; attempt <= LLM_MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[Claude] Retry attempt ${attempt}/${LLM_MAX_RETRIES}...`);
+        await sleep(LLM_RETRY_DELAY_MS * attempt); // Exponential-ish backoff
+      }
+
+      const response = await fetchWithTimeout(resolveApiUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ENV.forgeApiKey}`,
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL,
+          max_tokens: maxTokens,
+          messages: allMessages,
+        }),
+      }, LLM_TIMEOUT_MS);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        // Retry on 5xx or 429 (rate limit)
+        if (response.status >= 500 || response.status === 429) {
+          lastError = new Error(`Claude API error: ${response.status} ${response.statusText} — ${errorText}`);
+          continue;
+        }
+        throw new Error(`Claude API error: ${response.status} ${response.statusText} — ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      const choice = result.choices?.[0];
+      if (!choice?.message?.content) {
+        throw new Error("Claude returned no text content");
+      }
+      
+      const content = choice.message.content;
+      if (typeof content === "string") {
+        return content;
+      }
+      if (Array.isArray(content)) {
+        const textBlock = content.find((b: any) => b.type === "text");
+        return textBlock?.text || "";
+      }
+      
+      throw new Error("Claude returned unexpected content format");
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        lastError = new Error(`Claude API timed out after ${LLM_TIMEOUT_MS / 1000}s`);
+        continue;
+      }
+      // Don't retry client errors
+      if (!lastError || err.message?.includes("Claude API error: 4")) {
+        throw err;
+      }
+      lastError = err;
+    }
   }
 
-  const result = await response.json();
-  
-  const choice = result.choices?.[0];
-  if (!choice?.message?.content) {
-    throw new Error("Claude returned no text content");
-  }
-  
-  const content = choice.message.content;
-  if (typeof content === "string") {
-    return content;
-  }
-  if (Array.isArray(content)) {
-    const textBlock = content.find((b: any) => b.type === "text");
-    return textBlock?.text || "";
-  }
-  
-  throw new Error("Claude returned unexpected content format");
+  throw lastError || new Error("Claude API failed after retries");
 }
 
 // ── Summarize audio analysis to keep prompt size manageable ──
@@ -538,12 +584,20 @@ export async function extractScoresStructured(reviewMarkdown: string): Promise<R
       const content = result.choices?.[0]?.message?.content;
       if (content) {
         const parsed = typeof content === "string" ? JSON.parse(content) : content;
-        // Validate all values are numbers 1-10
+        // Validate, clamp to 1-10, and normalize keys to camelCase
         const scores: Record<string, number> = {};
         for (const [key, val] of Object.entries(parsed)) {
           const num = typeof val === "number" ? val : parseFloat(val as string);
-          if (!isNaN(num) && num >= 1 && num <= 10) {
-            scores[key] = Math.round(num);
+          if (!isNaN(num)) {
+            // Normalize key: "Overall" → "overall", "Melody & Hooks" → "melodyHooks"
+            const normalizedKey = key
+              .replace(/[&]/g, "And")
+              .replace(/[^a-zA-Z0-9\s]/g, "")
+              .trim()
+              .split(/\s+/)
+              .map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+              .join("");
+            scores[normalizedKey] = Math.round(Math.max(1, Math.min(10, num)));
           }
         }
         if (Object.keys(scores).length >= 3) {

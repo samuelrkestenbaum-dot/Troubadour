@@ -497,7 +497,7 @@ export default function TrackView({ id }: { id: number }) {
     );
   }
 
-  const { track, features, reviews, lyrics: trackLyricsArr, versions } = data;
+  const { track, features, reviews, lyrics: trackLyricsArr, versions, jobError } = data;
   const trackLyrics = trackLyricsArr?.[0] ?? null;
   const isProcessing = track.status === "analyzing" || track.status === "reviewing";
   const geminiAnalysis = features?.geminiAnalysisJson as any;
@@ -510,7 +510,7 @@ export default function TrackView({ id }: { id: number }) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setLocation(`/projects/${track.projectId}`)}>
+          <Button variant="ghost" size="icon" onClick={() => setLocation(`/projects/${track.projectId}`)} aria-label="Back to project">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -553,6 +553,19 @@ export default function TrackView({ id }: { id: number }) {
         title={track.originalFilename}
         subtitle={track.detectedGenre ? `${track.detectedGenre}${track.detectedSubgenres ? ` · ${track.detectedSubgenres}` : ""}` : undefined}
       />
+
+      {/* Error Banner */}
+      {track.status === "error" && jobError && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="py-3 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-destructive">Processing failed</p>
+              <p className="text-xs text-muted-foreground mt-1 break-words">{jobError}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
@@ -602,6 +615,7 @@ export default function TrackView({ id }: { id: number }) {
           type="file"
           accept="audio/*"
           className="hidden"
+          aria-label="Upload new version of this track"
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;

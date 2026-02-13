@@ -126,6 +126,10 @@ export default function Dashboard() {
                 key={project.id}
                 className="cursor-pointer hover:border-primary/40 transition-colors"
                 onClick={() => setLocation(`/projects/${project.id}`)}
+                role="link"
+                tabIndex={0}
+                aria-label={`Open project: ${project.title}`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocation(`/projects/${project.id}`); } }}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">

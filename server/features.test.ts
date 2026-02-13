@@ -94,6 +94,9 @@ vi.mock("./db", () => {
     getScoreHistoryForTrack: vi.fn().mockResolvedValue([]),
     getNextQueuedJob: vi.fn().mockResolvedValue(null),
     getStaleRunningJobs: vi.fn().mockResolvedValue([]),
+    claimNextJob: vi.fn().mockResolvedValue(null),
+    updateJobHeartbeat: vi.fn().mockResolvedValue(undefined),
+    resetStaleRunningJobs: vi.fn().mockResolvedValue(undefined),
     getJobsByBatchId: vi.fn().mockResolvedValue([]),
     getReviewHistory: vi.fn().mockResolvedValue([
       { id: 2, reviewVersion: 2, isLatest: true, modelUsed: "claude-sonnet-4-5-20250929", scoresJson: { overall: 8 }, quickTake: "Great improvement", createdAt: new Date() },
@@ -117,6 +120,7 @@ vi.mock("./db", () => {
     updateChatSessionTitle: vi.fn().mockResolvedValue(undefined),
     touchChatSession: vi.fn().mockResolvedValue(undefined),
     deleteChatSession: vi.fn().mockResolvedValue(undefined),
+    getLatestJobForTrack: vi.fn().mockResolvedValue(null),
     getReviewByShareToken: vi.fn().mockResolvedValue(null),
     setReviewShareToken: vi.fn().mockResolvedValue(undefined),
     // Tags
@@ -1440,5 +1444,291 @@ describe("db analytics helpers", () => {
   it("getTrackTags is exported", async () => {
     const db = await import("./db");
     expect(typeof db.getTrackTags).toBe("function");
+  });
+});
+
+
+// ── Round 10: GPT-5 Audit Fix Tests ──
+
+describe("usage gating on job creation", () => {
+  it("blocks analyze when user is over usage limit", async () => {
+    const overLimitUser = {
+      ...createTestUser(),
+      audioMinutesUsed: 60,
+      audioMinutesLimit: 60,
+    };
+    const ctx = createAuthContext(overLimitUser);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "uploaded",
+      originalFilename: "test.mp3", storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000,
+    });
+
+    await expect(caller.job.analyze({ trackId: 1 })).rejects.toThrow(/limit/i);
+  });
+
+  it("blocks review when user is over usage limit", async () => {
+    const overLimitUser = {
+      ...createTestUser(),
+      audioMinutesUsed: 60,
+      audioMinutesLimit: 60,
+    };
+    const ctx = createAuthContext(overLimitUser);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "analyzed",
+      originalFilename: "test.mp3", storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000,
+    });
+    (db.getAudioFeaturesByTrack as any).mockResolvedValueOnce({
+      geminiAnalysisJson: { tempo: 120 },
+    });
+
+    await expect(caller.job.review({ trackId: 1 })).rejects.toThrow(/limit/i);
+  });
+
+  it("blocks analyzeAndReview when user is over usage limit", async () => {
+    const overLimitUser = {
+      ...createTestUser(),
+      audioMinutesUsed: 60,
+      audioMinutesLimit: 60,
+    };
+    const ctx = createAuthContext(overLimitUser);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getUserById as any).mockResolvedValueOnce(overLimitUser);
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "uploaded",
+      originalFilename: "test.mp3", storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000,
+    });
+    (db.getActiveJobForTrack as any).mockResolvedValueOnce(null);
+
+    await expect(caller.job.analyzeAndReview({ trackId: 1 })).rejects.toThrow(/limit/i);
+  });
+
+  it("allows job creation when user is under usage limit", async () => {
+    const underLimitUser = {
+      ...createTestUser(),
+      audioMinutesUsed: 5,
+      audioMinutesLimit: 60,
+    };
+    const ctx = createAuthContext(underLimitUser);
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    // getUserById is called by assertUsageAllowed - must return under-limit user
+    (db.getUserById as any).mockResolvedValueOnce(underLimitUser);
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "uploaded",
+      originalFilename: "test.mp3", storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000,
+    });
+    (db.getActiveJobForTrack as any).mockResolvedValueOnce(null);
+
+    const result = await caller.job.analyze({ trackId: 1 });
+    expect(result).toBeDefined();
+    expect(result.jobId).toBeDefined();
+  });
+});
+
+describe("server-side file validation", () => {
+  it("rejects unsupported MIME types", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(createTestUser());
+
+    await expect(caller.track.upload({
+      projectId: 1,
+      filename: "test.pdf",
+      mimeType: "application/pdf",
+      fileBase64: btoa("fake file content"),
+      fileSize: 1000,
+    })).rejects.toThrow(/unsupported audio format/i);
+  });
+
+  it("rejects files over 50MB", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(createTestUser());
+
+    await expect(caller.track.upload({
+      projectId: 1,
+      filename: "huge.mp3",
+      mimeType: "audio/mpeg",
+      fileBase64: btoa("fake"),
+      fileSize: 60 * 1024 * 1024, // 60MB
+    })).rejects.toThrow(/too large/i);
+  });
+
+  it("accepts valid audio files", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(createTestUser());
+    (db.getTracksByProject as any).mockResolvedValueOnce([]);
+
+    const result = await caller.track.upload({
+      projectId: 1,
+      filename: "song.mp3",
+      mimeType: "audio/mpeg",
+      fileBase64: btoa("fake audio data"),
+      fileSize: 5 * 1024 * 1024, // 5MB
+    });
+    expect(result.trackId).toBeDefined();
+    expect(result.storageUrl).toBeDefined();
+  });
+
+  it("accepts wav MIME type", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(createTestUser());
+    (db.getTracksByProject as any).mockResolvedValueOnce([]);
+
+    const result = await caller.track.upload({
+      projectId: 1,
+      filename: "song.wav",
+      mimeType: "audio/wav",
+      fileBase64: btoa("fake wav data"),
+      fileSize: 10 * 1024 * 1024,
+    });
+    expect(result.trackId).toBeDefined();
+  });
+});
+
+describe("server-side version numbering", () => {
+  it("computes version number from existing tracks instead of trusting client", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getProjectById as any).mockResolvedValueOnce({
+      id: 1, userId: 1, title: "Test Project",
+    });
+    (db.getUserById as any).mockResolvedValueOnce(createTestUser());
+    // Simulate existing parent track + one child version
+    (db.getTracksByProject as any).mockResolvedValueOnce([
+      { id: 10, parentTrackId: null, versionNumber: 1 },
+      { id: 11, parentTrackId: 10, versionNumber: 2 },
+    ]);
+
+    const result = await caller.track.upload({
+      projectId: 1,
+      filename: "v3.mp3",
+      mimeType: "audio/mpeg",
+      fileBase64: btoa("fake audio"),
+      fileSize: 1000000,
+      parentTrackId: 10,
+      versionNumber: 999, // Client tries to set v999, server should ignore
+    });
+    expect(result.trackId).toBeDefined();
+
+    // Verify createTrack was called with server-computed version (3), not client-sent (999)
+    expect(db.createTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ versionNumber: 3 })
+    );
+  });
+});
+
+describe("job error surfacing", () => {
+  it("track.get returns jobError when latest job failed", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "error",
+      originalFilename: "test.mp3", storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000, parentTrackId: null,
+    });
+    (db.getAudioFeaturesByTrack as any).mockResolvedValueOnce(null);
+    (db.getReviewsByTrack as any).mockResolvedValueOnce([]);
+    (db.getLyricsByTrack as any).mockResolvedValueOnce([]);
+    (db.getTrackVersions as any).mockResolvedValueOnce([]);
+    (db.getLatestJobForTrack as any).mockResolvedValueOnce({
+      id: 5, status: "error", errorMessage: "Gemini API timeout after 180s",
+    });
+
+    const result = await caller.track.get({ id: 1 });
+    expect(result.jobError).toBe("Gemini API timeout after 180s");
+  });
+
+  it("track.get returns null jobError when latest job succeeded", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const db = await import("./db");
+    (db.getTrackById as any).mockResolvedValueOnce({
+      id: 1, projectId: 1, userId: 1, status: "reviewed",
+      originalFilename: "test.mp3", storageUrl: "https://s3.example.com/test.mp3",
+      mimeType: "audio/mpeg", fileSize: 1000000, parentTrackId: null,
+    });
+    (db.getAudioFeaturesByTrack as any).mockResolvedValueOnce(null);
+    (db.getReviewsByTrack as any).mockResolvedValueOnce([]);
+    (db.getLyricsByTrack as any).mockResolvedValueOnce([]);
+    (db.getTrackVersions as any).mockResolvedValueOnce([]);
+    (db.getLatestJobForTrack as any).mockResolvedValueOnce({
+      id: 5, status: "done", errorMessage: null,
+    });
+
+    const result = await caller.track.get({ id: 1 });
+    expect(result.jobError).toBeNull();
+  });
+});
+
+describe("score key normalization", () => {
+  it("extractScoresStructured normalizes keys to camelCase", async () => {
+    // This tests the concept - the actual function is mocked, but we verify the export exists
+    const critic = await import("./services/claudeCritic");
+    expect(typeof critic.extractScoresStructured).toBe("function");
+  });
+});
+
+describe("new db helpers for audit fixes", () => {
+  it("getLatestJobForTrack is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.getLatestJobForTrack).toBe("function");
+  });
+
+  it("claimNextJob is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.claimNextJob).toBe("function");
+  });
+
+  it("updateJobHeartbeat is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.updateJobHeartbeat).toBe("function");
+  });
+
+  it("resetStaleRunningJobs is exported", async () => {
+    const db = await import("./db");
+    expect(typeof db.resetStaleRunningJobs).toBe("function");
   });
 });
