@@ -97,6 +97,28 @@ export async function getUserById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function updateUserSubscription(userId: number, data: {
+  tier: "free" | "artist" | "pro";
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  audioMinutesLimit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const updateData: Record<string, any> = { tier: data.tier };
+  if (data.stripeCustomerId !== undefined) updateData.stripeCustomerId = data.stripeCustomerId;
+  if (data.stripeSubscriptionId !== undefined) updateData.stripeSubscriptionId = data.stripeSubscriptionId;
+  if (data.audioMinutesLimit !== undefined) updateData.audioMinutesLimit = data.audioMinutesLimit;
+  await db.update(users).set(updateData).where(eq(users.id, userId));
+}
+
+export async function getUserByStripeCustomerId(customerId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.stripeCustomerId, customerId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function incrementAudioMinutes(userId: number, minutes: number) {
   const db = await getDb();
   if (!db) return;

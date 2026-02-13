@@ -14,6 +14,7 @@ import VersionDiff from "./pages/VersionDiff";
 import Usage from "./pages/Usage";
 import Analytics from "./pages/Analytics";
 import SharedReview from "./pages/SharedReview";
+import Pricing from "./pages/Pricing";
 import DashboardLayout from "./components/DashboardLayout";
 
 function DashboardRoutes() {
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/shared/:token">
         {(params) => <SharedReview token={params.token} />}
       </Route>
+      <Route path="/pricing" component={Pricing} />
       <Route path="/404" component={NotFound} />
       <Route>
         <DashboardRoutes />

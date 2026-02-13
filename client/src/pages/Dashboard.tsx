@@ -84,8 +84,8 @@ export default function Dashboard() {
             <div className="grid gap-5 md:grid-cols-3">
               {[
                 { step: "01", icon: Music, color: "from-blue-500/20 to-blue-500/5", iconColor: "text-sky-400", title: "Upload your track", desc: "Drag & drop MP3, WAV, or FLAC files. We support tracks up to 50MB." },
-                { step: "02", icon: Sliders, color: "from-violet-500/20 to-violet-500/5", iconColor: "text-violet-400", title: "AI listens & analyzes", desc: "Gemini detects genre, tempo, key, structure, and production qualities automatically." },
-                { step: "03", icon: CheckCircle2, color: "from-emerald-500/20 to-emerald-500/5", iconColor: "text-emerald-400", title: "Get your critique", desc: "Claude writes a detailed, honest review with scores, timestamps, and actionable feedback." },
+                { step: "02", icon: Sliders, color: "from-violet-500/20 to-violet-500/5", iconColor: "text-violet-400", title: "AI listens & analyzes", desc: "FirstSpin detects genre, tempo, key, structure, and production qualities automatically." },
+                { step: "03", icon: CheckCircle2, color: "from-emerald-500/20 to-emerald-500/5", iconColor: "text-emerald-400", title: "Get your critique", desc: "A detailed, honest review with scores, timestamps, and actionable feedback — in minutes." },
               ].map((item) => (
                 <Card key={item.step} className="border-border/40 bg-gradient-to-br hover:border-border/60 transition-all group">
                   <CardContent className="pt-6">

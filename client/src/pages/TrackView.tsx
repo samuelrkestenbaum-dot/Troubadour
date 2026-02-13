@@ -423,19 +423,30 @@ export default function TrackView({ id }: { id: number }) {
     },
   });
 
+  const handleJobError = (err: any) => {
+    if (err.message?.includes("limit") || err.data?.code === "FORBIDDEN") {
+      toast.error(err.message, {
+        action: { label: "Upgrade", onClick: () => setLocation("/pricing") },
+        duration: 8000,
+      });
+    } else {
+      toast.error(err.message);
+    }
+  };
+
   const analyzeTrack = trpc.job.analyze.useMutation({
     onSuccess: () => { utils.track.get.invalidate({ id }); toast.success("Analysis started"); },
-    onError: (err) => toast.error(err.message),
+    onError: handleJobError,
   });
 
   const reviewTrack = trpc.job.review.useMutation({
     onSuccess: () => { utils.track.get.invalidate({ id }); toast.success("Review started"); },
-    onError: (err) => toast.error(err.message),
+    onError: handleJobError,
   });
 
   const compareMut = trpc.job.compare.useMutation({
     onSuccess: () => { utils.track.get.invalidate({ id }); toast.success("Comparison started"); },
-    onError: (err) => toast.error(err.message),
+    onError: handleJobError,
   });
 
   const saveLyrics = trpc.lyrics.save.useMutation({
@@ -466,9 +477,9 @@ export default function TrackView({ id }: { id: number }) {
   const analyzeAndReview = trpc.job.analyzeAndReview.useMutation({
     onSuccess: () => {
       utils.track.get.invalidate({ id });
-      toast.success("Analyze & Review started — sit back while we listen and critique");
+      toast.success("Analysis & review started");
     },
-    onError: (err) => toast.error(err.message),
+    onError: handleJobError,
   });
 
   const uploadTrack = trpc.track.upload.useMutation({

@@ -239,3 +239,12 @@
 - [x] Updated sidebar/navigation with Space Grotesk branding
 - [x] Unified score colors across all pages (emerald/sky/amber/rose), updated RadarChart
 - [x] Batch-updated all color references across 9+ component files for consistency
+
+## Round 12 - Tier 1 Business-Critical (Claude 4.5 Audit)
+- [x] Stripe payment integration (checkout, subscription management, webhook handling)
+- [x] Pricing page with clear free/Artist/Pro tiers and CTAs
+- [x] Free tier limits enforced (assertUsageAllowed on all job endpoints with tier-aware messaging)
+- [x] Upgrade prompts when free users hit limits (toast with Upgrade button → /pricing)
+- [x] Onboarding flow (3-step How It Works cards on empty Dashboard, AI engine branding fixed)
+- [ ] PostHog analytics tracking (DEFERRED - user to provide API key later)
+- [x] Tests for payment and tier enforcement (137 tests passing)

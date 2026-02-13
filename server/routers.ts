@@ -24,9 +24,10 @@ async function assertUsageAllowed(userId: number) {
   const user = await db.getUserById(userId);
   if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
   if (user.audioMinutesUsed >= user.audioMinutesLimit) {
+    const tierLabel = user.tier === "free" ? "Free" : user.tier === "artist" ? "Artist" : "Pro";
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `You've used ${user.audioMinutesUsed} of your ${user.audioMinutesLimit} minute limit. Upgrade for more.`,
+      message: `You've used ${user.audioMinutesUsed} of your ${user.audioMinutesLimit} minute ${tierLabel} plan limit. Upgrade your plan for more capacity.`,
     });
   }
 }
@@ -1064,6 +1065,116 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         tier: user.tier,
       };
     }),
+  }),
+
+  subscription: router({
+    status: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      let subscriptionDetails = null;
+      if (user.stripeSubscriptionId) {
+        try {
+          const { getSubscriptionDetails } = await import("./stripe/stripe");
+          subscriptionDetails = await getSubscriptionDetails(user.stripeSubscriptionId);
+        } catch { /* Stripe not configured */ }
+      }
+      return {
+        tier: user.tier,
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        audioMinutesUsed: user.audioMinutesUsed,
+        audioMinutesLimit: user.audioMinutesLimit,
+        subscription: subscriptionDetails,
+      };
+    }),
+
+    checkout: protectedProcedure
+      .input(z.object({
+        plan: z.enum(["artist", "pro"]),
+        origin: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "Email required for checkout" });
+
+        const { PLANS } = await import("./stripe/products");
+        const plan = PLANS[input.plan];
+
+        // Create or get Stripe products/prices dynamically
+        const { getStripe, createCheckoutSession } = await import("./stripe/stripe");
+        const stripe = getStripe();
+
+        // Find or create the price
+        let priceId: string = plan.stripePriceId as string;
+        if (!priceId) {
+          // Search for existing product
+          const products = await stripe.products.list({ limit: 10 });
+          let product = products.data.find(p => p.metadata?.tier === input.plan);
+          if (!product) {
+            product = await stripe.products.create({
+              name: `FirstSpin.ai ${plan.name}`,
+              description: `${plan.name} plan - ${plan.features.join(", ")}`,
+              metadata: { tier: input.plan },
+            });
+          }
+          // Find or create price
+          const prices = await stripe.prices.list({ product: product.id, active: true, limit: 5 });
+          const existingPrice = prices.data.find(p => p.unit_amount === plan.priceMonthly && p.recurring?.interval === "month");
+          if (existingPrice) {
+            priceId = existingPrice.id;
+          } else {
+            const newPrice = await stripe.prices.create({
+              product: product.id,
+              unit_amount: plan.priceMonthly,
+              currency: "usd",
+              recurring: { interval: "month" },
+            });
+            priceId = newPrice.id;
+          }
+        }
+
+        const { url } = await createCheckoutSession({
+          userId: ctx.user.id,
+          email: user.email,
+          name: user.name ?? undefined,
+          stripeCustomerId: user.stripeCustomerId,
+          priceId,
+          origin: input.origin,
+        });
+
+        // Save customer ID if we created one
+        if (!user.stripeCustomerId) {
+          const { findOrCreateCustomer } = await import("./stripe/stripe");
+          const customerId = await findOrCreateCustomer({
+            userId: ctx.user.id,
+            email: user.email,
+            name: user.name ?? undefined,
+          });
+          await db.updateUserSubscription(ctx.user.id, {
+            tier: user.tier as "free" | "artist" | "pro",
+            stripeCustomerId: customerId,
+          });
+        }
+
+        return { url };
+      }),
+
+    manageBilling: protectedProcedure
+      .input(z.object({ origin: z.string().url() }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.stripeCustomerId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No billing account found" });
+        }
+        const { createBillingPortalSession } = await import("./stripe/stripe");
+        const { url } = await createBillingPortalSession({
+          stripeCustomerId: user.stripeCustomerId,
+          origin: input.origin,
+        });
+        return { url };
+      }),
   }),
 });
 

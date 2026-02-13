@@ -124,9 +124,12 @@ export default function Home() {
             </div>
             <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>FirstSpin.ai</span>
           </div>
-          <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="default" size="sm" className="shadow-md shadow-primary/20">
-            Get Started
-          </Button>
+          <div className="flex items-center gap-3">
+            <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="default" size="sm" className="shadow-md shadow-primary/20">
+              Get Started
+            </Button>
+          </div>
         </div>
       </nav>
 
@@ -309,10 +312,15 @@ export default function Home() {
           <p className="text-muted-foreground mb-8 text-lg">
             Stop guessing. Get critique that's tailored to your role and grounded in what the engine actually heard.
           </p>
-          <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
-            Get Started Free
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
+              Get Started Free
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4">
+              View Pricing Plans
+            </a>
+          </div>
         </div>
       </section>
 

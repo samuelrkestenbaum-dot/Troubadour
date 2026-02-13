@@ -3,10 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Music, Zap } from "lucide-react";
+import { Clock, Music, Zap, ArrowUpRight, CreditCard } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+import { toast } from "sonner";
 
 export default function Usage() {
   const { data, isLoading } = trpc.usage.get.useQuery();
+  const [, navigate] = useLocation();
+
+  const billingMutation = trpc.subscription.manageBilling.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, "_blank");
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -45,10 +58,15 @@ export default function Usage() {
             <span className="text-sm text-muted-foreground">{usagePercent.toFixed(0)}% used</span>
           </div>
           <Progress value={usagePercent} className="h-2" />
-          {usagePercent >= 80 && (
-            <p className="text-xs text-amber-400">
-              You are approaching your usage limit. Consider upgrading for more capacity.
-            </p>
+          {usagePercent >= 80 && data.tier === "free" && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <p className="text-xs text-amber-400">
+                You're approaching your limit. Upgrade for more capacity.
+              </p>
+              <Button size="sm" variant="outline" className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 shrink-0 ml-3" onClick={() => navigate("/pricing")}>
+                Upgrade <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -88,6 +106,33 @@ export default function Usage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upgrade / Billing Section */}
+      <Card>
+        <CardContent className="py-5">
+          {data.tier === "free" ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Want more reviews and features?</p>
+                <p className="text-sm text-muted-foreground">Upgrade to Artist or Pro for unlimited reviews and advanced features.</p>
+              </div>
+              <Button onClick={() => navigate("/pricing")} className="shrink-0">
+                View Plans <ArrowUpRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Manage your subscription</p>
+                <p className="text-sm text-muted-foreground">Update payment method, change plan, or view invoices.</p>
+              </div>
+              <Button variant="outline" onClick={() => billingMutation.mutate({ origin: window.location.origin })} disabled={billingMutation.isPending} className="shrink-0">
+                <CreditCard className="mr-2 h-4 w-4" /> Manage Billing
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
