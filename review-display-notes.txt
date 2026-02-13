@@ -1,0 +1,33 @@
+Review Display Test - Feb 13, 2026
+
+Page 1 (top):
+- Quick Take: 5 bullet points with bold labels, properly rendered markdown
+- Scores: 8 dimensions with progress bars (Commercial 7, Melody 8, Originality 6, Overall 7, Performance 7, Production 7, Songwriting 7, Structure 6)
+- Overall Score: 7/10 prominently displayed
+- Section-by-Section Notes starts right after scores - no duplicate content
+
+Page 2 (scrolled):
+- Detailed section-by-section notes with timestamps:
+  - Verse 1 (0:26-0:38): vocal delivery, guitar pattern critique
+  - Pre-Chorus 1 (0:38-0:50): energy build, drum fills
+  - Instrumental Break 1 (0:50-1:04): guitar tone suggestions
+  - Verse 2 (1:04-1:16): predictability critique
+  - Pre-Chorus 2 (1:16-1:29): build dynamics
+  - Chorus 1 (1:29-1:41): "This is where the track shines" - hook strength
+  - Chorus 2 (1:41-1:54): counter-melody suggestion
+  - Post-Chorus/Bridge-like (1:54-2:21): bridge contrast critique
+  - Instrumental Break 2 (2:21-2:46): guitar melody suggestions
+
+The review is highly specific, references actual timestamps from Gemini's audio analysis, and provides actionable feedback per section. This is working exactly as designed.
+
+Page 3 (scrolled more):
+- Hook & Melodic Analysis section with detailed vocal hook analysis
+- References specific timestamps: "Maybe you don't want me now..." (1:29) and "It's a shame that you're gone..." (1:54)
+- Production Notes section with Mix Quality, Spatial, Dynamics, Effects bullets
+- Areas for Improvement in Production: Guitar Tonal Variety, Subtle Textural Layers, Drum Sound Evolution
+
+Page 4:
+- Songwriting Assessment with Strengths and Areas for Improvement
+- Effective Narrative Arc, Catchy Hooks, Clear Structure
+
+The full review is comprehensive, well-structured, and reads like a professional A&R critique. No duplicate content. The pipeline works end-to-end.

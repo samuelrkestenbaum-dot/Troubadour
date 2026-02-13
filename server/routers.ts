@@ -397,14 +397,21 @@ export const appRouter = router({
         const track = review.trackId ? await db.getTrackById(review.trackId) : null;
         const features = review.trackId ? await db.getAudioFeaturesByTrack(review.trackId) : null;
 
+        // Build review context for the follow-up
+        const reviewContext = `Track: ${track?.originalFilename || "Unknown Track"}
+
+Review:
+${review.reviewMarkdown || ""}
+
+Audio Analysis:
+${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
+
         // Generate follow-up response
-        const response = await generateFollowUp({
-          reviewMarkdown: review.reviewMarkdown || "",
-          audioAnalysisJson: features?.geminiAnalysisJson || {},
-          trackTitle: track?.originalFilename || "Unknown Track",
+        const response = await generateFollowUp(
+          reviewContext,
           conversationHistory,
-          userMessage: input.message,
-        });
+          input.message,
+        );
 
         // Save assistant response
         await db.createConversationMessage({
@@ -482,13 +489,12 @@ export const appRouter = router({
         );
 
         // Use Claude to write the comparison critique
-        const comparisonMarkdown = await generateReferenceComparison({
-          trackTitle: track.originalFilename,
-          referenceFilename: ref.filename,
-          trackAudioAnalysis: features?.geminiAnalysisJson || {},
-          referenceAudioAnalysis: geminiResult.referenceAnalysis,
-          geminiComparison: geminiResult.comparison,
-        });
+        const comparisonMarkdown = await generateReferenceComparison(
+          track.originalFilename,
+          (features?.geminiAnalysisJson || {}) as any,
+          geminiResult.referenceAnalysis as any,
+          geminiResult.comparison,
+        );
 
         await db.updateReferenceTrackComparison(ref.id, comparisonMarkdown);
         return { comparisonResult: comparisonMarkdown };

@@ -1,0 +1,26 @@
+{
+  "query": "SELECT * FROM jobs WHERE id >= 2;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT * FROM jobs WHERE id >= 2;",
+  "rows": [
+    {
+      "id": "2",
+      "projectId": "1",
+      "trackId": "1",
+      "userId": "1",
+      "type": "analyze",
+      "status": "done",
+      "progress": "100",
+      "progressMessage": "Audio analysis complete",
+      "errorMessage": "NULL",
+      "resultId": "NULL",
+      "notificationSent": "1",
+      "createdAt": "2026-02-13 15:54:56",
+      "updatedAt": "2026-02-13 15:55:27",
+      "completedAt": "2026-02-13 15:55:27"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\ttrackId\tuserId\ttype\tstatus\tprogress\tprogressMessage\terrorMessage\tresultId\tnotificationSent\tcreatedAt\tupdatedAt\tcompletedAt\n2\t1\t1\t1\tanalyze\tdone\t100\tAudio analysis complete\tNULL\tNULL\t1\t2026-02-13 15:54:56\t2026-02-13 15:55:27\t2026-02-13 15:55:27\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

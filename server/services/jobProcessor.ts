@@ -6,7 +6,7 @@
  */
 import * as db from "../db";
 import { analyzeAudioWithGemini, compareAudioWithGemini } from "./geminiAudio";
-import { generateTrackReview, generateAlbumReview, generateVersionComparison, CLAUDE_MODEL } from "./claudeCritic";
+import { generateTrackReview, generateAlbumReview, generateVersionComparison, extractScores, CLAUDE_MODEL } from "./claudeCritic";
 import { notifyOwner } from "../_core/notification";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 
@@ -332,16 +332,16 @@ async function processCompareJob(jobId: number, job: any) {
   const v1Reviews = await db.getReviewsByTrack(v1Track.id);
   const v2Reviews = await db.getReviewsByTrack(v2Track.id);
 
-  const comparisonResult = await generateVersionComparison({
+  const comparisonMarkdown = await generateVersionComparison({
     trackTitle: v2Track.originalFilename.replace(/\.[^.]+$/, ""),
     v1Analysis: v1Features.geminiAnalysisJson as GeminiAudioAnalysis,
     v2Analysis: v2Features.geminiAnalysisJson as GeminiAudioAnalysis,
     v1Review: v1Reviews[0]?.reviewMarkdown,
     v2Review: v2Reviews[0]?.reviewMarkdown,
     geminiComparison,
-    v1Scores: v1Reviews[0]?.scoresJson as Record<string, number>,
-    v2Scores: v2Reviews[0]?.scoresJson as Record<string, number>,
   });
+
+  const comparisonScores = extractScores(comparisonMarkdown);
 
   const review = await db.createReview({
     projectId: v2Track.projectId,
@@ -349,8 +349,8 @@ async function processCompareJob(jobId: number, job: any) {
     userId: job.userId,
     reviewType: "comparison",
     modelUsed: CLAUDE_MODEL,
-    reviewMarkdown: comparisonResult.reviewMarkdown,
-    scoresJson: comparisonResult.scores,
+    reviewMarkdown: comparisonMarkdown,
+    scoresJson: comparisonScores,
     quickTake: null,
     comparedTrackId: v1Track.id,
   });

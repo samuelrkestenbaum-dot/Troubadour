@@ -204,6 +204,23 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
   );
 }
 
+/** Strip Quick Take, Scores table, and opening paragraph (shown separately above) from the full review markdown */
+function stripDuplicateSections(markdown: string): string {
+  let cleaned = markdown;
+  // Remove opening paragraph before first heading
+  const firstHeading = cleaned.search(/^#{2,3}\s/m);
+  if (firstHeading > 50) {
+    cleaned = cleaned.substring(firstHeading);
+  }
+  // Remove Quick Take section
+  cleaned = cleaned.replace(/#{2,3}\s*\*?\*?Quick Take\*?\*?\s*\n[\s\S]*?(?=\n#{2,3}\s|$)/i, '');
+  // Remove Scores table section
+  cleaned = cleaned.replace(/#{2,3}\s*\*?\*?Scores\*?\*?\s*\n[\s\S]*?(?=\n#{2,3}\s(?!.*Score)|$)/i, '');
+  // Clean up multiple blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+  return cleaned;
+}
+
 export default function ReviewView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const { data: review, isLoading, error } = trpc.review.get.useQuery({ id });
@@ -299,8 +316,10 @@ export default function ReviewView({ id }: { id: number }) {
       {review.quickTake && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="py-4">
-            <p className="text-sm font-medium text-primary mb-1">Quick Take</p>
-            <p className="text-sm text-foreground leading-relaxed">{review.quickTake}</p>
+            <p className="text-sm font-medium text-primary mb-2">Quick Take</p>
+            <div className="prose prose-sm prose-invert max-w-none text-foreground">
+              <Streamdown>{review.quickTake}</Streamdown>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -341,11 +360,11 @@ export default function ReviewView({ id }: { id: number }) {
 
       <Separator />
 
-      {/* Full Review */}
+      {/* Full Review - strip Quick Take and Scores sections since they're shown above */}
       <Card>
         <CardContent className="py-6">
           <div className="prose prose-sm prose-invert max-w-none">
-            <Streamdown>{review.reviewMarkdown}</Streamdown>
+            <Streamdown>{stripDuplicateSections(review.reviewMarkdown)}</Streamdown>
           </div>
         </CardContent>
       </Card>

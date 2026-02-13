@@ -91,3 +91,12 @@
 - [x] Frontend: Integrate chatbot into ProjectView, TrackView, and ReviewView pages
 - [x] Frontend: Toggle button to open/close the chatbot panel
 - [x] Tests for chat session management and message validation
+## Bug Fixes - End-to-End Testing
+- [x] Fix TEXT column size limits (65KB) → MEDIUMTEXT (16MB) for reviews, jobs, chat, conversation tables
+- [x] Fix Claude prompt to summarize Gemini analysis before sending (248KB → compact summary)
+- [x] Add max_tokens constraint to Claude API calls to prevent bloated output
+- [x] Fix Quick Take extraction to handle ### headings from Claude output
+- [x] Fix ReviewView to strip Quick Take and Scores sections from full review body (deduplication)
+- [x] Fix score extraction regex to handle markdown table format from Claude
+- [x] Update schema.ts to use mediumtext import from drizzle-orm
+- [x] Validate full end-to-end pipeline: Upload → Gemini Analysis → Claude Critique → Review Display

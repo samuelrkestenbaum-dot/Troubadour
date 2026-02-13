@@ -1,37 +1,50 @@
 /**
  * Claude 4.5 Critique Generation Service
- * Uses the Anthropic Claude API to generate detailed, honest music critiques
+ * Uses the Forge API gateway to access Claude 4.5 Sonnet for detailed, honest music critiques
  * based on Gemini's audio analysis, lyrics, and artist context.
  */
 import { ENV } from "../_core/env";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-export const CLAUDE_MODEL = "claude-4-5-sonnet-20250514";
+export const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 
 interface ClaudeMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
 }
 
-export async function callClaude(systemPrompt: string, messages: ClaudeMessage[], maxTokens = 8192): Promise<string> {
-  if (!ENV.anthropicApiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
-  }
+function resolveApiUrl(): string {
+  const base = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+    ? ENV.forgeApiUrl.replace(/\/$/, "")
+    : "https://forge.manus.im";
+  return `${base}/v1/chat/completions`;
+}
 
-  const response = await fetch(ANTHROPIC_API_URL, {
+function assertApiKey(): void {
+  if (!ENV.forgeApiKey) {
+    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  }
+}
+
+export async function callClaude(systemPrompt: string, messages: ClaudeMessage[], maxTokens = 4096): Promise<string> {
+  assertApiKey();
+
+  const allMessages = [
+    { role: "system" as const, content: systemPrompt },
+    ...messages,
+  ];
+
+  const response = await fetch(resolveApiUrl(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": ENV.anthropicApiKey,
-      "anthropic-version": "2023-06-01",
+      "Authorization": `Bearer ${ENV.forgeApiKey}`,
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: maxTokens,
-      system: systemPrompt,
-      messages,
+      messages: allMessages,
     }),
   });
 
@@ -41,16 +54,92 @@ export async function callClaude(systemPrompt: string, messages: ClaudeMessage[]
   }
 
   const result = await response.json();
-  const textBlock = result.content?.find((b: any) => b.type === "text");
-  if (!textBlock?.text) {
+  
+  const choice = result.choices?.[0];
+  if (!choice?.message?.content) {
     throw new Error("Claude returned no text content");
   }
-  return textBlock.text;
+  
+  const content = choice.message.content;
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    const textBlock = content.find((b: any) => b.type === "text");
+    return textBlock?.text || "";
+  }
+  
+  throw new Error("Claude returned unexpected content format");
+}
+
+// ── Summarize audio analysis to keep prompt size manageable ──
+
+function summarizeAudioAnalysis(analysis: GeminiAudioAnalysis): string {
+  const lines: string[] = [];
+  
+  if (analysis.overview) {
+    lines.push(`**Overview:** ${analysis.overview}`);
+  }
+  if (analysis.genre) {
+    lines.push(`**Genre:** ${analysis.genre.primary}${analysis.genre.secondary?.length ? ` (${analysis.genre.secondary.join(", ")})` : ""}${analysis.genre.influences?.length ? ` | Influences: ${analysis.genre.influences.join(", ")}` : ""}`);
+  }
+  if (analysis.tempo) {
+    lines.push(`**Tempo:** ${analysis.tempo.bpm} BPM (${analysis.tempo.confidence} confidence), feel: ${analysis.tempo.feel}`);
+  }
+  if (analysis.key) {
+    lines.push(`**Key:** ${analysis.key.estimated} (${analysis.key.modality}, ${analysis.key.confidence} confidence)`);
+  }
+  if (analysis.energy) {
+    lines.push(`**Energy:** overall ${analysis.energy.overall}, dynamic range: ${analysis.energy.dynamicRange}`);
+    if (analysis.energy.curve?.length) {
+      lines.push(`**Energy Curve:** ${analysis.energy.curve.map(p => `${p.timestamp}: ${p.level}/10 (${p.description})`).join(" → ")}`);
+    }
+  }
+  if (analysis.sections?.length) {
+    lines.push(`**Sections:**`);
+    for (const s of analysis.sections) {
+      lines.push(`  - ${s.name} (${s.startTime}–${s.endTime}): energy ${s.energy}/10 — ${s.description}${s.musicalElements?.length ? ` [${s.musicalElements.join(", ")}]` : ""}`);
+    }
+  }
+  if (analysis.instrumentation?.length) {
+    lines.push(`**Instrumentation:** ${analysis.instrumentation.join(", ")}`);
+  }
+  if (analysis.melodicAnalysis) {
+    const m = analysis.melodicAnalysis;
+    lines.push(`**Melodic Analysis:** hook strength: ${m.hookStrength}, contour: ${m.melodicContour}, vocals: ${m.vocalCharacteristics}, memorability: ${m.memorability}`);
+  }
+  if (analysis.rhythmicAnalysis) {
+    const r = analysis.rhythmicAnalysis;
+    lines.push(`**Rhythmic Analysis:** groove: ${r.groove}, density: ${r.rhythmicDensity}, variation: ${r.rhythmicVariation}`);
+  }
+  if (analysis.production) {
+    const p = analysis.production;
+    lines.push(`**Production:** mix quality: ${p.mixQuality}, spatial: ${p.spatialCharacteristics}, frequency balance: ${p.frequencyBalance}, dynamics: ${p.dynamicProcessing}`);
+    if (p.notableEffects?.length) lines.push(`  Effects: ${p.notableEffects.join(", ")}`);
+  }
+  if (analysis.arrangement) {
+    const a = analysis.arrangement;
+    lines.push(`**Arrangement:** density: ${a.density}, layering: ${a.layering}, transitions: ${a.transitions}, build/release: ${a.buildAndRelease}`);
+  }
+  if (analysis.mood?.length) {
+    lines.push(`**Mood:** ${analysis.mood.join(", ")}`);
+  }
+  if (analysis.strengths?.length) {
+    lines.push(`**Strengths:** ${analysis.strengths.join("; ")}`);
+  }
+  if (analysis.weaknesses?.length) {
+    lines.push(`**Weaknesses:** ${analysis.weaknesses.join("; ")}`);
+  }
+  if (analysis.estimatedDuration) {
+    lines.push(`**Duration:** ~${Math.round(analysis.estimatedDuration)}s`);
+  }
+  
+  return lines.join("\n");
 }
 
 // ── Critic Persona System Prompt ──
 
-const TRACK_CRITIC_SYSTEM = `You are a world-class music critic, A&R executive, and producer combined into one voice. You have decades of experience across all genres. You've signed artists, produced records, and written for major music publications.
+const TRACK_CRITIC_SYSTEM = `You are a world-class music critic, A&R executive, and producer combined into one voice. You have decades of experience across all genres.
 
 Your review style:
 - HONEST and SPECIFIC. Never generic. Never sycophantic.
@@ -60,73 +149,72 @@ Your review style:
 - You write like someone who genuinely cares about the artist's development.
 - You acknowledge what works before addressing what doesn't.
 - You think commercially but respect artistry.
-- You label uncertain inferences clearly (e.g., "key estimate", "approximate").
-- You reference the energy curve, section dynamics, and arrangement density from the audio analysis.
 
-Your output format is Markdown with these sections:
+CRITICAL OUTPUT RULES:
+- Keep your review between 1500-3000 words. Be concise but thorough.
+- DO NOT repeat sections. Write each section exactly once.
+- For the Scores table, use this EXACT format (no extra spaces):
+
+### Scores
+
+| Component | Score | Justification |
+|---|---|---|
+| Songwriting | 7 | Brief reason |
+| Melody & Hooks | 8 | Brief reason |
+| Arrangement | 6 | Brief reason |
+| Performance | 7 | Brief reason |
+| Production & Mix | 7 | Brief reason |
+| Originality | 6 | Brief reason |
+| Commercial Potential | 7 | Brief reason |
+| Overall | 7 | Brief reason |
+
+Your output sections:
 1. **Quick Take** (3-6 bullet points — the TL;DR)
-2. **Scores** (table with component scores 1-10 and brief justification)
-3. **Section-by-Section Notes** (reference timestamps from the audio analysis)
-4. **Hook & Melodic Analysis** (reference energy curve deltas, melodic contour)
-5. **Production Notes** (mix, dynamics, arrangement density — explain simply)
-6. **Songwriting Assessment** (structure, lyrics if provided, emotional arc)
-7. **Originality & Influence Map** (what this sounds like, where it sits in the landscape)
-8. **Highest Leverage Changes** (ranked list — what would improve this track the most)
-9. **Next Iteration Checklist** (specific, actionable experiments to try)
-10. **If You Want This To Be More [X], Do [Y]** (based on stated intent, if provided)
-
-Scoring dimensions (each 1-10):
-- Songwriting / Composition
-- Melody / Hook
-- Structure / Arrangement
-- Lyrics (if applicable)
-- Performance / Delivery
-- Production / Mix Quality
-- Originality
-- Commercial Potential
-- Overall
+2. **Scores** (table as shown above — compact, no padding)
+3. **Section-by-Section Notes** (reference timestamps)
+4. **Hook & Melodic Analysis**
+5. **Production Notes**
+6. **Songwriting Assessment**
+7. **Highest Leverage Changes** (ranked list — what would improve this track the most)
+8. **Next Iteration Checklist** (specific, actionable experiments to try)
 
 Be direct. Be helpful. Be the critic every artist needs but rarely gets.`;
 
-const ALBUM_CRITIC_SYSTEM = `You are a senior A&R executive and album producer with decades of experience shaping records. You've worked with artists across genres, from indie to mainstream. You understand album craft — sequencing, arc, cohesion, and the art of the full-length project.
+const ALBUM_CRITIC_SYSTEM = `You are a senior A&R executive and album producer with decades of experience shaping records. You understand album craft — sequencing, arc, cohesion, and the art of the full-length project.
 
-Your task is to evaluate an entire album project based on individual track analyses and reviews. Your output should read like an internal A&R memo combined with producer notes.
+Keep your review between 2000-4000 words. Do NOT repeat sections.
 
-Your output format is Markdown with these sections:
+For scores, use this EXACT format:
+| Component | Score | Justification |
+|---|---|---|
+| Category | 7 | Brief reason |
 
-1. **Executive Summary** (2-3 paragraphs — the big picture)
-2. **Track Rankings** (ordered from strongest to weakest, with brief reasoning)
-3. **Singles Recommendation** (1-3 tracks, with reasoning for each)
-4. **Weakest Track(s)** (which tracks drag the project down and why)
-5. **Sequencing Analysis** (current order assessment + suggested reorder with reasoning)
-6. **Cohesion & Arc Assessment** (does the album feel like a unified body of work?)
-7. **Thematic Analysis** (recurring themes, narrative arc, emotional journey)
-8. **Influence Map** (where this album sits in the musical landscape)
-9. **Market Positioning** (target audience, comparable releases, commercial potential)
-10. **Producer Notes** (production consistency, sonic palette, mix observations across tracks)
-11. **A&R Recommendations** (strategic next steps for the artist)
-12. **Album Score** (overall album rating with breakdown)
+Output sections:
+1. **Executive Summary** (2-3 paragraphs)
+2. **Track Rankings** (strongest to weakest)
+3. **Singles Recommendation** (1-3 tracks)
+4. **Sequencing Analysis** (current order + suggested reorder)
+5. **Cohesion & Arc Assessment**
+6. **Market Positioning**
+7. **A&R Recommendations**
+8. **Album Score** (overall rating with breakdown table)
 
-Be direct, strategic, and honest. This is an internal document — no need for diplomacy, but be constructive.`;
+Be direct, strategic, and honest.`;
 
-const COMPARISON_CRITIC_SYSTEM = `You are a music producer and mixing engineer comparing two versions of the same track. You have the audio analysis from both versions and possibly a detailed audio comparison.
+const COMPARISON_CRITIC_SYSTEM = `You are a music producer and mixing engineer comparing two versions of the same track.
 
-Your task is to provide a clear, actionable comparison that helps the artist understand:
-- What improved between versions
-- What regressed or was lost
-- What still needs work
-- Whether the changes moved the track in the right direction
+Keep your comparison between 1000-2000 words. Do NOT repeat sections.
 
-Output format (Markdown):
-1. **Version Summary** (one paragraph each for v1 and v2)
-2. **Improvements** (specific changes that made the track better)
-3. **Regressions** (anything that got worse or was lost)
-4. **Unchanged Issues** (problems that persist across both versions)
-5. **Score Comparison** (side-by-side scores for key dimensions)
-6. **Verdict** (which version is stronger and why)
+Output format:
+1. **Version Summary** (one paragraph each)
+2. **Improvements** (specific changes that made it better)
+3. **Regressions** (anything that got worse)
+4. **Unchanged Issues** (problems that persist)
+5. **Score Comparison** (side-by-side table)
+6. **Verdict** (which version is stronger)
 7. **Next Steps** (what to focus on for v3)
 
-Be specific. Reference timestamps. Compare energy curves and section structures.`;
+Be specific. Reference timestamps.`;
 
 // ── Track Review Generation ──
 
@@ -154,9 +242,8 @@ export async function generateTrackReview(input: TrackReviewInput): Promise<Trac
   const userMessage = buildTrackReviewPrompt(input);
   const reviewMarkdown = await callClaude(systemPrompt, [
     { role: "user", content: userMessage },
-  ]);
+  ], 4096);
 
-  // Extract quick take and scores from the review
   const quickTake = extractQuickTake(reviewMarkdown);
   const scores = extractScores(reviewMarkdown);
 
@@ -173,8 +260,10 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
     prompt += `**Review Focus:** ${focus.label} — ${focus.description}\n\n`;
   }
 
+  // Use summarized analysis instead of raw JSON to keep prompt manageable
   prompt += `## Audio Analysis (from the engine that listened to the track)\n\n`;
-  prompt += `\`\`\`json\n${JSON.stringify(input.audioAnalysis, null, 2)}\n\`\`\`\n\n`;
+  prompt += summarizeAudioAnalysis(input.audioAnalysis);
+  prompt += `\n\n`;
 
   if (input.lyrics) {
     prompt += `## Lyrics (provided by artist)\n\n${input.lyrics}\n\n`;
@@ -196,7 +285,7 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
     prompt += `\n**IMPORTANT: This review is for a ${focus.label}. Focus your critique on: ${focus.description}. Use the scoring dimensions: ${focus.scoringDimensions.join(", ")}. Structure your output with these sections: ${focus.outputSections.join(", ")}.`;
   }
 
-  prompt += `\nNow write your full review. Remember: be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. The audio analysis above is from an engine that actually listened to the track — use those observations as the foundation for your critique.`;
+  prompt += `\n\nNow write your full review. Be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. Remember: keep it between 1500-3000 words, write each section exactly once, and use the exact table format specified for scores.`;
 
   return prompt;
 }
@@ -234,214 +323,185 @@ export async function generateAlbumReview(input: AlbumReviewInput): Promise<{ re
   for (const tr of input.trackReviews) {
     prompt += `### Track ${tr.trackOrder}: "${tr.trackTitle}"\n\n`;
     prompt += `**Scores:** ${JSON.stringify(tr.scores)}\n\n`;
-    prompt += `**Audio Analysis Summary:**\n`;
-    prompt += `- Genre: ${tr.audioAnalysis.genre.primary}\n`;
-    prompt += `- Tempo: ${tr.audioAnalysis.tempo.bpm} BPM (${tr.audioAnalysis.tempo.feel})\n`;
-    prompt += `- Key: ${tr.audioAnalysis.key.estimated}\n`;
-    prompt += `- Energy: ${tr.audioAnalysis.energy.overall}\n`;
-    prompt += `- Mood: ${tr.audioAnalysis.mood.join(", ")}\n`;
-    prompt += `- Strengths: ${tr.audioAnalysis.strengths.join("; ")}\n`;
-    prompt += `- Weaknesses: ${tr.audioAnalysis.weaknesses.join("; ")}\n\n`;
-    prompt += `**Review Excerpt:**\n${tr.reviewMarkdown.substring(0, 1500)}\n\n---\n\n`;
+    prompt += summarizeAudioAnalysis(tr.audioAnalysis);
+    prompt += `\n\n`;
+    if (tr.lyrics) {
+      prompt += `**Lyrics excerpt:** ${tr.lyrics.substring(0, 500)}\n\n`;
+    }
+    // Include a brief excerpt of the review, not the full thing
+    prompt += `**Review excerpt:** ${tr.reviewMarkdown.substring(0, 800)}\n\n---\n\n`;
   }
 
-  prompt += `\nNow write your full album-level A&R memo and producer notes. Evaluate the album as a cohesive body of work, not just individual tracks. Consider sequencing, arc, thematic coherence, and commercial strategy.`;
+  prompt += `\nNow write your full album review. Evaluate the project as a cohesive body of work. Keep it between 2000-4000 words, write each section exactly once, and use the exact table format for scores.`;
 
   const reviewMarkdown = await callClaude(ALBUM_CRITIC_SYSTEM, [
     { role: "user", content: prompt },
-  ]);
+  ], 6000);
 
-  const scores = extractAlbumScores(reviewMarkdown);
+  const scores = extractScores(reviewMarkdown);
   return { reviewMarkdown, scores };
 }
 
 // ── Version Comparison ──
 
-export interface ComparisonInput {
+export interface VersionComparisonInput {
   trackTitle: string;
   v1Analysis: GeminiAudioAnalysis;
   v2Analysis: GeminiAudioAnalysis;
   v1Review?: string;
   v2Review?: string;
   geminiComparison?: string;
-  v1Scores?: Record<string, number>;
-  v2Scores?: Record<string, number>;
+  reviewFocus?: ReviewFocusRole;
 }
 
-export async function generateVersionComparison(input: ComparisonInput): Promise<{ reviewMarkdown: string; scores: Record<string, number> }> {
-  let prompt = `# Version Comparison Request\n\n`;
-  prompt += `**Track:** "${input.trackTitle}"\n\n`;
-
-  prompt += `## Version 1 Audio Analysis\n\`\`\`json\n${JSON.stringify(input.v1Analysis, null, 2)}\n\`\`\`\n\n`;
-  prompt += `## Version 2 Audio Analysis\n\`\`\`json\n${JSON.stringify(input.v2Analysis, null, 2)}\n\`\`\`\n\n`;
+export async function generateVersionComparison(input: VersionComparisonInput): Promise<string> {
+  let prompt = `# Version Comparison: "${input.trackTitle}"\n\n`;
+  prompt += `## Version 1 Audio Analysis\n${summarizeAudioAnalysis(input.v1Analysis)}\n\n`;
+  prompt += `## Version 2 Audio Analysis\n${summarizeAudioAnalysis(input.v2Analysis)}\n\n`;
 
   if (input.geminiComparison) {
-    prompt += `## Gemini Audio Comparison (side-by-side listening)\n\n${input.geminiComparison}\n\n`;
+    prompt += `## Audio Comparison (from the engine that listened to both versions)\n\n${input.geminiComparison}\n\n`;
   }
 
-  if (input.v1Scores) prompt += `**V1 Scores:** ${JSON.stringify(input.v1Scores)}\n`;
-  if (input.v2Scores) prompt += `**V2 Scores:** ${JSON.stringify(input.v2Scores)}\n`;
+  if (input.v1Review) {
+    prompt += `## Version 1 Review Excerpt\n${input.v1Review.substring(0, 1500)}\n\n`;
+  }
+  if (input.v2Review) {
+    prompt += `## Version 2 Review Excerpt\n${input.v2Review.substring(0, 1500)}\n\n`;
+  }
 
-  prompt += `\nCompare these two versions. What improved? What regressed? What should the artist focus on for the next iteration?`;
+  prompt += `\nCompare these two versions. What improved? What regressed? Keep it between 1000-2000 words.`;
 
-  const reviewMarkdown = await callClaude(COMPARISON_CRITIC_SYSTEM, [
+  return callClaude(COMPARISON_CRITIC_SYSTEM, [
     { role: "user", content: prompt },
-  ]);
-
-  const scores = extractScores(reviewMarkdown);
-  return { reviewMarkdown, scores };
-}
-
-// ── Helper: Extract Quick Take ──
-
-function extractQuickTake(markdown: string): string {
-  const quickTakeMatch = markdown.match(/\*\*Quick Take\*\*[\s\S]*?(?=\n##|\n\*\*Scores)/i);
-  if (quickTakeMatch) {
-    return quickTakeMatch[0].replace(/\*\*Quick Take\*\*\s*/i, "").trim();
-  }
-  // Fallback: first 500 chars
-  return markdown.substring(0, 500);
-}
-
-// ── Helper: Extract Scores ──
-
-function extractScores(markdown: string): Record<string, number> {
-  const scores: Record<string, number> = {};
-  const scorePatterns = [
-    { key: "songwriting", pattern: /songwriting\s*[\/|:]\s*composition[^|]*?\|\s*(\d+)/i },
-    { key: "melody", pattern: /melody\s*[\/|:]\s*hook[^|]*?\|\s*(\d+)/i },
-    { key: "structure", pattern: /structure\s*[\/|:]\s*arrangement[^|]*?\|\s*(\d+)/i },
-    { key: "lyrics", pattern: /lyrics[^|]*?\|\s*(\d+)/i },
-    { key: "performance", pattern: /performance\s*[\/|:]\s*delivery[^|]*?\|\s*(\d+)/i },
-    { key: "production", pattern: /production\s*[\/|:]\s*mix[^|]*?\|\s*(\d+)/i },
-    { key: "originality", pattern: /originality[^|]*?\|\s*(\d+)/i },
-    { key: "commercial", pattern: /commercial\s*potential[^|]*?\|\s*(\d+)/i },
-    { key: "overall", pattern: /overall[^|]*?\|\s*(\d+)/i },
-  ];
-
-  for (const { key, pattern } of scorePatterns) {
-    const match = markdown.match(pattern);
-    if (match) {
-      scores[key] = parseInt(match[1], 10);
-    }
-  }
-
-  // Fallback: try to find any number patterns in a scores section
-  if (Object.keys(scores).length === 0) {
-    const scoresSection = markdown.match(/scores[\s\S]*?(?=\n##)/i);
-    if (scoresSection) {
-      const numberMatches = Array.from(scoresSection[0].matchAll(/([\w][\w\s\/]*?)\s*\|\s*(\d+)\s*(?:\/\s*10)?/gi));
-      for (const m of numberMatches) {       const key = m[1].trim().toLowerCase().replace(/\s+/g, "_").replace(/[\/\\]/g, "_");
-        scores[key] = parseInt(m[2], 10);
-      }
-    }
-  }
-
-  return scores;
+  ], 3000);
 }
 
 // ── Follow-up Conversation ──
 
-const FOLLOWUP_SYSTEM = `You are the same music critic who wrote the review the user is asking about. You have access to the full review, the audio analysis data, and the original context.
+export async function generateFollowUp(
+  reviewContext: string,
+  conversationHistory: Array<{ role: "user" | "assistant"; content: string }>,
+  userQuestion: string
+): Promise<string> {
+  const systemPrompt = `You are the same music critic who wrote the review below. The artist is asking follow-up questions. Answer with the same specificity and honesty as the original review. Reference the audio analysis data when relevant. Be concise but thorough. Keep responses under 500 words.
 
-Rules:
-- Answer questions about your review with the same specificity and honesty.
-- If asked to elaborate on a section, reference timestamps and audio analysis data.
-- If asked to compare to reference artists, draw on your deep knowledge of music history.
-- If asked "what did you mean by X", explain your reasoning clearly.
-- If asked for alternative approaches, be specific and actionable.
-- Stay in character as a knowledgeable, honest music critic.
-- Keep responses focused and concise unless depth is requested.
-- You can revise your opinion if the user provides new context.`;
-
-export interface FollowUpInput {
-  reviewMarkdown: string;
-  audioAnalysisJson: any;
-  trackTitle: string;
-  conversationHistory: ClaudeMessage[];
-  userMessage: string;
-}
-
-export async function generateFollowUp(input: FollowUpInput): Promise<string> {
-  const contextMessage = `Here is the context for this conversation:
-
-## Original Review
-${input.reviewMarkdown}
-
-## Audio Analysis Data
-\`\`\`json
-${JSON.stringify(input.audioAnalysisJson, null, 2)}
-\`\`\`
-
-## Track: "${input.trackTitle}"
-
-The user wants to discuss this review with you. Answer their questions.`;
+ORIGINAL REVIEW AND CONTEXT:
+${reviewContext.substring(0, 6000)}`;
 
   const messages: ClaudeMessage[] = [
-    { role: "user", content: contextMessage },
-    { role: "assistant", content: "I\'m ready to discuss my review. What would you like to know?" },
-    ...input.conversationHistory,
-    { role: "user", content: input.userMessage },
+    ...conversationHistory.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+    { role: "user", content: userQuestion },
   ];
 
-  return callClaude(FOLLOWUP_SYSTEM, messages, 4096);
+  return callClaude(systemPrompt, messages, 2048);
 }
 
 // ── Reference Track Comparison ──
 
-const REFERENCE_COMPARISON_SYSTEM = `You are a world-class music producer and A&R executive. You are comparing an artist's track against a reference track they've chosen. Your job is to provide an honest, actionable comparison.
+export async function generateReferenceComparison(
+  trackTitle: string,
+  trackAnalysis: GeminiAudioAnalysis,
+  referenceAnalysis: GeminiAudioAnalysis,
+  geminiComparison: string,
+  reviewFocus?: ReviewFocusRole
+): Promise<string> {
+  const systemPrompt = `You are a music producer and mixing engineer comparing an artist's track against a reference track. Help the artist understand how their track compares and what specific changes would close the gap.
 
-Focus on:
-- How the artist's track measures up to the reference in terms of production quality, arrangement, energy, and overall polish
-- Specific techniques or approaches from the reference that the artist could learn from
-- What the artist is doing well that the reference doesn't (if anything)
-- Concrete, actionable steps to close the gap between the two tracks
-- Be honest but constructive — the goal is growth, not discouragement
+Keep your comparison between 1000-2000 words. Be specific, reference timestamps, and provide actionable advice.
 
-Output format (Markdown):
-1. **At a Glance** (one-paragraph comparison summary)
-2. **Production Gap Analysis** (mix quality, frequency balance, dynamics, spatial characteristics)
-3. **Arrangement Comparison** (structure, layering, transitions, density)
-4. **Performance & Delivery** (vocal/instrumental quality comparison)
-5. **What You're Doing Better** (areas where the artist's track excels)
-6. **Key Takeaways from the Reference** (specific techniques to study)
-7. **Action Items** (ranked list of what to focus on to close the gap)
-8. **Scores** (table comparing both tracks on key dimensions)`;
+Output format:
+1. **At a Glance** (key differences in 3-5 bullets)
+2. **Production Comparison** (mix, dynamics, frequency balance)
+3. **Arrangement Comparison** (structure, density, transitions)
+4. **What the Reference Does Better** (specific observations)
+5. **What Your Track Does Better** (acknowledge strengths)
+6. **Closing the Gap** (prioritized list of changes)`;
 
-export interface ReferenceComparisonInput {
-  trackTitle: string;
-  referenceFilename: string;
-  trackAudioAnalysis: any;
-  referenceAudioAnalysis: string;
-  geminiComparison: string;
-}
-
-export async function generateReferenceComparison(input: ReferenceComparisonInput): Promise<string> {
   let prompt = `# Reference Track Comparison\n\n`;
-  prompt += `**Your Track:** "${input.trackTitle}"\n`;
-  prompt += `**Reference Track:** "${input.referenceFilename}"\n\n`;
-  prompt += `## Your Track's Audio Analysis\n\`\`\`json\n${JSON.stringify(input.trackAudioAnalysis, null, 2)}\n\`\`\`\n\n`;
-  prompt += `## Reference Track Audio Analysis\n${input.referenceAudioAnalysis}\n\n`;
-  prompt += `## Side-by-Side Listening Comparison\n${input.geminiComparison}\n\n`;
-  prompt += `Now write your comparison. Be specific, reference actual moments, and provide actionable feedback.`;
+  prompt += `**Your Track:** "${trackTitle}"\n\n`;
+  prompt += `## Your Track Analysis\n${summarizeAudioAnalysis(trackAnalysis)}\n\n`;
+  prompt += `## Reference Track Analysis\n${summarizeAudioAnalysis(referenceAnalysis)}\n\n`;
+  prompt += `## Audio Comparison (from the engine that listened to both)\n\n${geminiComparison}\n\n`;
+  prompt += `\nNow write your detailed comparison.`;
 
-  return callClaude(REFERENCE_COMPARISON_SYSTEM, [{ role: "user", content: prompt }]);
+  return callClaude(systemPrompt, [{ role: "user", content: prompt }], 3000);
 }
 
-function extractAlbumScores(markdown: string): Record<string, number> {
-  const scores: Record<string, number> = {};
-  const patterns = [
-    { key: "overall", pattern: /overall[^|]*?\|\s*(\d+)/i },
-    { key: "cohesion", pattern: /cohesion[^|]*?\|\s*(\d+)/i },
-    { key: "sequencing", pattern: /sequencing[^|]*?\|\s*(\d+)/i },
-    { key: "production_consistency", pattern: /production[^|]*?\|\s*(\d+)/i },
-    { key: "commercial_potential", pattern: /commercial[^|]*?\|\s*(\d+)/i },
-    { key: "artistic_merit", pattern: /artistic[^|]*?\|\s*(\d+)/i },
-  ];
+// ── Utility: Extract Quick Take ──
 
-  for (const { key, pattern } of patterns) {
-    const match = markdown.match(pattern);
-    if (match) scores[key] = parseInt(match[1], 10);
+function extractQuickTake(markdown: string): string {
+  // Look for the Quick Take section with 2 or 3 # headings
+  const quickTakeMatch = markdown.match(/#{2,3}\s*\*?\*?Quick Take\*?\*?\s*\n([\s\S]*?)(?=\n#{2,3}\s|$)/i);
+  if (quickTakeMatch) {
+    return quickTakeMatch[1].trim().substring(0, 3000);
+  }
+  // Fallback: extract first paragraph (up to first heading)
+  const firstHeading = markdown.indexOf('###');
+  if (firstHeading > 50) {
+    return markdown.substring(0, firstHeading).trim().substring(0, 2000);
+  }
+  // Last fallback: first 1000 chars
+  return markdown.substring(0, 1000);
+}
+
+// ── Utility: Extract Scores ──
+
+export function extractScores(markdown: string): Record<string, number> {
+  const scores: Record<string, number> = {};
+  
+  // Strategy 1: Parse markdown table rows like "| Songwriting | 7 | reason |"
+  const tableRowRegex = /\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*(?:\/\s*10\s*)?\|\s*([^|]*)\|/g;
+  const tableMatches = Array.from(markdown.matchAll(tableRowRegex));
+  
+  for (const match of tableMatches) {
+    const label = match[1].trim().toLowerCase();
+    const value = parseFloat(match[2]);
+    
+    if (value < 1 || value > 10) continue;
+    if (label.includes("component") || label.includes("---") || label.includes("score")) continue;
+    
+    // Map various label formats to canonical keys
+    if (label.includes("songwriting") || label.includes("composition")) scores.songwriting = value;
+    else if (label.includes("melody") || label.includes("hook")) scores.melody = value;
+    else if (label.includes("arrangement") || label.includes("structure")) scores.structure = value;
+    else if (label.includes("lyric")) scores.lyrics = value;
+    else if (label.includes("performance") || label.includes("delivery") || label.includes("vocal")) scores.performance = value;
+    else if (label.includes("production") || label.includes("mix")) scores.production = value;
+    else if (label.includes("originality") || label.includes("creativity")) scores.originality = value;
+    else if (label.includes("commercial")) scores.commercial = value;
+    else if (label.includes("overall")) scores.overall = value;
+    else if (label.includes("emotional") || label.includes("impact")) scores.emotionalImpact = value;
+    else if (label.includes("cohesion")) scores.cohesion = value;
+    else if (label.includes("sequencing")) scores.sequencing = value;
+    // Generic fallback: use cleaned label as key
+    else {
+      const key = label.replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+      if (key.length > 0 && key.length < 30) scores[key] = value;
+    }
+  }
+  
+  // Strategy 2: Fallback regex patterns for non-table formats
+  if (Object.keys(scores).length === 0) {
+    const patterns: Array<[RegExp, string]> = [
+      [/songwriting[^:]*:\s*(\d+(?:\.\d+)?)/i, "songwriting"],
+      [/melody[^:]*:\s*(\d+(?:\.\d+)?)/i, "melody"],
+      [/arrangement[^:]*:\s*(\d+(?:\.\d+)?)/i, "structure"],
+      [/lyrics?[^:]*:\s*(\d+(?:\.\d+)?)/i, "lyrics"],
+      [/performance[^:]*:\s*(\d+(?:\.\d+)?)/i, "performance"],
+      [/production[^:]*:\s*(\d+(?:\.\d+)?)/i, "production"],
+      [/originality[^:]*:\s*(\d+(?:\.\d+)?)/i, "originality"],
+      [/commercial[^:]*:\s*(\d+(?:\.\d+)?)/i, "commercial"],
+      [/overall[^:]*:\s*(\d+(?:\.\d+)?)/i, "overall"],
+    ];
+    
+    for (const [regex, key] of patterns) {
+      const m = markdown.match(regex);
+      if (m) {
+        const val = parseFloat(m[1]);
+        if (val >= 1 && val <= 10) scores[key] = val;
+      }
+    }
   }
 
   return scores;

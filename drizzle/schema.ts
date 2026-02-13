@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, bigint, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, mediumtext, timestamp, varchar, json, bigint, boolean } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -94,9 +94,9 @@ export const reviews = mysqlTable("reviews", {
   reviewType: mysqlEnum("reviewType", ["track", "album", "comparison"]).notNull(),
   modelUsed: varchar("modelUsed", { length: 100 }).notNull(),
   promptVersion: varchar("promptVersion", { length: 20 }).default("1.0").notNull(),
-  reviewMarkdown: text("reviewMarkdown").notNull(),
+  reviewMarkdown: mediumtext("reviewMarkdown").notNull(),
   scoresJson: json("scoresJson"),
-  quickTake: text("quickTake"),
+  quickTake: mediumtext("quickTake"),
   comparedTrackId: int("comparedTrackId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -113,7 +113,7 @@ export const jobs = mysqlTable("jobs", {
   status: mysqlEnum("status", ["queued", "running", "done", "error"]).default("queued").notNull(),
   progress: int("progress").default(0).notNull(),
   progressMessage: varchar("progressMessage", { length: 500 }),
-  errorMessage: text("errorMessage"),
+  errorMessage: mediumtext("errorMessage"),
   resultId: int("resultId"),
   notificationSent: boolean("notificationSent").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -131,7 +131,7 @@ export const conversationMessages = mysqlTable("conversationMessages", {
   reviewId: int("reviewId").notNull(),
   userId: int("userId").notNull(),
   role: mysqlEnum("role", ["user", "assistant"]).notNull(),
-  content: text("content").notNull(),
+  content: mediumtext("content").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -150,7 +150,7 @@ export const referenceTracks = mysqlTable("referenceTracks", {
   storageKey: varchar("storageKey", { length: 500 }).notNull(),
   mimeType: varchar("mimeType", { length: 100 }).notNull(),
   fileSize: bigint("fileSize", { mode: "number" }).notNull(),
-  comparisonResult: text("comparisonResult"),
+  comparisonResult: mediumtext("comparisonResult"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -176,7 +176,7 @@ export const chatMessages = mysqlTable("chatMessages", {
   id: int("id").autoincrement().primaryKey(),
   sessionId: int("sessionId").notNull(),
   role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
-  content: text("content").notNull(),
+  content: mediumtext("content").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

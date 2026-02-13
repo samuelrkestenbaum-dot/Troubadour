@@ -1,0 +1,39 @@
+{
+  "query": "SELECT t.id, t.status, t.originalFilename FROM tracks t WHERE t.projectId = 1; SELECT j.id, j.type, j.status, j.errorMessage FROM jobs j WHERE j.trackId = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT t.id, t.status, t.originalFilename FROM tracks t WHERE t.projectId = 1; SELECT j.id, j.type, j.status, j.errorMessage FROM jobs j WHERE j.trackId = 1;",
+  "rows": [
+    {
+      "id": "1",
+      "status": "analyzing",
+      "originalFilename": "AUDIO-2026-01-12-16-45-06.mp3"
+    }
+  ],
+  "messages": [
+    "id\ttype\tstatus\terrorMessage",
+    "1\tanalyze\terror\tGemini API error: 400 Bad Request — {",
+    "  \"error\": {",
+    "    \"code\": 400,",
+    "    \"message\": \"API key not valid. Please pass a valid API key.\",",
+    "    \"status\": \"INVALID_ARGUMENT\",",
+    "    \"details\": [",
+    "      {",
+    "        \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",",
+    "        \"reason\": \"API_KEY_INVALID\",",
+    "        \"domain\": \"googleapis.com\",",
+    "        \"metadata\": {",
+    "          \"service\": \"generativelanguage.googleapis.com\"",
+    "        }",
+    "      },",
+    "      {",
+    "        \"@type\": \"type.googleapis.com/google.rpc.LocalizedMessage\",",
+    "        \"locale\": \"en-US\",",
+    "        \"message\": \"API key not valid. Please pass a valid API key.\"",
+    "      }",
+    "    ]",
+    "  }",
+    "}"
+  ],
+  "stdout": "id\tstatus\toriginalFilename\n1\tanalyzing\tAUDIO-2026-01-12-16-45-06.mp3\nid\ttype\tstatus\terrorMessage\n1\tanalyze\terror\tGemini API error: 400 Bad Request — {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"API key not valid. Please pass a valid API key.\",\n    \"status\": \"INVALID_ARGUMENT\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",\n        \"reason\": \"API_KEY_INVALID\",\n        \"domain\": \"googleapis.com\",\n        \"metadata\": {\n          \"service\": \"generativelanguage.googleapis.com\"\n        }\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.LocalizedMessage\",\n        \"locale\": \"en-US\",\n        \"message\": \"API key not valid. Please pass a valid API key.\"\n      }\n    ]\n  }\n}\n\n",
+  "stderr": "",
+  "execution_time_ms": 97
+}

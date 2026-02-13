@@ -1,0 +1,4 @@
+Track still shows "Analyzing..." status - the failed job left it in analyzing state.
+Need to check if the job was marked as failed and if we can re-trigger.
+The track status may need to be reset to "uploaded" so we can re-analyze.
+Let me check the DB state and reset if needed.
