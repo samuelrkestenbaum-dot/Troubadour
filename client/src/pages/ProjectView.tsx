@@ -256,15 +256,6 @@ export default function ProjectView({ id }: { id: number }) {
             <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>{project.title}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
               <Badge variant="outline" className="capitalize">{project.type}</Badge>
-              {(project as any).reviewFocus && (project as any).reviewFocus !== "full" && (
-                <Badge variant="secondary" className="text-xs">
-                  {(project as any).reviewFocus === "songwriter" ? "Songwriter Focus" :
-                   (project as any).reviewFocus === "producer" ? "Producer Focus" :
-                   (project as any).reviewFocus === "arranger" ? "Arranger Focus" :
-                   (project as any).reviewFocus === "artist" ? "Artist Focus" :
-                   (project as any).reviewFocus === "anr" ? "A&R Focus" : "Full Review"}
-                </Badge>
-              )}
               <span>{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</span>
             </div>
           </div>
@@ -297,10 +288,6 @@ export default function ProjectView({ id }: { id: number }) {
           </AlertDialog>
         </div>
       </div>
-
-      {project.description && (
-        <p className="text-sm text-muted-foreground max-w-2xl">{project.description}</p>
-      )}
 
       {/* Active Jobs */}
       {activeJobs.length > 0 && (

@@ -4,17 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
-import { Plus, FolderOpen, Music, Clock, CheckCircle2, AlertCircle, Loader2, PenLine, Sliders, Layers, Mic, Briefcase, Sparkles, ArrowRight } from "lucide-react";
+import { Plus, FolderOpen, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef } from "react";
 
-const focusLabels: Record<string, { label: string; icon: React.ElementType }> = {
-  songwriter: { label: "Songwriter", icon: PenLine },
-  producer: { label: "Producer", icon: Sliders },
-  arranger: { label: "Arranger", icon: Layers },
-  artist: { label: "Artist", icon: Mic },
-  anr: { label: "A&R", icon: Briefcase },
-};
 import { formatDistanceToNow } from "date-fns";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ElementType; glow?: string }> = {
@@ -160,22 +153,11 @@ export default function Dashboard() {
                     <span className="text-border">|</span>
                     <span className="capitalize">{project.type}</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2.5">
-                    {project.genre && (
+                  {project.genre && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
                       <Badge variant="outline" className="text-xs font-normal border-primary/20 text-primary/80">{project.genre}</Badge>
-                    )}
-                    {(project as any).reviewFocus && (project as any).reviewFocus !== "full" && (() => {
-                      const fl = focusLabels[(project as any).reviewFocus];
-                      if (!fl) return null;
-                      const FocusIcon = fl.icon;
-                      return (
-                        <Badge variant="secondary" className="text-xs font-normal">
-                          <FocusIcon className="h-3 w-3 mr-1" />
-                          {fl.label}
-                        </Badge>
-                      );
-                    })()}
-                  </div>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground mt-3">
                     {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
                   </p>

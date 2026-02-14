@@ -280,44 +280,41 @@ describe("auth.me", () => {
 });
 
 describe("project.create", () => {
-  it("creates a project with valid input", async () => {
+  it("creates a project with just a title (minimal input)", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.project.create({
+      title: "My New Single",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("creates a project with explicit type", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.project.create({
       type: "album",
       title: "Midnight Sessions EP",
-      genre: "Hip-Hop",
-      description: "My debut EP",
-      intentNotes: "Looking for production feedback",
-      referenceArtists: "Frank Ocean, Tyler the Creator",
     });
 
     expect(result).toBeDefined();
     expect(result.id).toBeGreaterThan(0);
   });
 
-  it("creates a project with reviewFocus", async () => {
+  it("accepts optional fields when provided", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.project.create({
+      title: "Full Details Track",
       type: "single",
-      title: "Producer Test Track",
+      description: "My debut single",
       reviewFocus: "producer",
-    });
-
-    expect(result).toBeDefined();
-    expect(result.id).toBeGreaterThan(0);
-  });
-
-  it("defaults reviewFocus to full", async () => {
-    const ctx = createAuthContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const result = await caller.project.create({
-      type: "single",
-      title: "Default Focus Track",
+      referenceArtists: "Frank Ocean",
     });
 
     expect(result).toBeDefined();

@@ -446,3 +446,16 @@
 - [x] P2: Waveform seek bar keyboard accessibility — added role="slider", arrow key handlers, ARIA attributes
 - [x] P2: Reference track native audio — replaced <audio> with AudioPlayer component
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 27 - Simplify Upload Flow (Minimal User Input)
+- [x] Audit current NewProject form fields and identify what to remove
+- [x] Make project type optional with default "single" in backend router
+- [x] Simplify NewProject page to just: project name + file upload (DropZone)
+- [x] Auto-detect single vs album based on number of files uploaded (1=single, 2+=album)
+- [x] Remove review focus, description, intent notes, reference artists from creation form
+- [x] Remove reviewFocus badge from Dashboard project cards
+- [x] Remove reviewFocus badge and description from ProjectView header
+- [x] AI chatbot already has full context post-review (no changes needed)
+- [x] Landing page role carousel preserved for marketing (no changes needed)
+- [x] Update tests for simplified flow (3 new tests: minimal input, explicit type, optional fields)
+- [x] All 186 tests passing, zero TypeScript errors

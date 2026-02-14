@@ -103,7 +103,7 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input(z.object({
-        type: z.enum(["single", "album"]),
+        type: z.enum(["single", "album"]).optional().default("single"),
         title: z.string().min(1).max(255),
         description: z.string().optional(),
         intentNotes: z.string().optional(),
