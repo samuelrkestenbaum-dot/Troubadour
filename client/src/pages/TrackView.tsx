@@ -457,7 +457,18 @@ export default function TrackView({ id }: { id: number }) {
       utils.track.get.invalidate({ id });
       toast.success("Transcription complete");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      const msg = err.message?.toLowerCase() || "";
+      if (msg.includes("size") || msg.includes("16mb") || msg.includes("too large")) {
+        toast.error("Audio file is too large for transcription (max 16MB). Try a shorter clip or compressed format.");
+      } else if (msg.includes("format") || msg.includes("unsupported")) {
+        toast.error("Unsupported audio format. Transcription works best with MP3, WAV, or M4A files.");
+      } else if (msg.includes("timeout") || msg.includes("timed out")) {
+        toast.error("Transcription timed out. The audio may be too long — try a shorter track.");
+      } else {
+        toast.error(`Transcription failed: ${err.message}`);
+      }
+    },
   });
 
   const retryJob = trpc.job.retry.useMutation({
@@ -713,7 +724,9 @@ export default function TrackView({ id }: { id: number }) {
                         <div className="p-3 rounded-lg bg-secondary">
                           <p className="text-xs text-muted-foreground">Time Sig</p>
                           <p className="text-lg font-semibold">
-                            {typeof audioFeaturesData.timeSignature === 'object' ? JSON.stringify(audioFeaturesData.timeSignature) : audioFeaturesData.timeSignature}
+                            {typeof audioFeaturesData.timeSignature === 'object'
+                              ? `${audioFeaturesData.timeSignature.beats ?? audioFeaturesData.timeSignature.numerator ?? 4}/${audioFeaturesData.timeSignature.value ?? audioFeaturesData.timeSignature.denominator ?? 4}`
+                              : audioFeaturesData.timeSignature}
                           </p>
                         </div>
                       )}
@@ -721,7 +734,9 @@ export default function TrackView({ id }: { id: number }) {
                         <div className="p-3 rounded-lg bg-secondary">
                           <p className="text-xs text-muted-foreground">Energy</p>
                           <p className="text-lg font-semibold">
-                            {typeof audioFeaturesData.overallEnergy === 'object' ? JSON.stringify(audioFeaturesData.overallEnergy) : audioFeaturesData.overallEnergy}/10
+                            {typeof audioFeaturesData.overallEnergy === 'object'
+                              ? (audioFeaturesData.overallEnergy.level ?? audioFeaturesData.overallEnergy.score ?? audioFeaturesData.overallEnergy.value ?? "—")
+                              : audioFeaturesData.overallEnergy}/10
                           </p>
                         </div>
                       )}
@@ -741,7 +756,7 @@ export default function TrackView({ id }: { id: number }) {
                             : []
                           ).map((inst: any, i: number) => (
                             <Badge key={i} variant="secondary" className="text-xs">
-                              {typeof inst === 'object' ? (inst.name || inst.instrument || JSON.stringify(inst)) : inst}
+                              {typeof inst === 'object' ? (inst.name || inst.instrument || inst.label || Object.values(inst).filter(v => typeof v === 'string')[0] || 'Unknown') : String(inst)}
                             </Badge>
                           ))}
                         </div>

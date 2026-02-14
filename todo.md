@@ -413,3 +413,17 @@
 - [x] P2 FIX: Extracted shared formatLabel utility to lib/utils.ts
 - [x] P2 FIX: Added link to main site in SharedReview footer, removed model name
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 25 - Execute GPT-5 Audit Findings with Claude 4.5
+- [x] P1: Stripe webhook lifecycle handlers — already implemented (customer.subscription.updated/deleted, invoice.payment_failed/paid)
+- [x] P1: Fix pricing page downgrade button logic for free users
+- [x] P1: Fix pricing page button text for logged-out users on paid plans
+- [x] P1: Add proper ARIA tab semantics to landing page role selector
+- [x] P1: Create centralized useFeatureGate hook (client/src/hooks/useFeatureGate.ts)
+- [x] P1: Better lyrics transcription error messages
+- [x] P1: Format audio features display (timeSignature as "4/4", instrument badges, no JSON.stringify)
+- [x] P2: Memoize Waveform component with React.memo
+- [x] P2: Add ARIA attributes and keyboard support to both DropZone variants (min-h-[44px], focus ring)
+- [x] P2: Improved Analytics empty state with CTA
+- [x] P2: Track failed files in multi-upload batch (per-file error handling + summary toast)
+- [x] All 186 tests passing, zero TypeScript errors

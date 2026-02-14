@@ -172,13 +172,17 @@ export default function Home() {
           </p>
 
           {/* Role Selector Tabs */}
-          <div className="flex flex-wrap justify-center gap-2 mb-10">
+          <div className="flex flex-wrap justify-center gap-2 mb-10" role="tablist" aria-label="Select your role">
             {roles.map((role, i) => {
               const Icon = role.icon;
               const isActive = i === activeRole;
               return (
                 <button
                   key={role.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`role-panel-${role.id}`}
+                  id={`role-tab-${role.id}`}
                   onClick={() => setActiveRole(i)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                     isActive
@@ -194,7 +198,12 @@ export default function Home() {
           </div>
 
           {/* Active Role Content */}
-          <div className={`rounded-2xl border-2 p-8 md:p-10 transition-all ${currentRole.bg}`}>
+          <div
+            role="tabpanel"
+            id={`role-panel-${currentRole.id}`}
+            aria-labelledby={`role-tab-${currentRole.id}`}
+            className={`rounded-2xl border-2 p-8 md:p-10 transition-all ${currentRole.bg}`}
+          >
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <div className="flex items-center gap-2 mb-4">

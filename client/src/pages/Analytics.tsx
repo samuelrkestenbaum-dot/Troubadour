@@ -156,8 +156,16 @@ export default function Analytics() {
   if (!data) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <BarChart3 className="h-8 w-8 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">No analytics data available yet.</p>
+        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-6">
+          <BarChart3 className="h-8 w-8 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>No analytics data yet</h2>
+        <p className="text-muted-foreground mb-6 max-w-sm text-center">
+          Analytics will appear here once you've completed your first review. Upload a track and run an AI critique to get started.
+        </p>
+        <Button onClick={() => setLocation("/dashboard")} variant="outline">
+          Go to Dashboard
+        </Button>
       </div>
     );
   }

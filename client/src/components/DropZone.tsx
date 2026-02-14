@@ -86,13 +86,19 @@ export function DropZone({
     return (
       <>
         <div
+          role="button"
+          tabIndex={0}
+          aria-label={uploading ? "Uploading audio files" : "Drop audio files or click to upload"}
+          aria-disabled={disabled || uploading}
           onClick={handleClick}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed cursor-pointer transition-all",
+            "flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed cursor-pointer transition-all min-h-[44px]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             isDragOver
               ? "border-primary bg-primary/10 scale-[1.02]"
               : "border-border/50 hover:border-primary/50 hover:bg-muted/30",
@@ -124,13 +130,19 @@ export function DropZone({
   return (
     <>
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={uploading ? "Uploading audio files" : "Drop audio files or click to upload"}
+        aria-disabled={disabled || uploading}
         onClick={handleClick}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
           "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           compact ? "py-6" : "py-12",
           isDragOver
             ? "border-primary bg-primary/10 scale-[1.01] shadow-lg shadow-primary/10"

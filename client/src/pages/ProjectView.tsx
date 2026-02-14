@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useChat } from "@/contexts/ChatContext";
@@ -125,36 +129,55 @@ export default function ProjectView({ id }: { id: number }) {
   const handleFileUpload = useCallback(async (files: FileList | File[] | null, parentTrackId?: number) => {
     if (!files || (files instanceof FileList && !files.length) || (Array.isArray(files) && !files.length)) return;
     setUploading(true);
+    const fileArr = Array.from(files);
+    let succeeded = 0;
+    let failed = 0;
     try {
-      for (const file of Array.from(files)) {
+      for (const file of fileArr) {
         if (!file.type.startsWith("audio/")) {
           toast.error(`${file.name} is not an audio file`);
+          failed++;
           continue;
         }
         if (file.size > 50 * 1024 * 1024) {
           toast.error(`${file.name} exceeds 50MB limit`);
+          failed++;
           continue;
         }
-        const reader = new FileReader();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        await uploadTrack.mutateAsync({
-          projectId: id,
-          filename: file.name,
-          mimeType: file.type,
-          fileBase64: base64,
-          fileSize: file.size,
-          ...(parentTrackId ? { parentTrackId, versionNumber: 2 } : {}),
-        });
+        try {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => {
+              const result = reader.result as string;
+              resolve(result.split(",")[1]);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          await uploadTrack.mutateAsync({
+            projectId: id,
+            filename: file.name,
+            mimeType: file.type,
+            fileBase64: base64,
+            fileSize: file.size,
+            ...(parentTrackId ? { parentTrackId, versionNumber: 2 } : {}),
+          });
+          succeeded++;
+        } catch (e: any) {
+          toast.error(`Failed to upload ${file.name}: ${e?.message || "Unknown error"}`);
+          failed++;
+        }
+      }
+      // Show summary for multi-file uploads
+      if (fileArr.length > 1) {
+        if (failed === 0) {
+          toast.success(`All ${succeeded} tracks uploaded successfully`);
+        } else if (succeeded > 0) {
+          toast.warning(`${succeeded} of ${fileArr.length} tracks uploaded. ${failed} failed.`);
+        }
       }
     } catch (e) {
-      // handled by mutation
+      // handled above per-file
     } finally {
       setUploading(false);
       setUploadingVersion(null);
@@ -234,18 +257,31 @@ export default function ProjectView({ id }: { id: number }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => {
-              if (confirm("Delete this project and all its tracks?")) {
-                deleteProject.mutate({ id });
-              }
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-            Delete
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <strong>{project.title}</strong> and all its tracks, reviews, and analysis data. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteProject.mutate({ id })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete Project
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 

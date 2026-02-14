@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -40,7 +40,7 @@ function generateWaveformData(audioBuffer: AudioBuffer, bars: number): number[] 
   return waveform.map(v => v / max);
 }
 
-function Waveform({
+const Waveform = React.memo(function Waveform({
   data,
   progress,
   duration,
@@ -134,7 +134,7 @@ function Waveform({
       )}
     </div>
   );
-}
+});
 
 export function AudioPlayer({ src, title, subtitle, compact = false, className = "", seekTo }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);

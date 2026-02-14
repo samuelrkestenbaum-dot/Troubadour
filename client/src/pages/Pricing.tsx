@@ -199,9 +199,19 @@ export default function Pricing() {
                     </Button>
                   ) : plan.key === "free" ? (
                     user ? (
-                      <Button variant="outline" className="w-full" disabled>
-                        {user.tier === "free" ? "Current Plan" : "Downgrade via billing"}
-                      </Button>
+                      user.tier === "free" ? (
+                        <Button variant="outline" className="w-full" disabled>
+                          Current Plan
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full text-muted-foreground"
+                          onClick={() => toast.info("To downgrade, cancel your subscription from Settings → Subscription, or contact support.")}
+                        >
+                          Downgrade
+                        </Button>
+                      )
                     ) : (
                       <Button
                         variant="outline"
@@ -217,7 +227,11 @@ export default function Pricing() {
                       onClick={() => handleUpgrade(plan.key)}
                       disabled={loadingPlan === plan.key}
                     >
-                      {loadingPlan === plan.key ? "Redirecting..." : `Upgrade to ${plan.name}`}
+                      {loadingPlan === plan.key
+                        ? "Redirecting..."
+                        : !user
+                          ? `Get Started with ${plan.name}`
+                          : `Upgrade to ${plan.name}`}
                     </Button>
                   )}
                 </div>
