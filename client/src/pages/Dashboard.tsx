@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { Plus, FolderOpen, Music, Clock, CheckCircle2, AlertCircle, Loader2, PenLine, Sliders, Layers, Mic, Briefcase, Sparkles, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 
 const focusLabels: Record<string, { label: string; icon: React.ElementType }> = {
   songwriter: { label: "Songwriter", icon: PenLine },
@@ -28,6 +30,21 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { data: projects, isLoading } = trpc.project.list.useQuery();
+  const shownUpgradeToast = useRef(false);
+
+  useEffect(() => {
+    if (shownUpgradeToast.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgraded") === "true") {
+      shownUpgradeToast.current = true;
+      toast.success("Welcome to your new plan!", {
+        description: "Your subscription is now active. It may take a moment for your tier to update.",
+        duration: 6000,
+      });
+      // Clean up the URL
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, []);
 
   return (
     <div className="space-y-8">

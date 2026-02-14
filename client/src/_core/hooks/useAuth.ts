@@ -1,4 +1,5 @@
 import { getLoginUrl } from "@/const";
+import { identifyUser, resetAnalytics } from "@/lib/analytics";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
@@ -27,6 +28,7 @@ export function useAuth(options?: UseAuthOptions) {
   const logout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
+      resetAnalytics();
     } catch (error: unknown) {
       if (
         error instanceof TRPCClientError &&
@@ -59,6 +61,19 @@ export function useAuth(options?: UseAuthOptions) {
     logoutMutation.error,
     logoutMutation.isPending,
   ]);
+
+  // Identify user in PostHog when auth state resolves
+  useEffect(() => {
+    if (state.user) {
+      identifyUser({
+        id: state.user.id,
+        openId: state.user.openId,
+        name: state.user.name,
+        email: state.user.email ?? undefined,
+        tier: state.user.tier,
+      });
+    }
+  }, [state.user]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;

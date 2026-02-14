@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, PenLine, Sliders, Layers, Mic, Briefcase, Star } from "lucide-react";
+import { trackProjectCreated } from "@/lib/analytics";
 
 type ReviewFocus = "songwriter" | "producer" | "arranger" | "artist" | "anr" | "full";
 
@@ -75,6 +76,7 @@ export default function NewProject() {
 
   const createProject = trpc.project.create.useMutation({
     onSuccess: (data) => {
+      trackProjectCreated(data.id, title.trim());
       toast.success("Project created");
       setLocation(`/projects/${data.id}`);
     },

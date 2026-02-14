@@ -130,8 +130,8 @@
 - [x] P1: Add onboarding flow for new users
 - [x] P1: Mobile responsiveness audit and fixes
 - [x] P1: Markdown export for reviews (server-side with scores table and genre)
-- [ ] P1: Batch processing for multiple tracks
-- [ ] Cleanup: Remove unused Map.tsx component
+- [x] P1: Batch processing for multiple tracks (implemented: batchReviewAll endpoint + UI)
+- [x] Cleanup: Remove unused Map.tsx component (removed in Round 19)
 - [x] Update tests for all new features (69 tests passing)
 
 ## Round 5 - Strategic Features (Claude 4.5)
@@ -351,4 +351,13 @@
 - [x] Add robots.txt for search engine crawling
 - [x] Add favicon (vinyl record icon — favicon.ico + apple-touch-icon)
 - [x] Final visual sweep: all pages render clean, zero console errors, zero TSC errors, JobQueue errors resolved
+- [x] All 186 tests passing
+
+## Round 20 - PostHog Analytics & Final Polish (Claude 4.5)
+- [x] Install posthog-js and wire PostHog client-side analytics
+- [x] Track key events: review_completed, upgrade_clicked, feature_gated, project_created, track_uploaded
+- [x] Identify users on login with tier, email, name
+- [x] Verify Stripe checkout flow end-to-end (redirect fixed: window.open → window.location.href)
+- [x] Add upgrade success toast on Dashboard when returning from Stripe checkout
+- [x] Fix any remaining edge cases from final sweep
 - [x] All 186 tests passing

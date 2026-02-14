@@ -18,6 +18,7 @@ import {
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
+import { trackExportUsed, trackShareLinkCreated, trackFeatureGated } from "@/lib/analytics";
 import { scoreColor } from "@/lib/scoreColor";
 
 const scoreLabels: Record<string, string> = {
@@ -284,6 +285,7 @@ export default function ReviewView({ id }: { id: number }) {
     if (!review) return;
     // Check if export is gated for this tier
     if (userTier === "free" || userTier === "artist") {
+      trackFeatureGated("export_markdown", userTier);
       toast("Export requires the Pro plan", {
         description: "Upgrade to export reviews as Markdown files.",
         action: {
@@ -303,6 +305,7 @@ export default function ReviewView({ id }: { id: number }) {
         a.download = result.data.filename;
         a.click();
         URL.revokeObjectURL(url);
+        trackExportUsed(review.id, "markdown");
         toast.success("Review exported as Markdown");
       }
     } catch {
@@ -324,6 +327,7 @@ export default function ReviewView({ id }: { id: number }) {
       const url = `${window.location.origin}/shared/${data.shareToken}`;
       setShareUrl(url);
       navigator.clipboard.writeText(url);
+      trackShareLinkCreated(id);
       toast.success("Share link copied to clipboard!");
     },
     onError: (err) => {

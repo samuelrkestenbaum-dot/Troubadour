@@ -16,6 +16,7 @@ import {
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
 import { formatDistanceToNow } from "date-fns";
+import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
 
 const trackStatusConfig: Record<string, { label: string; color: string }> = {
   uploaded: { label: "Uploaded", color: "text-muted-foreground" },
@@ -49,6 +50,7 @@ export default function ProjectView({ id }: { id: number }) {
 
   const uploadTrack = trpc.track.upload.useMutation({
     onSuccess: () => {
+      trackTrackUploaded(id, "track");
       utils.project.get.invalidate({ id });
       toast.success("Track uploaded");
     },
@@ -65,6 +67,7 @@ export default function ProjectView({ id }: { id: number }) {
 
   const reviewTrack = trpc.job.review.useMutation({
     onSuccess: () => {
+      trackReviewStarted(id, "review");
       utils.project.get.invalidate({ id });
       toast.success("Review started — writing your critique");
     },

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
+import { trackCheckoutStarted, trackUpgradeClicked } from "@/lib/analytics";
 
 const PLANS = [
   {
@@ -88,8 +89,7 @@ export default function Pricing() {
   const checkoutMutation = trpc.subscription.checkout.useMutation({
     onSuccess: (data) => {
       toast.success("Redirecting to checkout...");
-      window.open(data.url, "_blank");
-      setLoadingPlan(null);
+      window.location.href = data.url;
     },
     onError: (err) => {
       toast.error(err.message);
@@ -102,6 +102,8 @@ export default function Pricing() {
       window.location.href = getLoginUrl();
       return;
     }
+    trackUpgradeClicked(user.tier || "free", plan, "pricing_page");
+    trackCheckoutStarted(plan);
     setLoadingPlan(plan);
     checkoutMutation.mutate({
       plan,

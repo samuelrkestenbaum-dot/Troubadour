@@ -7,6 +7,10 @@ import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
+import { initAnalytics } from "@/lib/analytics";
+
+// Initialize PostHog analytics (no-op if VITE_POSTHOG_KEY not set)
+initAnalytics();
 
 const queryClient = new QueryClient();
 
