@@ -228,7 +228,7 @@ function ReviewHistorySection({ trackId, reviews, onNavigate }: { trackId: numbe
                         {entry.isLatest && <Badge variant="default" className="text-xs">Latest</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {entry.modelUsed} — {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                        Troubadour — {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
                       </p>
                     </div>
                   </div>
