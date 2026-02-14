@@ -14,6 +14,7 @@ import * as db from "../db";
 import { analyzeAudioWithGemini, compareAudioWithGemini } from "./geminiAudio";
 import { generateTrackReview, generateAlbumReview, generateVersionComparison, extractScores, CLAUDE_MODEL } from "./claudeCritic";
 import { notifyOwner } from "../_core/notification";
+import { notifyCollaborators } from "./emailNotification";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 
 // Heartbeat interval for long-running jobs (every 30s)
@@ -449,7 +450,7 @@ async function processReviewJob(jobId: number, job: any) {
     completedAt: new Date(),
   });
 
-  // Send notification
+  // Send notification to owner
   try {
     await notifyOwner({
       title: `Track Review Ready: ${track.originalFilename}`,
@@ -458,6 +459,20 @@ async function processReviewJob(jobId: number, job: any) {
     await db.updateJob(jobId, { notificationSent: true });
   } catch (e) {
     console.warn("[JobQueue] Notification failed:", e);
+  }
+
+  // Notify collaborators on shared projects
+  try {
+    const baseUrl = process.env.VITE_APP_URL || process.env.VITE_FRONTEND_FORGE_API_URL?.replace("/api", "") || "";
+    await notifyCollaborators({
+      projectId: project.id,
+      trackTitle: track.originalFilename,
+      projectTitle: project.title,
+      baseUrl,
+      getCollaboratorsByProject: db.getCollaboratorsByProject,
+    });
+  } catch (e) {
+    console.warn("[JobQueue] Collaborator notification failed:", e);
   }
 }
 

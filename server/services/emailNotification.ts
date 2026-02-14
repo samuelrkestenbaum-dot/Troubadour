@@ -128,3 +128,42 @@ export async function sendReviewCompleteNotification(params: {
     textBody: `Review complete for "${trackTitle}" in project "${projectTitle}".\n\nView the review: ${projectUrl}`,
   });
 }
+
+/**
+ * Notify all accepted collaborators when a review completes on a shared project.
+ * Gracefully logs errors without throwing — review completion should never fail
+ * because of a notification issue.
+ */
+export async function notifyCollaborators(params: {
+  projectId: number;
+  trackTitle: string;
+  projectTitle: string;
+  baseUrl: string;
+  getCollaboratorsByProject: (projectId: number) => Promise<Array<{ invitedEmail: string; status: string }>>;
+}): Promise<void> {
+  const { projectId, trackTitle, projectTitle, baseUrl, getCollaboratorsByProject } = params;
+
+  try {
+    const collaborators = await getCollaboratorsByProject(projectId);
+    const accepted = collaborators.filter(c => c.status === "accepted" && c.invitedEmail);
+
+    if (accepted.length === 0) return;
+
+    console.log(`[Email] Notifying ${accepted.length} collaborator(s) about review for "${trackTitle}"`);
+
+    for (const collab of accepted) {
+      try {
+        await sendReviewCompleteNotification({
+          toEmail: collab.invitedEmail,
+          projectTitle,
+          trackTitle,
+          projectUrl: `${baseUrl}/projects/${projectId}`,
+        });
+      } catch (err) {
+        console.warn(`[Email] Failed to notify collaborator ${collab.invitedEmail}:`, err);
+      }
+    }
+  } catch (error) {
+    console.error(`[Email] Failed to fetch collaborators for project ${projectId}:`, error);
+  }
+}

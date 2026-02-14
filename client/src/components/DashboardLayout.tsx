@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -217,6 +217,16 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
+            <button
+              onClick={() => {
+                setLocation("/");
+                if (isMobile) setOpenMobile(false);
+              }}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-1 py-1.5 mb-2 w-full text-left group-data-[collapsible=icon]:justify-center"
+            >
+              <Home className="h-4 w-4 shrink-0" />
+              <span className="group-data-[collapsible=icon]:hidden">Back to Home</span>
+            </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">

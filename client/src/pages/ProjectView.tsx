@@ -20,6 +20,7 @@ import {
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
 import { CollaborationPanel } from "@/components/CollaborationPanel";
+import { TemplateSelector } from "@/components/TemplateSelector";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -45,6 +46,7 @@ export default function ProjectView({ id }: { id: number }) {
   // Full-page drag overlay state
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
   useEffect(() => {
     setContext({ projectId: id, trackId: null });
@@ -496,8 +498,9 @@ export default function ProjectView({ id }: { id: number }) {
           compact
           className="flex-1 max-w-xs"
         />
+        <TemplateSelector value={selectedTemplateId} onChange={setSelectedTemplateId} />
         <Button
-          onClick={() => batchReviewAll.mutate({ projectId: id })}
+          onClick={() => batchReviewAll.mutate({ projectId: id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
           disabled={batchReviewAll.isPending || allReviewed}
         >
           <Zap className="h-4 w-4 mr-2" />
@@ -578,7 +581,7 @@ export default function ProjectView({ id }: { id: number }) {
                           <>
                             <Button
                               size="sm"
-                              onClick={() => analyzeAndReview.mutate({ trackId: track.id })}
+                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
                               disabled={analyzeAndReview.isPending}
                             >
                               <Zap className="h-3.5 w-3.5 mr-1.5" />

@@ -560,7 +560,7 @@ export const appRouter = router({
       }),
 
     batchReviewAll: protectedProcedure
-      .input(z.object({ projectId: z.number() }))
+      .input(z.object({ projectId: z.number(), templateId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
         if (!project || project.userId !== ctx.user.id) {
@@ -569,6 +569,15 @@ export const appRouter = router({
         const user = await db.getUserById(ctx.user.id);
         assertFeatureAllowed(user?.tier || "free", "batch_review");
         await assertMonthlyReviewAllowed(ctx.user.id);
+        // If templateId provided, validate it belongs to user
+        let jobMetadata: Record<string, any> | undefined;
+        if (input.templateId) {
+          const template = await db.getReviewTemplateById(input.templateId);
+          if (!template || template.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+          }
+          jobMetadata = { templateId: input.templateId, focusAreas: template.focusAreas as string[] };
+        }
         const tracks = await db.getTracksByProject(input.projectId);
         const unreviewedTracks = tracks.filter(t => t.status !== "reviewed" && t.status !== "reviewing" && t.status !== "analyzing");
         if (unreviewedTracks.length === 0) {
@@ -588,6 +597,7 @@ export const appRouter = router({
               userId: ctx.user.id,
               type: "analyze",
               batchId,
+              metadata: jobMetadata,
             });
             const reviewJob = await db.createJob({
               projectId: track.projectId,
@@ -596,6 +606,7 @@ export const appRouter = router({
               type: "review",
               batchId,
               dependsOnJobId: analyzeJob.id,
+              metadata: jobMetadata,
             });
             enqueueJob(analyzeJob.id);
             enqueueJob(reviewJob.id);
@@ -607,6 +618,7 @@ export const appRouter = router({
               userId: ctx.user.id,
               type: "review",
               batchId,
+              metadata: jobMetadata,
             });
             enqueueJob(reviewJob.id);
             queuedJobs.push({ trackId: track.id, analyzeJobId: 0, reviewJobId: reviewJob.id });

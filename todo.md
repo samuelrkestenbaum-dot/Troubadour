@@ -615,3 +615,28 @@
 - [x] Audit all interactive elements for proper feedback (buttons, links, forms)
 - [x] Fix all UX quirks identified by Claude 4.5 audit (11 fixes applied)
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 36 - Feature Enhancements (Claude 4.5 + Gravito)
+
+### Template Selector in ProjectView
+- [x] Add TemplateSelector component (shadcn Select) listing user's templates from trpc.template.list
+- [x] Wire selectedTemplateId into analyzeAndReview mutation calls for individual track reviews
+- [x] Wire selectedTemplateId into batchReviewAll mutation calls for batch reviews
+- [x] Backend: batchReviewAll now accepts optional templateId, validates ownership, passes focusAreas to job metadata
+
+### Collaborator Notifications
+- [x] Added notifyCollaborators function to emailNotification.ts
+- [x] Integrated into jobProcessor.ts processReviewJob — notifies accepted collaborators after review completes
+- [x] Includes project name, track name, and link to project in notification email
+- [x] Graceful degradation: logs instead of throwing when Postmark not configured or collaborator fetch fails
+
+### Dashboard Navigation
+- [x] Added "Back to Home" link with Home icon in SidebarFooter above user profile
+- [x] Works on both mobile (closes sidebar) and desktop (navigates to /)
+- [x] Collapses to icon-only when sidebar is collapsed
+
+### Governance (Gravito)
+- [x] Gravito reviewContent on review-complete email: score 100, block_release: false (run_id: run_1771100775466_4de34124)
+- [x] Gravito reviewContent on collaboration invite email: score 100, block_release: false (run_id: run_1771100782708_836a74b0)
+- [x] Gravito checkContentEnforcement on template selector UI text: score 100, passed: true
+- [x] All 192 tests passing (6 new), zero TypeScript errors
