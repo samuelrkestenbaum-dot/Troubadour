@@ -165,8 +165,8 @@ async function startServer() {
       const scores = review.scoresJson as Record<string, number> | null;
       const overall = scores?.["overall"] ?? scores?.["Overall"] ?? null;
       const scoreText = overall !== null ? `${overall}/10` : "";
-      const quickTake = review.quickTake || "AI-powered music critique by FirstSpin.ai";
-      const title = `${trackName}${scoreText ? ` — ${scoreText}` : ""} | FirstSpin.ai`;
+      const quickTake = review.quickTake || "AI-powered music critique by Troubadour";
+      const title = `${trackName}${scoreText ? ` — ${scoreText}` : ""} | Troubadour`;
       const description = quickTake.substring(0, 200);
 
       res.status(200).set({ "Content-Type": "text/html" }).end(`<!DOCTYPE html>
@@ -178,7 +178,7 @@ async function startServer() {
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="FirstSpin.ai">
+  <meta property="og:site_name" content="Troubadour">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">

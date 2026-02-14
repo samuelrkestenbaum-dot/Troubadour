@@ -1,5 +1,5 @@
 /**
- * FirstSpin.ai Subscription Plans
+ * Troubadour Subscription Plans
  * 
  * Free: 3 reviews/month, basic features
  * Artist ($19/mo): 120 min, all features

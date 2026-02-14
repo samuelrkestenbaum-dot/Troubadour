@@ -401,7 +401,7 @@ export default function ReviewView({ id }: { id: number }) {
               </h1>
             </div>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-              <Badge variant="outline">FirstSpin.ai</Badge>
+              <Badge variant="outline">Troubadour</Badge>
               {review.reviewVersion && review.reviewVersion > 1 && (
                 <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20">
                   Re-review v{review.reviewVersion}

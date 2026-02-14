@@ -181,8 +181,8 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-bold tracking-tight truncate" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
-                    FirstSpin.ai
+                  <span className="font-bold tracking-tight truncate" style={{ fontFamily: "'UnifrakturMaguntia', 'Space Grotesk', system-ui, sans-serif" }}>
+                    Troubadour
                   </span>
                 </div>
               ) : null}

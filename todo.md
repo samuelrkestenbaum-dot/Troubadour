@@ -1,4 +1,4 @@
-# FirstSpin.ai - Project TODO
+# Troubadour - Project TODO
 
 ## Database & Schema
 - [x] Design and implement full database schema (projects, tracks, lyrics, audio_features, reviews, jobs, track_versions)
@@ -50,7 +50,7 @@
 - [x] Empty states and loading skeletons
 - [x] Mobile responsive design
 - [x] Dark theme with music-industry aesthetic
-- [x] Rebrand from "AI Album Critic" to "FirstSpin.ai" across all pages, nav, footer, and title
+- [x] Rebrand from "AI Album Critic" to "Troubadour" across all pages, nav, footer, and title
 
 ## Testing
 - [x] Vitest tests for auth, project CRUD, input validation, service exports
@@ -58,7 +58,7 @@
 
 ## Branding - Hide AI Engine Details
 - [x] Remove all references to Gemini, Claude, and specific AI model names from user-facing frontend
-- [x] Replace model-specific language with generic "AI" or "FirstSpin" branding
+- [x] Replace model-specific language with generic "AI" or "Troubadour" branding
 - [x] Audit landing page, dashboard, project view, track view, review view, usage page, and new project form
 
 ## Role-Based Critique System
@@ -293,7 +293,7 @@
 - [x] US8: Mobile responsiveness — reviewed layout structure
 
 ### Issues Found & Fixed
-- [x] FIX: Pricing page had no navigation — added Back button + FirstSpin.ai logo header
+- [x] FIX: Pricing page had no navigation — added Back button + Troubadour logo header
 - [x] FIX: Usage page missing monthly review count — added Monthly Reviews card with progress bar
 - [x] FIX: Usage page missing billing cycle reset date — added Billing Cycle Reset card
 - [x] FIX: Usage engine cards showed no data — now show Active status for all engines
@@ -361,3 +361,14 @@
 - [x] Add upgrade success toast on Dashboard when returning from Stripe checkout
 - [x] Fix any remaining edge cases from final sweep
 - [x] All 186 tests passing
+
+
+## Round 21 - Rebrand to "Troubadour" (Troubadour LA venue color scheme)
+- [x] Research Troubadour venue visual identity and color palette
+- [ ] Update VITE_APP_TITLE to Troubadour (user must update in Settings → Secrets)
+- [x] Replace all "FirstSpin.ai" text references across codebase with "Troubadour" (13+ files)
+- [x] Update CSS theme colors to match Troubadour venue aesthetic (crimson red, dark brown, indigo, amber)
+- [x] Update landing page copy and visual elements for new brand
+- [x] Update sidebar/nav branding (UnifrakturMaguntia blackletter font)
+- [x] Verify all pages render correctly with new branding
+- [x] All 186 tests passing after rebrand

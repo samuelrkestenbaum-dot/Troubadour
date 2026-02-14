@@ -1,13 +1,13 @@
-## FirstSpin.ai: Comprehensive Strategic Audit
+## Troubadour: Comprehensive Strategic Audit
 
 **Date:** February 13, 2026
 **Auditor:** Claude Sonnet 4.5 — Strategic Product Audit
 
 ### Executive Summary
 
-FirstSpin.ai presents a highly innovative and strategically well-positioned product in the music technology space. Its core value proposition—AI-powered, role-specific, genre-aware music critique—addresses a significant unmet need for musicians seeking objective, detailed feedback. The technical foundation is modern and robust, leveraging cutting-edge AI models (Gemini 2.5 Flash, Claude Sonnet 4.5) in a clever pipeline. The product demonstrates a clear understanding of its target audience's pain points and offers unique features like version comparison and album-level reviews.
+Troubadour presents a highly innovative and strategically well-positioned product in the music technology space. Its core value proposition—AI-powered, role-specific, genre-aware music critique—addresses a significant unmet need for musicians seeking objective, detailed feedback. The technical foundation is modern and robust, leveraging cutting-edge AI models (Gemini 2.5 Flash, Claude Sonnet 4.5) in a clever pipeline. The product demonstrates a clear understanding of its target audience's pain points and offers unique features like version comparison and album-level reviews.
 
-However, despite its strong core, FirstSpin.ai is currently a powerful engine missing essential wheels and a user-friendly dashboard. Critical UX gaps, particularly the absence of an audio player, significantly hinder the "holy shit" moment. Architectural risks like the in-memory job queue and fragile score extraction need immediate attention. The product's potential for market dominance is high, but it requires a focused effort on completeness, robustness, and a polished user experience to fully realize its vision and scale effectively.
+However, despite its strong core, Troubadour is currently a powerful engine missing essential wheels and a user-friendly dashboard. Critical UX gaps, particularly the absence of an audio player, significantly hinder the "holy shit" moment. Architectural risks like the in-memory job queue and fragile score extraction need immediate attention. The product's potential for market dominance is high, but it requires a focused effort on completeness, robustness, and a polished user experience to fully realize its vision and scale effectively.
 
 ---
 
@@ -43,7 +43,7 @@ The technical stack is modern, robust, and well-chosen for a high-performance, s
 ### 2. Product Completeness
 
 **Current State Assessment:**
-FirstSpin.ai has successfully built a powerful core engine, demonstrating a strong Minimum Viable Product (MVP) with several advanced features. The ability to perform role-specific, genre-aware critiques, version comparisons, and album reviews is impressive. However, the product's "completeness" is hampered by significant gaps in fundamental user experience features and professional output capabilities.
+Troubadour has successfully built a powerful core engine, demonstrating a strong Minimum Viable Product (MVP) with several advanced features. The ability to perform role-specific, genre-aware critiques, version comparisons, and album reviews is impressive. However, the product's "completeness" is hampered by significant gaps in fundamental user experience features and professional output capabilities.
 
 **Strengths (Working ✅):**
 *   Core AI critique and analysis pipeline.
@@ -90,7 +90,7 @@ FirstSpin.ai has successfully built a powerful core engine, demonstrating a stro
 ### 3. AI Pipeline Quality
 
 **Current State Assessment:**
-The AI pipeline is the crown jewel of FirstSpin.ai. The strategic choice of Gemini 2.5 Flash for detailed audio analysis and Claude Sonnet 4.5 for nuanced critique writing is excellent. The pipeline demonstrates sophisticated design through its genre-aware prompting, role-specific `reviewFocus` system, and intelligent use of Gemini for comparison tasks. This multi-model approach is a significant differentiator.
+The AI pipeline is the crown jewel of Troubadour. The strategic choice of Gemini 2.5 Flash for detailed audio analysis and Claude Sonnet 4.5 for nuanced critique writing is excellent. The pipeline demonstrates sophisticated design through its genre-aware prompting, role-specific `reviewFocus` system, and intelligent use of Gemini for comparison tasks. This multi-model approach is a significant differentiator.
 
 **Strengths:**
 *   **State-of-the-Art Models:** Leveraging Gemini 2.5 Flash and Claude Sonnet 4.5 provides cutting-edge capabilities for audio understanding and natural language generation.
@@ -119,7 +119,7 @@ The AI pipeline is the crown jewel of FirstSpin.ai. The strategic choice of Gemi
 ### 4. User Experience
 
 **Current State Assessment:**
-The UX of FirstSpin.ai is a tale of two halves: a well-structured navigation and information architecture, but significant gaps in core interaction elements. The dashboard, project views, and review displays are logically organized, and the radar chart for scores is an excellent visualization. However, the absence of audio playback transforms what should be an immersive experience into a disconnected one, forcing users to switch contexts to listen to their music.
+The UX of Troubadour is a tale of two halves: a well-structured navigation and information architecture, but significant gaps in core interaction elements. The dashboard, project views, and review displays are logically organized, and the radar chart for scores is an excellent visualization. However, the absence of audio playback transforms what should be an immersive experience into a disconnected one, forcing users to switch contexts to listen to their music.
 
 **Strengths:**
 *   **Clear Information Architecture:** Logical flow from projects to tracks to reviews.
@@ -152,7 +152,7 @@ The UX of FirstSpin.ai is a tale of two halves: a well-structured navigation and
 ### 5. Value Proposition
 
 **Current State Assessment:**
-FirstSpin.ai's value proposition is incredibly strong and addresses a significant pain point for musicians: getting objective, professional, and actionable feedback on their work. The product delivers on its promise of detailed, AI-powered critiques. The "holy shit" moment, while currently diminished by UX gaps, is inherent in the core functionality.
+Troubadour's value proposition is incredibly strong and addresses a significant pain point for musicians: getting objective, professional, and actionable feedback on their work. The product delivers on its promise of detailed, AI-powered critiques. The "holy shit" moment, while currently diminished by UX gaps, is inherent in the core functionality.
 
 **The "Holy Shit" Moment:**
 The primary "holy shit" moment occurs when a musician uploads their track, selects their role (e.g., "producer"), and receives a multi-page, detailed critique that sounds like it came from a seasoned industry professional, complete with scores, specific recommendations, and genre-appropriate language. This is amplified by:
@@ -183,7 +183,7 @@ Yes, the product largely delivers on its core promise. The AI pipeline is sophis
 ### 6. Market Positioning
 
 **Current State Assessment:**
-FirstSpin.ai occupies a unique and highly defensible niche within the music technology landscape. It targets a broad spectrum of musicians, from hobbyists to emerging professionals, who are seeking objective, high-quality feedback—a perennial challenge in the subjective world of music.
+Troubadour occupies a unique and highly defensible niche within the music technology landscape. It targets a broad spectrum of musicians, from hobbyists to emerging professionals, who are seeking objective, high-quality feedback—a perennial challenge in the subjective world of music.
 
 **Who is this for?**
 *   **Independent Musicians/Producers:** Lacking access to professional A&R, mix engineers, or seasoned producers.
@@ -194,11 +194,11 @@ FirstSpin.ai occupies a unique and highly defensible niche within the music tech
 *   **A&R Scouts (internal use):** Potentially as a first-pass filter or analysis tool.
 
 **How does it compare to alternatives?**
-*   **Human Feedback (Friends/Peers):** Often biased, unspecific, or sugar-coated. FirstSpin.ai offers objectivity and detail.
-*   **Professional Services (Mix Engineers, Producers, A&R):** Expensive, time-consuming, and often inaccessible. FirstSpin.ai offers instant, affordable, and consistent feedback.
-*   **Online Forums/Communities:** Feedback is inconsistent, often harsh, and lacks structure or expertise. FirstSpin.ai provides structured, expert-level critique.
-*   **Other AI Music Tools (Mastering AI, Generative AI):** These focus on *creating* or *processing* music. FirstSpin.ai focuses on *critiquing* it, which is a distinct and complementary offering.
-*   **Basic Audio Analysis Tools:** Provide raw data (tempo, key) but no interpretive critique. FirstSpin.ai translates data into actionable advice.
+*   **Human Feedback (Friends/Peers):** Often biased, unspecific, or sugar-coated. Troubadour offers objectivity and detail.
+*   **Professional Services (Mix Engineers, Producers, A&R):** Expensive, time-consuming, and often inaccessible. Troubadour offers instant, affordable, and consistent feedback.
+*   **Online Forums/Communities:** Feedback is inconsistent, often harsh, and lacks structure or expertise. Troubadour provides structured, expert-level critique.
+*   **Other AI Music Tools (Mastering AI, Generative AI):** These focus on *creating* or *processing* music. Troubadour focuses on *critiquing* it, which is a distinct and complementary offering.
+*   **Basic Audio Analysis Tools:** Provide raw data (tempo, key) but no interpretive critique. Troubadour translates data into actionable advice.
 
 **Competitive Moat:**
 *   **Sophisticated AI Pipeline:** The combination of Gemini for deep audio analysis and Claude for nuanced, role-specific critique is a significant technical barrier.
@@ -211,8 +211,8 @@ FirstSpin.ai occupies a unique and highly defensible niche within the music tech
 1.  **Refine Target Persona Messaging:** Clearly segment and target messaging for different user roles (e.g., "For the Producer," "For the Songwriter") on the landing page and marketing materials.
 2.  **Emphasize Affordability & Speed:** Highlight the cost-effectiveness and instant feedback compared to traditional methods.
 3.  **Showcase Unique Features:** Prominently display the version comparison and reference track comparison as key differentiators.
-4.  **Build a Community:** Foster a community around FirstSpin.ai where users can discuss critiques, share improvements, and learn from each other. This can enhance stickiness and virality.
-5.  **Educational Content:** Create blog posts, tutorials, and videos explaining how to interpret and act on FirstSpin.ai's critiques, positioning the product as an educational tool.
+4.  **Build a Community:** Foster a community around Troubadour where users can discuss critiques, share improvements, and learn from each other. This can enhance stickiness and virality.
+5.  **Educational Content:** Create blog posts, tutorials, and videos explaining how to interpret and act on Troubadour's critiques, positioning the product as an educational tool.
 6.  **Strategic Partnerships:** Explore partnerships with DAWs, music education platforms, or artist development programs.
 
 ---
@@ -220,16 +220,16 @@ FirstSpin.ai occupies a unique and highly defensible niche within the music tech
 ### 7. Target State Vision
 
 **Current State Assessment:**
-FirstSpin.ai is a powerful prototype, demonstrating immense potential. It has established a strong foundation for its core functionality but needs significant development to reach a "production-ready" and "market-leading" state. The current vision is clear: to provide AI-powered music critique. The target state vision expands on this, envisioning FirstSpin.ai as the indispensable AI co-pilot for every musician's creative journey.
+Troubadour is a powerful prototype, demonstrating immense potential. It has established a strong foundation for its core functionality but needs significant development to reach a "production-ready" and "market-leading" state. The current vision is clear: to provide AI-powered music critique. The target state vision expands on this, envisioning Troubadour as the indispensable AI co-pilot for every musician's creative journey.
 
-**Target State Vision: FirstSpin.ai as the Musician's AI Co-Pilot**
+**Target State Vision: Troubadour as the Musician's AI Co-Pilot**
 
-Imagine FirstSpin.ai as the ultimate AI co-pilot for every musician, producer, and songwriter. It's not just a critique tool; it's an intelligent, always-on collaborator that guides your creative process from initial idea to polished master.
+Imagine Troubadour as the ultimate AI co-pilot for every musician, producer, and songwriter. It's not just a critique tool; it's an intelligent, always-on collaborator that guides your creative process from initial idea to polished master.
 
 1.  **Seamless Creative Workflow Integration:**
     *   **DAW Integration:** Direct plugins for popular DAWs (Ableton, Logic, FL Studio, Pro Tools) allowing musicians to send stems or full mixes for instant analysis and critique without leaving their creative environment.
     *   **Cloud Sync:** Integration with cloud storage (Dropbox, Google Drive) and music distribution platforms for effortless track management.
-    *   **Real-time Feedback:** As you make changes in your DAW, FirstSpin.ai provides near real-time, iterative feedback on specific sections or parameters.
+    *   **Real-time Feedback:** As you make changes in your DAW, Troubadour provides near real-time, iterative feedback on specific sections or parameters.
 
 2.  **Holistic Audio Intelligence:**
     *   **Advanced Audio Visualizations:** Interactive waveforms, spectrograms, and frequency analysis tools directly linked to critique points. Click on a critique ("your bass lacks definition") and see the corresponding frequency range highlighted in the spectrogram.
@@ -244,14 +244,14 @@ Imagine FirstSpin.ai as the ultimate AI co-pilot for every musician, producer, a
 4.  **Collaborative & Community Hub:**
     *   **Multi-User Project Collaboration:** Bands, producers, and engineers can collaborate on projects, sharing critiques, adding notes, and tracking changes together.
     *   **Public Sharing & Portfolio:** Musicians can create public profiles showcasing their progress, sharing select critiques, and building a portfolio of their work and iterative improvements.
-    *   **Learning & Mentorship Network:** A platform where users can connect with human mentors (mix engineers, producers) who can review FirstSpin.ai critiques and offer personalized guidance.
+    *   **Learning & Mentorship Network:** A platform where users can connect with human mentors (mix engineers, producers) who can review Troubadour critiques and offer personalized guidance.
 
 5.  **Monetization & Business Intelligence:**
     *   **Tiered Subscriptions:** Free tier with limited minutes, professional tiers with advanced features, unlimited usage, and priority processing.
-    *   **API for Labels/A&R:** A B2B API allowing labels to integrate FirstSpin.ai's analysis into their scouting and artist development workflows.
+    *   **API for Labels/A&R:** A B2B API allowing labels to integrate Troubadour's analysis into their scouting and artist development workflows.
     *   **Market Trend Analysis:** Aggregated, anonymized data providing insights into genre trends, production techniques, and common pitfalls across the user base.
 
-In this target state, FirstSpin.ai transcends a simple feedback tool to become an indispensable partner, empowering musicians to refine their craft, accelerate their learning, and achieve their artistic vision with unprecedented clarity and efficiency.
+In this target state, Troubadour transcends a simple feedback tool to become an indispensable partner, empowering musicians to refine their craft, accelerate their learning, and achieve their artistic vision with unprecedented clarity and efficiency.
 
 ---
 
@@ -259,7 +259,7 @@ In this target state, FirstSpin.ai transcends a simple feedback tool to become a
 
 ### 8. Gap Analysis
 
-This analysis compares FirstSpin.ai's current state against an ideal target state, highlighting critical areas for improvement and future development.
+This analysis compares Troubadour's current state against an ideal target state, highlighting critical areas for improvement and future development.
 
 **Table 8.1: Core Product Gaps**
 
@@ -289,23 +289,23 @@ This analysis compares FirstSpin.ai's current state against an ideal target stat
 
 ### 9. User Stories
 
-Here are 5 compelling user stories demonstrating FirstSpin.ai's value:
+Here are 5 compelling user stories demonstrating Troubadour's value:
 
-1.  **The Emerging Indie Artist:** "As an independent artist, I've just finished my latest demo, but I'm too close to it to hear its flaws. I upload my track to FirstSpin.ai, select 'Artist' focus, and within minutes, I get an objective critique on my vocal delivery, arrangement, and overall vibe. The quick take highlights my strengths, and the detailed sections give me concrete feedback on where to refine my performance before sharing it with my bandmates. I then use the follow-up chat to ask for specific advice on my chorus melody."
+1.  **The Emerging Indie Artist:** "As an independent artist, I've just finished my latest demo, but I'm too close to it to hear its flaws. I upload my track to Troubadour, select 'Artist' focus, and within minutes, I get an objective critique on my vocal delivery, arrangement, and overall vibe. The quick take highlights my strengths, and the detailed sections give me concrete feedback on where to refine my performance before sharing it with my bandmates. I then use the follow-up chat to ask for specific advice on my chorus melody."
 
-2.  **The Busy A&R Executive:** "As an A&R executive, I receive hundreds of submissions. I need a quick, unbiased way to assess potential talent. I upload a new artist's entire album concept to FirstSpin.ai, setting the review focus to 'A&R'. The platform analyzes each track and then generates a comprehensive A&R memo, highlighting the project's commercial potential, genre fit, and areas for development across the whole body of work. This saves me hours of listening and report writing, allowing me to focus on the most promising acts."
+2.  **The Busy A&R Executive:** "As an A&R executive, I receive hundreds of submissions. I need a quick, unbiased way to assess potential talent. I upload a new artist's entire album concept to Troubadour, setting the review focus to 'A&R'. The platform analyzes each track and then generates a comprehensive A&R memo, highlighting the project's commercial potential, genre fit, and areas for development across the whole body of work. This saves me hours of listening and report writing, allowing me to focus on the most promising acts."
 
-3.  **The Meticulous Producer:** "I'm a producer constantly tweaking mixes. I've got two different masters of a track and I can't decide which one has more impact. I upload both as versions to FirstSpin.ai. The platform not only gives me individual critiques but also a detailed comparison, highlighting subtle differences in dynamics, stereo imaging, and low-end presence that I might have missed. This helps me make an objective decision on the final version."
+3.  **The Meticulous Producer:** "I'm a producer constantly tweaking mixes. I've got two different masters of a track and I can't decide which one has more impact. I upload both as versions to Troubadour. The platform not only gives me individual critiques but also a detailed comparison, highlighting subtle differences in dynamics, stereo imaging, and low-end presence that I might have missed. This helps me make an objective decision on the final version."
 
-4.  **The Aspiring Songwriter:** "My lyrics are my heart and soul, but sometimes my melodies don't quite hit. I upload my new song to FirstSpin.ai, inputting my lyrics and selecting the 'Songwriter' review focus. The critique praises my storytelling but suggests improvements to the melodic hooks and harmonic progression. I use the follow-up conversation to brainstorm alternative chord changes, getting real-time, AI-powered songwriting assistance."
+4.  **The Aspiring Songwriter:** "My lyrics are my heart and soul, but sometimes my melodies don't quite hit. I upload my new song to Troubadour, inputting my lyrics and selecting the 'Songwriter' review focus. The critique praises my storytelling but suggests improvements to the melodic hooks and harmonic progression. I use the follow-up conversation to brainstorm alternative chord changes, getting real-time, AI-powered songwriting assistance."
 
-5.  **The Collaborative Band Member:** "Our band is working on a new song, and we're struggling to agree on the arrangement. I upload our latest demo to FirstSpin.ai, choosing 'Arranger' focus. The AI identifies parts that feel cluttered and suggests ways to create more space, improve transitions, and build energy. We review the feedback together, and it provides an objective third-party perspective that helps us move past our creative deadlock and refine the track."
+5.  **The Collaborative Band Member:** "Our band is working on a new song, and we're struggling to agree on the arrangement. I upload our latest demo to Troubadour, choosing 'Arranger' focus. The AI identifies parts that feel cluttered and suggests ways to create more space, improve transitions, and build energy. We review the feedback together, and it provides an objective third-party perspective that helps us move past our creative deadlock and refine the track."
 
 ---
 
 ### 10. Strategic Recommendations
 
-These are the top 10 strategic recommendations for FirstSpin.ai, ranked by their potential impact on product success and user satisfaction.
+These are the top 10 strategic recommendations for Troubadour, ranked by their potential impact on product success and user satisfaction.
 
 1.  **Implement Persistent Job Queue**
     *   **What:** Replace the in-memory job queue with a persistent, robust solution (e.g., Redis, database-backed queue).

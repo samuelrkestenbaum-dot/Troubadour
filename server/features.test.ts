@@ -114,7 +114,7 @@ vi.mock("./db", () => {
       return null;
     }),
     getChatMessagesBySession: vi.fn().mockResolvedValue([
-      { id: 1, sessionId: 99, role: "system", content: "You are FirstSpin.ai's music advisor.", createdAt: new Date() },
+      { id: 1, sessionId: 99, role: "system", content: "You are Troubadour's music advisor.", createdAt: new Date() },
     ]),
     createChatMessage: vi.fn().mockImplementation(async (data: any) => {
       return { id: 100, ...data, createdAt: new Date() };
@@ -2134,7 +2134,7 @@ describe("OG meta tags for shared reviews", () => {
     expect(source).toContain("og:title");
     expect(source).toContain("og:description");
     expect(source).toContain("twitter:card");
-    expect(source).toContain("FirstSpin.ai");
+    expect(source).toContain("Troubadour");
     expect(source).toContain("/shared/:token");
     expect(source).toContain("isBot");
   });

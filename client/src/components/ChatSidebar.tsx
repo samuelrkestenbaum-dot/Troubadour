@@ -149,7 +149,7 @@ export function ChatSidebar() {
         "How can I improve the album sequencing?",
       ]
     : [
-        "How do I get the most out of FirstSpin?",
+        "How do I get the most out of Troubadour?",
         "What makes a great mix?",
         "Tips for improving my songwriting",
         "How should I prepare tracks for analysis?",

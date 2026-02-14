@@ -61,7 +61,7 @@ export default function Usage() {
               Audio Processing
             </CardTitle>
           </div>
-          <CardDescription>Minutes of audio analyzed by FirstSpin.ai</CardDescription>
+          <CardDescription>Minutes of audio analyzed by Troubadour</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-end justify-between">

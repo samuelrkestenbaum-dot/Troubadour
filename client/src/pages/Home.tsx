@@ -122,7 +122,7 @@ export default function Home() {
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shadow-sm">
               <Music className="h-4.5 w-4.5 text-primary" />
             </div>
-            <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>FirstSpin.ai</span>
+            <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "'UnifrakturMaguntia', 'Space Grotesk', system-ui, sans-serif" }}>Troubadour</span>
           </div>
           <div className="flex items-center gap-3">
             <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
@@ -147,7 +147,7 @@ export default function Home() {
           </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
             The AI that actually{" "}
-            <span className="bg-gradient-to-r from-primary via-amber-400 to-primary bg-clip-text text-transparent">listens</span>{" "}
+            <span className="bg-gradient-to-r from-red-500 via-amber-400 to-red-500 bg-clip-text text-transparent">listens</span>{" "}
             to your music
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -327,7 +327,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="py-8 border-t border-border/30">
         <div className="container text-center text-sm text-muted-foreground">
-          FirstSpin.ai — AI that actually listens to your music.
+          Troubadour — AI that actually listens to your music.
         </div>
       </footer>
     </div>

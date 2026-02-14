@@ -16,7 +16,7 @@ const PLANS = [
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Try FirstSpin.ai with basic features",
+    description: "Try Troubadour with basic features",
     icon: Music,
     color: "text-muted-foreground",
     bgGradient: "from-slate-800/50 to-slate-900/50",
@@ -126,7 +126,7 @@ export default function Pricing() {
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shadow-sm">
               <Music className="h-4 w-4 text-primary" />
             </div>
-            <span className="font-bold text-base tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>FirstSpin.ai</span>
+            <span className="font-bold text-base tracking-tight" style={{ fontFamily: "'UnifrakturMaguntia', 'Space Grotesk', system-ui, sans-serif" }}>Troubadour</span>
           </div>
           <div className="w-20" /> {/* Spacer for centering */}
         </div>
