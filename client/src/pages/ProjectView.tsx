@@ -15,7 +15,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
-  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud
+  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
@@ -123,6 +123,29 @@ export default function ProjectView({ id }: { id: number }) {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const exportAllReviews = trpc.review.exportAllReviews.useMutation({
+    onSuccess: (result) => {
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(result.htmlContent);
+        win.document.close();
+        setTimeout(() => win.print(), 500);
+      }
+      toast.success("Report generated — print dialog opened");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const toggleFavorite = trpc.favorite.toggle.useMutation({
+    onSuccess: (result) => {
+      utils.favorite.ids.invalidate();
+      toast.success(result.isFavorited ? "Added to favorites" : "Removed from favorites");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const { data: favoriteIds } = trpc.favorite.ids.useQuery();
 
   const uploadCoverImage = trpc.project.uploadCoverImage.useMutation({
     onSuccess: () => {
@@ -392,6 +415,17 @@ export default function ProjectView({ id }: { id: number }) {
               Compare
             </Button>
           )}
+          {tracks.some(t => t.status === "reviewed") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportAllReviews.mutate({ projectId: id })}
+              disabled={exportAllReviews.isPending}
+            >
+              <FileDown className="h-3.5 w-3.5 mr-1.5" />
+              {exportAllReviews.isPending ? "Generating..." : "Export All"}
+            </Button>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm">
@@ -490,9 +524,13 @@ export default function ProjectView({ id }: { id: number }) {
                 <Card key={track.id} className="hover:border-primary/30 transition-colors">
                   <CardContent className="py-3 px-4">
                     <div className="flex items-center gap-4">
-                      <div className="text-sm font-mono text-muted-foreground w-6 text-center shrink-0">
-                        {idx + 1}
-                      </div>
+                      <button
+                        className="shrink-0 p-1 -m-1 rounded hover:bg-accent transition-colors"
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite.mutate({ trackId: track.id }); }}
+                        title={favoriteIds?.includes(track.id) ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star className={`h-4 w-4 transition-colors ${favoriteIds?.includes(track.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40 hover:text-amber-400/60"}`} />
+                      </button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span

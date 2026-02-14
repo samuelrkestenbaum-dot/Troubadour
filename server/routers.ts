@@ -843,6 +843,115 @@ export const appRouter = router({
           genreInsight,
         };
       }),
+
+    exportAllReviews: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const allTracks = await db.getTracksByProject(input.projectId);
+        const allReviews = await db.getReviewsByProject(input.projectId);
+
+        // Build a combined HTML report
+        let tracksHtml = '';
+        for (const track of allTracks) {
+          const trackReview = allReviews.find(r => r.trackId === track.id && r.isLatest && r.reviewType === 'track');
+          if (!trackReview) continue;
+          const scores = trackReview.scoresJson as Record<string, number> | undefined;
+          const reviewHtml = trackReview.reviewMarkdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/^- (.*$)/gim, '<li>$1</li>')
+            .replace(/\n\n/gim, '</p><p>')
+            .replace(/\n/gim, '<br>');
+
+          let scoresHtml = '';
+          if (scores && Object.keys(scores).length > 0) {
+            scoresHtml = `<div class="scores">${Object.entries(scores).map(([k, v]) =>
+              `<div class="score-item"><span class="score-label">${k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span><span class="score-value">${v}/10</span></div>`
+            ).join('')}</div>`;
+          }
+
+          tracksHtml += `
+            <div class="track-section">
+              <h2>${track.originalFilename}</h2>
+              ${track.detectedGenre ? `<p class="genre">Genre: ${track.detectedGenre}${track.detectedSubgenres ? ` | ${track.detectedSubgenres}` : ''}</p>` : ''}
+              ${trackReview.quickTake ? `<div class="quick-take">"${trackReview.quickTake}"</div>` : ''}
+              ${scoresHtml}
+              <div class="review-content"><p>${reviewHtml}</p></div>
+            </div>
+            <hr class="track-divider">`;
+        }
+
+        // Album review if exists
+        const albumReview = allReviews.find(r => r.reviewType === 'album' && r.isLatest);
+        let albumHtml = '';
+        if (albumReview) {
+          const albumContent = albumReview.reviewMarkdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/^- (.*$)/gim, '<li>$1</li>')
+            .replace(/\n\n/gim, '</p><p>')
+            .replace(/\n/gim, '<br>');
+          albumHtml = `<div class="album-review"><h2>Album Review</h2>${albumReview.quickTake ? `<div class="quick-take">"${albumReview.quickTake}"</div>` : ''}<div class="review-content"><p>${albumContent}</p></div></div>`;
+        }
+
+        const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${project.title} - Full Review Report</title><style>
+          body{font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a2e;max-width:800px;margin:0 auto;padding:40px 20px}
+          h1{font-size:2em;margin-bottom:0.3em;color:#0f0f23} h2{font-size:1.4em;margin-top:1.5em;color:#1a1a2e;border-bottom:2px solid #e8e8f0;padding-bottom:0.3em}
+          h3{font-size:1.15em;margin-top:1.2em;color:#2a2a4a} .header{border-bottom:2px solid #c8102e;padding-bottom:16px;margin-bottom:24px}
+          .quick-take{font-style:italic;color:#555;padding:12px 16px;background:#f8f8fc;border-left:4px solid #c8102e;margin:16px 0}
+          .scores{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 24px;padding:16px;background:#f8f8fc;border-radius:8px;margin:12px 0}
+          .score-item{display:flex;justify-content:space-between;padding:4px 0} .score-label{font-weight:600;color:#555} .score-value{font-weight:700;color:#c8102e}
+          blockquote{border-left:4px solid #ddd;padding-left:12px;color:#666;margin:12px 0} li{margin:4px 0}
+          .track-section{margin:24px 0} .track-divider{border:none;border-top:2px solid #e8e8f0;margin:32px 0}
+          .genre{color:#888;font-size:0.9em;margin-top:-8px} .album-review{margin-top:40px;padding-top:24px;border-top:3px solid #c8102e}
+          @media print{body{padding:20px} .track-section{page-break-inside:avoid}}
+        </style></head><body>
+          <div class="header">
+            <h1>${project.title}</h1>
+            <p style="color:#888">${allTracks.length} track${allTracks.length !== 1 ? 's' : ''} &middot; ${project.type.charAt(0).toUpperCase() + project.type.slice(1)} &middot; ${new Date().toLocaleDateString()}</p>
+          </div>
+          ${tracksHtml}
+          ${albumHtml}
+          <footer style="margin-top:40px;padding-top:16px;border-top:1px solid #e8e8f0;color:#999;font-size:0.85em;text-align:center">Generated by Troubadour AI</footer>
+        </body></html>`;
+
+        return { htmlContent };
+      }),
+  }),
+
+  favorite: router({
+    toggle: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const isFavorited = await db.toggleFavorite(ctx.user.id, input.trackId);
+        return { isFavorited };
+      }),
+
+    list: protectedProcedure
+      .query(async ({ ctx }) => {
+        return db.getFavoritesByUser(ctx.user.id);
+      }),
+
+    ids: protectedProcedure
+      .query(async ({ ctx }) => {
+        return db.getFavoriteTrackIds(ctx.user.id);
+      }),
   }),
 
   conversation: router({

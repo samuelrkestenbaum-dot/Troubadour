@@ -508,3 +508,22 @@
 
 ### General
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 32 - Batch Export & Favorites (Claude 4.5)
+
+### Feature 1: Batch Export All Project Reviews
+- [x] Create review.exportAllReviews tRPC mutation (generates combined HTML for all reviewed tracks in a project)
+- [x] Add "Export All" button to ProjectView header (visible when any tracks are reviewed)
+- [x] Combined report includes: project title, each track's scores table + full review markdown
+- [x] Opens in new window with print dialog for PDF save
+
+### Feature 2: Favorites/Pin System
+- [x] Add favorites table to schema (userId + trackId, unique constraint) + migration pushed
+- [x] Create favorite.toggle, favorite.list, favorite.ids tRPC mutations/queries + db helpers
+- [x] Add star icon to track cards in ProjectView (amber fill when favorited, click to toggle)
+- [x] Add "Favorites" section to Dashboard above project grid (amber-themed cards with cover art)
+- [x] Favorites cards show track name, project title, genre, and cover image thumbnail
+- [x] Persist favorites across sessions via database
+
+### General
+- [x] All 186 tests passing, zero TypeScript errors

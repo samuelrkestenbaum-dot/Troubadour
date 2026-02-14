@@ -1,6 +1,6 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -884,4 +884,56 @@ export async function updateProjectCoverImage(projectId: number, coverImageUrl: 
   const db = await getDb();
   if (!db) return;
   await db.update(projects).set({ coverImageUrl }).where(eq(projects.id, projectId));
+}
+
+// ── Favorites ──
+
+export async function toggleFavorite(userId: number, trackId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(favorites).where(
+    and(eq(favorites.userId, userId), eq(favorites.trackId, trackId))
+  ).limit(1);
+
+  if (existing.length > 0) {
+    await db.delete(favorites).where(
+      and(eq(favorites.userId, userId), eq(favorites.trackId, trackId))
+    );
+    return false; // unfavorited
+  } else {
+    await db.insert(favorites).values({ userId, trackId });
+    return true; // favorited
+  }
+}
+
+export async function getFavoritesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      favoriteId: favorites.id,
+      trackId: favorites.trackId,
+      favoritedAt: favorites.createdAt,
+      trackName: tracks.originalFilename,
+      trackStatus: tracks.status,
+      projectId: tracks.projectId,
+      projectTitle: projects.title,
+      coverImageUrl: projects.coverImageUrl,
+      detectedGenre: tracks.detectedGenre,
+    })
+    .from(favorites)
+    .innerJoin(tracks, eq(favorites.trackId, tracks.id))
+    .innerJoin(projects, eq(tracks.projectId, projects.id))
+    .where(eq(favorites.userId, userId))
+    .orderBy(desc(favorites.createdAt));
+}
+
+export async function getFavoriteTrackIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ trackId: favorites.trackId })
+    .from(favorites)
+    .where(eq(favorites.userId, userId));
+  return rows.map(r => r.trackId);
 }
