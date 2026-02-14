@@ -505,12 +505,13 @@ export const appRouter = router({
           userId: ctx.user.id,
           type: "analyze",
         });
-        // Create review job (will be queued after analyze completes)
+        // Create review job — depends on analyze completing first
         const reviewJob = await db.createJob({
           projectId: track.projectId,
           trackId: track.id,
           userId: ctx.user.id,
           type: "review",
+          dependsOnJobId: analyzeJob.id,
         });
         enqueueJob(analyzeJob.id);
         enqueueJob(reviewJob.id);
@@ -553,6 +554,7 @@ export const appRouter = router({
               userId: ctx.user.id,
               type: "review",
               batchId,
+              dependsOnJobId: analyzeJob.id,
             });
             enqueueJob(analyzeJob.id);
             enqueueJob(reviewJob.id);
@@ -1207,20 +1209,6 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           origin: input.origin,
         });
 
-        // Save customer ID if we created one
-        if (!user.stripeCustomerId) {
-          const { findOrCreateCustomer } = await import("./stripe/stripe");
-          const customerId = await findOrCreateCustomer({
-            userId: ctx.user.id,
-            email: user.email,
-            name: user.name ?? undefined,
-          });
-          await db.updateUserSubscription(ctx.user.id, {
-            tier: user.tier as "free" | "artist" | "pro",
-            stripeCustomerId: customerId,
-          });
-        }
-
         return { url };
       }),
 
@@ -1264,7 +1252,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         console.log(`[DeleteAccount] Soft-deleted user ${user.id} (${user.email})`);
 
         // Clear the session cookie
-        ctx.res.clearCookie("session", { path: "/" });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
 
         return { success: true };
       }),

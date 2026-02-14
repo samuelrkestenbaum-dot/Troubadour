@@ -2353,7 +2353,7 @@ describe("delete account flow", () => {
 
     expect(result.success).toBe(true);
     expect(softDeleteUser).toHaveBeenCalledWith(user.id);
-    expect(ctx.res.clearCookie).toHaveBeenCalledWith("session", { path: "/" });
+    expect(ctx.res.clearCookie).toHaveBeenCalledWith("app_session_id", expect.objectContaining({ path: "/", maxAge: -1 }));
   });
 
   it("cancels Stripe subscription before soft-deleting user", async () => {
@@ -2375,7 +2375,7 @@ describe("delete account flow", () => {
 
     expect(result.success).toBe(true);
     expect(softDeleteUser).toHaveBeenCalledWith(user.id);
-    expect(ctx.res.clearCookie).toHaveBeenCalledWith("session", { path: "/" });
+    expect(ctx.res.clearCookie).toHaveBeenCalledWith("app_session_id", expect.objectContaining({ path: "/", maxAge: -1 }));
 
     vi.doUnmock("./stripe/stripe");
   });
