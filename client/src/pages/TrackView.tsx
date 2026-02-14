@@ -499,6 +499,30 @@ export default function TrackView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const exportHtmlMut = trpc.review.exportHtml.useMutation({
+    onSuccess: (data) => {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(data.htmlContent);
+        printWindow.document.close();
+        printWindow.print();
+        toast.success("Preparing review for print...");
+      } else {
+        toast.error("Failed to open print window. Please allow pop-ups.");
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const shareMut = trpc.review.generateShareLink.useMutation({
+    onSuccess: (data) => {
+      const link = `${window.location.origin}/shared/${data.shareToken}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Share link copied to clipboard!");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -818,6 +842,42 @@ export default function TrackView({ id }: { id: number }) {
 
         {/* Reviews Tab */}
         <TabsContent value="reviews" className="space-y-4">
+          {reviews.length > 0 && (
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const latestReview = reviews.find((r: any) => r.isLatest && r.reviewType === "track");
+                  if (latestReview) {
+                    exportHtmlMut.mutate({ reviewId: latestReview.id });
+                  } else {
+                    toast.error("No review available to export");
+                  }
+                }}
+                disabled={exportHtmlMut.isPending}
+              >
+                {exportHtmlMut.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 mr-1.5" />}
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const latestReview = reviews.find((r: any) => r.isLatest && r.reviewType === "track");
+                  if (latestReview) {
+                    shareMut.mutate({ id: latestReview.id });
+                  } else {
+                    toast.error("No review available to share");
+                  }
+                }}
+                disabled={shareMut.isPending}
+              >
+                {shareMut.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5 mr-1.5" />}
+                Share
+              </Button>
+            </div>
+          )}
           <ReviewHistorySection trackId={track.id} reviews={reviews} onNavigate={setLocation} />
         </TabsContent>
 

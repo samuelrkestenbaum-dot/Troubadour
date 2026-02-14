@@ -17,6 +17,7 @@ import SharedReview from "./pages/SharedReview";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
+import CompareReviews from "./pages/CompareReviews";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -53,6 +54,12 @@ function DashboardRoutes() {
           {(params) => {
             const id = safeParseId(params.id);
             return id ? <VersionDiff trackId={id} /> : <NotFound />;
+          }}
+        </Route>
+        <Route path="/projects/:id/compare">
+          {(params) => {
+            const id = safeParseId(params.id);
+            return id ? <CompareReviews projectId={id} /> : <NotFound />;
           }}
         </Route>
         <Route path="/analytics" component={Analytics} />

@@ -160,6 +160,31 @@ export const appRouter = router({
         await db.deleteProject(input.id);
         return { success: true };
       }),
+
+    uploadCoverImage: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        base64Image: z.string(),
+        contentType: z.string().default("image/jpeg"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const base64Data = input.base64Image.includes(";base64,")
+          ? input.base64Image.split(";base64,").pop()!
+          : input.base64Image;
+        const buffer = Buffer.from(base64Data, "base64");
+        if (buffer.length > 5 * 1024 * 1024) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Image must be under 5 MB" });
+        }
+        const ext = input.contentType.split("/")[1] || "jpg";
+        const key = `project-covers/${project.id}/${nanoid()}.${ext}`;
+        const { url } = await storagePut(key, buffer, input.contentType);
+        await db.updateProjectCoverImage(project.id, url);
+        return { success: true, coverImageUrl: url };
+      }),
   }),
 
   track: router({
@@ -736,6 +761,56 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         }
         return db.getReviewHistory(input.trackId);
+      }),
+
+    exportHtml: protectedProcedure
+      .input(z.object({ reviewId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const review = await db.getReviewById(input.reviewId);
+        if (!review || review.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+        }
+        const track = review.trackId ? await db.getTrackById(review.trackId) : null;
+        const project = await db.getProjectById(review.projectId);
+        const scores = review.scoresJson as Record<string, number> | undefined;
+
+        // Convert markdown to basic HTML
+        const reviewHtml = review.reviewMarkdown
+          .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+          .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+          .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+          .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+          .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+          .replace(/^- (.*$)/gim, '<li>$1</li>')
+          .replace(/\n\n/gim, '</p><p>')
+          .replace(/\n/gim, '<br>');
+
+        let scoresHtml = '';
+        if (scores && Object.keys(scores).length > 0) {
+          scoresHtml = `<h2>Scores</h2><div class="scores">${Object.entries(scores).map(([k, v]) =>
+            `<div class="score-item"><span class="score-label">${k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span><span class="score-value">${v}/10</span></div>`
+          ).join('')}</div>`;
+        }
+
+        const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Review - ${project?.title || 'Project'} - ${track?.originalFilename || 'Review'}</title><style>
+          body{font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a2e;max-width:800px;margin:0 auto;padding:40px 20px}
+          h1{font-size:2em;margin-bottom:0.3em;color:#0f0f23} h2{font-size:1.4em;margin-top:1.5em;color:#1a1a2e;border-bottom:2px solid #e8e8f0;padding-bottom:0.3em}
+          h3{font-size:1.15em;margin-top:1.2em;color:#2a2a4a} .header{border-bottom:2px solid #c8102e;padding-bottom:16px;margin-bottom:24px}
+          .quick-take{font-style:italic;color:#555;padding:12px 16px;background:#f8f8fc;border-left:4px solid #c8102e;margin:16px 0}
+          .scores{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 24px;padding:16px;background:#f8f8fc;border-radius:8px;margin:12px 0}
+          .score-item{display:flex;justify-content:space-between;padding:4px 0} .score-label{font-weight:600;color:#555} .score-value{font-weight:700;color:#c8102e}
+          blockquote{border-left:4px solid #ddd;padding-left:12px;color:#666;margin:12px 0} li{margin:4px 0}
+          @media print{body{padding:20px}}
+        </style></head><body>
+          <div class="header"><h1>${project?.title || 'Project Review'}</h1>${track ? `<p style="font-size:1.2em;color:#555">Track: ${track.originalFilename}</p>` : ''}<p style="color:#888">Review Type: ${review.reviewType.charAt(0).toUpperCase() + review.reviewType.slice(1)} &middot; ${new Date(review.createdAt).toLocaleDateString()}</p></div>
+          ${review.quickTake ? `<div class="quick-take">"${review.quickTake}"</div>` : ''}
+          ${scoresHtml}
+          <h2>Detailed Review</h2><div><p>${reviewHtml}</p></div>
+          <footer style="margin-top:40px;padding-top:16px;border-top:1px solid #e8e8f0;color:#999;font-size:0.85em;text-align:center">Generated by Troubadour AI</footer>
+        </body></html>`;
+
+        return { htmlContent };
       }),
 
     getPublic: publicProcedure

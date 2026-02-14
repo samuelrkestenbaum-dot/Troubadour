@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `coverImageUrl` varchar(500);

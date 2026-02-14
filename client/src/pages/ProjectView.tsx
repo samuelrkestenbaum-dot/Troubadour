@@ -124,6 +124,14 @@ export default function ProjectView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const uploadCoverImage = trpc.project.uploadCoverImage.useMutation({
+    onSuccess: () => {
+      utils.project.get.invalidate({ id });
+      toast.success("Cover image updated");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const handleFileUpload = useCallback(async (files: FileList | File[] | null, parentTrackId?: number) => {
     if (!files || (files instanceof FileList && !files.length) || (Array.isArray(files) && !files.length)) return;
     setUploading(true);
@@ -330,6 +338,45 @@ export default function ProjectView({ id }: { id: number }) {
           <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
+          {/* Cover Image */}
+          <div className="relative group">
+            {project.coverImageUrl ? (
+              <img
+                src={project.coverImageUrl}
+                alt="Cover"
+                className="h-14 w-14 rounded-lg object-cover border border-border"
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-border">
+                <Music className="h-6 w-6 text-primary/60" />
+              </div>
+            )}
+            <label className="absolute inset-0 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+              <Upload className="h-4 w-4 text-white" />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.error("Image must be under 5 MB");
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    uploadCoverImage.mutate({
+                      projectId: id,
+                      base64Image: reader.result as string,
+                      contentType: file.type,
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </label>
+          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>{project.title}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
@@ -339,6 +386,12 @@ export default function ProjectView({ id }: { id: number }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {tracks.filter(t => t.status === "reviewed").length >= 2 && (
+            <Button variant="outline" size="sm" onClick={() => setLocation(`/projects/${id}/compare`)}>
+              <GitCompare className="h-3.5 w-3.5 mr-1.5" />
+              Compare
+            </Button>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm">

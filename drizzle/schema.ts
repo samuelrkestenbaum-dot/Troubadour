@@ -39,6 +39,7 @@ export const projects = mysqlTable("projects", {
   targetVibe: varchar("targetVibe", { length: 255 }),
   reviewFocus: mysqlEnum("reviewFocus", ["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full").notNull(),
   status: mysqlEnum("status", ["draft", "processing", "reviewed", "error"]).default("draft").notNull(),
+  coverImageUrl: varchar("coverImageUrl", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => [

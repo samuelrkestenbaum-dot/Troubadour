@@ -369,9 +369,18 @@ export default function Dashboard() {
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-base font-semibold leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                          {project.title}
-                        </CardTitle>
+                        <div className="flex items-center gap-3 min-w-0">
+                          {project.coverImageUrl ? (
+                            <img src={project.coverImageUrl} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0 border border-border" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 border border-border">
+                              <Music className="h-4 w-4 text-primary/50" />
+                            </div>
+                          )}
+                          <CardTitle className="text-base font-semibold leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                            {project.title}
+                          </CardTitle>
+                        </div>
                         <Badge variant={status.variant} className="ml-2 shrink-0 text-xs">
                           <StatusIcon className={`h-3 w-3 mr-1 ${isProcessing ? "animate-spin" : ""}`} />
                           {status.label}

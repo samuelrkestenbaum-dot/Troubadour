@@ -876,3 +876,12 @@ export async function softDeleteUser(userId: number) {
     })
     .where(eq(users.id, userId));
 }
+
+
+// ── Cover image helpers ──
+
+export async function updateProjectCoverImage(projectId: number, coverImageUrl: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(projects).set({ coverImageUrl }).where(eq(projects.id, projectId));
+}

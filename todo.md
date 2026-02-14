@@ -479,3 +479,32 @@
 - [x] Project search/filter bar on Dashboard: search by name, filter by status (All/Draft/In Progress/Reviewed/Error), sort (Newest/Oldest/Name A-Z/Z-A), "No projects match" empty state with Reset Filters button
 - [x] Responsive search bar (stacks vertically on mobile)
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 31 - Major Features (Claude 4.5)
+
+### Feature 1: Album Art / Cover Image Upload
+- [x] Add coverImageUrl column to projects schema + migration pushed
+- [x] Create project.uploadCoverImage tRPC mutation (accepts base64, uploads to S3, 5MB limit)
+- [x] Show cover image thumbnail on Dashboard project cards (10x10 rounded)
+- [x] Show cover image on ProjectView header with hover-to-upload overlay
+- [x] Fallback gradient/icon when no cover image set (both Dashboard + ProjectView)
+
+### Feature 2: Compare Reviews Side-by-Side
+- [x] Create /projects/:id/compare route in App.tsx
+- [x] Build CompareReviews page with two-column layout (responsive: stacks on mobile)
+- [x] Track selector dropdowns for left and right panels (disables already-selected track)
+- [x] Score comparison bar when both tracks selected (green/red color coding)
+- [x] Display review scores with visual bars, quick take, and full markdown side by side
+- [x] Add "Compare" button to ProjectView header when 2+ reviewed tracks exist
+- [x] Empty states for "not enough reviews" and "select a track" placeholders
+
+### Feature 3: Export/Share
+- [x] shareToken column already existed in reviews schema (from previous round)
+- [x] review.generateShareLink mutation already existed (from previous round)
+- [x] Public /shared/:token route already existed with SharedReview page
+- [x] Create review.exportHtml tRPC mutation (generates styled HTML, opens print dialog)
+- [x] Add Export PDF and Share buttons to TrackView Reviews tab
+- [x] Share button copies link to clipboard with toast confirmation
+
+### General
+- [x] All 186 tests passing, zero TypeScript errors
