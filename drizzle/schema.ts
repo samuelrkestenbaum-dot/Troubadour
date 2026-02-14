@@ -325,3 +325,64 @@ export const projectCollaborators = mysqlTable("projectCollaborators", {
 
 export type ProjectCollaborator = typeof projectCollaborators.$inferSelect;
 export type InsertProjectCollaborator = typeof projectCollaborators.$inferInsert;
+
+// ── Waveform Annotations ──
+
+export const waveformAnnotations = mysqlTable("waveformAnnotations", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  timestampMs: int("timestampMs").notNull(),
+  content: text("content").notNull(),
+  resolved: boolean("resolved").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("idx_waveformAnnotations_trackId").on(t.trackId),
+  index("idx_waveformAnnotations_userId").on(t.userId),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type WaveformAnnotation = typeof waveformAnnotations.$inferSelect;
+export type InsertWaveformAnnotation = typeof waveformAnnotations.$inferInsert;
+
+// ── Mix Reports (cached technical analysis) ──
+
+export const mixReports = mysqlTable("mixReports", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  reportMarkdown: mediumtext("reportMarkdown").notNull(),
+  frequencyAnalysis: json("frequencyAnalysis"),
+  dynamicsAnalysis: json("dynamicsAnalysis"),
+  stereoAnalysis: json("stereoAnalysis"),
+  loudnessData: json("loudnessData"),
+  dawSuggestions: json("dawSuggestions"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_mixReports_trackId").on(t.trackId),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type MixReport = typeof mixReports.$inferSelect;
+export type InsertMixReport = typeof mixReports.$inferInsert;
+
+// ── Structure Analysis (cached song structure) ──
+
+export const structureAnalyses = mysqlTable("structureAnalyses", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  sectionsJson: json("sectionsJson"),
+  structureScore: int("structureScore"),
+  genreExpectations: json("genreExpectations"),
+  suggestions: json("suggestions"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_structureAnalyses_trackId").on(t.trackId),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+]);
+
+export type StructureAnalysis = typeof structureAnalyses.$inferSelect;
+export type InsertStructureAnalysis = typeof structureAnalyses.$inferInsert;

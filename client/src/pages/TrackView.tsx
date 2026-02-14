@@ -22,6 +22,65 @@ import { TrackTags } from "@/components/TrackTags";
 import { ScoreLineChart } from "@/components/ScoreLineChart";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
+import { MixReportView } from "@/components/MixReportView";
+import { StructureAnalysisView } from "@/components/StructureAnalysisView";
+import { MoodEnergyChart } from "@/components/MoodEnergyChart";
+import { WaveformAnnotations } from "@/components/WaveformAnnotations";
+import { DAWExportButton } from "@/components/DAWExportButton";
+import { RevisionTimeline } from "@/components/RevisionTimeline";
+
+// ── Mix Report Tab Wrapper ──
+function MixReportTab({ trackId }: { trackId: number }) {
+  const [report, setReport] = useState<any>(null);
+  const generateMutation = trpc.mixReport.generate.useMutation({
+    onSuccess: (data: any) => setReport(data),
+    onError: (err: any) => toast.error(err.message),
+  });
+  return <MixReportView data={report} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} />;
+}
+
+// ── Structure Analysis Tab Wrapper ──
+function StructureTab({ trackId }: { trackId: number }) {
+  const [data, setData] = useState<any>(null);
+  const generateMutation = trpc.structure.generate.useMutation({
+    onSuccess: (d: any) => setData(d),
+    onError: (err: any) => toast.error(err.message),
+  });
+  return <StructureAnalysisView data={data} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} />;
+}
+
+// ── Mood/Energy Tab Wrapper ──
+function MoodEnergyTab({ trackId }: { trackId: number }) {
+  const { data: trackData } = trpc.track.get.useQuery({ id: trackId });
+  const features = trackData?.features;
+  const geminiData = features?.geminiAnalysisJson ? (typeof features.geminiAnalysisJson === 'string' ? JSON.parse(features.geminiAnalysisJson as string) : features.geminiAnalysisJson) : null;
+  const energyCurve = geminiData?.energyCurve || geminiData?.energy_curve || [];
+  const sections = (geminiData?.sections || []).map((s: any) => ({
+    name: s.name || s.section || '',
+    startTime: s.startTime || s.start_time || '',
+    endTime: s.endTime || s.end_time || '',
+    energy: s.energy || 5,
+    description: s.description || s.notes || '',
+  }));
+  const moodData = {
+    energyCurve,
+    overallEnergy: geminiData?.overallEnergy || geminiData?.overall_energy || 'N/A',
+    dynamicRange: geminiData?.dynamicRange || geminiData?.dynamic_range || 'N/A',
+    mood: geminiData?.mood || geminiData?.moods || [],
+    sections,
+    arrangement: geminiData?.arrangement || {},
+  };
+  if (!geminiData) {
+    return (
+      <Card className="border-border/40">
+        <CardContent className="py-12 text-center">
+          <p className="text-sm text-muted-foreground">No audio analysis data available yet. Run a review to generate analysis.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return <MoodEnergyChart data={moodData} />;
+}
 
 // ── Reference Track Section ──
 
@@ -689,6 +748,7 @@ export default function TrackView({ id }: { id: number }) {
             });
           }}
         />
+        {reviews.length > 0 && <DAWExportButton trackId={id} />}
       </div>
 
       {isProcessing && (
@@ -710,6 +770,10 @@ export default function TrackView({ id }: { id: number }) {
           <TabsTrigger value="reference">Reference</TabsTrigger>
           {hasVersions && <TabsTrigger value="versions">Versions</TabsTrigger>}
           {hasVersions && <TabsTrigger value="progress">Progress</TabsTrigger>}
+          <TabsTrigger value="mix-report">Mix Report</TabsTrigger>
+          <TabsTrigger value="structure">Structure</TabsTrigger>
+          <TabsTrigger value="mood">Mood/Energy</TabsTrigger>
+          <TabsTrigger value="annotations">Notes</TabsTrigger>
         </TabsList>
 
         {/* Analysis Tab */}
@@ -995,6 +1059,25 @@ export default function TrackView({ id }: { id: number }) {
             <ProgressTracker trackId={id} />
           </TabsContent>
         )}
+        {/* Mix Report Tab */}
+        <TabsContent value="mix-report">
+          <MixReportTab trackId={id} />
+        </TabsContent>
+
+        {/* Structure Analysis Tab */}
+        <TabsContent value="structure">
+          <StructureTab trackId={id} />
+        </TabsContent>
+
+        {/* Mood/Energy Tab */}
+        <TabsContent value="mood">
+          <MoodEnergyTab trackId={id} />
+        </TabsContent>
+
+        {/* Annotations Tab */}
+        <TabsContent value="annotations">
+          <WaveformAnnotations trackId={id} />
+        </TabsContent>
       </Tabs>
     </div>
   );

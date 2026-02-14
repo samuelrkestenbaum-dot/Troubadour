@@ -640,3 +640,69 @@
 - [x] Gravito reviewContent on collaboration invite email: score 100, block_release: false (run_id: run_1771100782708_836a74b0)
 - [x] Gravito checkContentEnforcement on template selector UI text: score 100, passed: true
 - [x] All 192 tests passing (6 new), zero TypeScript errors
+
+## Round 37 - Eight Major Features (Claude 4.5)
+
+### Feature 1: Reference Track Comparison ("Sound Like" Analysis)
+- [x] Upload reference track alongside user's track
+- [x] Compare audio features (mix, arrangement, tonal balance, energy curve)
+- [x] Generate detailed comparison report with actionable feedback
+- [x] Backend: comparison job type using Gemini audio analysis (already existed, verified)
+- [x] Frontend: reference track upload UI and comparison results view (already existed, verified)
+
+### Feature 2: Revision Timeline with Progress Scoring
+- [x] Visual timeline showing score evolution across track versions
+- [x] Annotations on what changed between versions
+- [x] Progress chart with trend lines per scoring dimension
+- [x] Frontend: RevisionTimeline component with score delta badges and visual timeline
+- [x] Backend: timeline.get procedure with getVersionTimeline db helper
+
+### Feature 3: AI Mix Feedback Report (Technical)
+- [x] Generate technical mix notes: frequency analysis, stereo width, dynamic range
+- [x] LUFS loudness targets relative to genre standards
+- [x] Specific DAW-actionable suggestions (EQ, compression, panning)
+- [x] Backend: generateMixReport in analysisService.ts + mixReport router with get/generate
+- [x] Frontend: MixReportView component + Mix Report tab in TrackView
+
+### Feature 4: Collaborative Waveform Annotations
+- [x] Timestamped comments pinned to waveform positions
+- [x] Collaborators can add/view annotations
+- [x] Click annotation to jump to that position in audio
+- [x] Database: waveformAnnotations table with timestampMs, userId, trackId, content, resolved
+- [x] Frontend: WaveformAnnotations component with CRUD + Notes tab in TrackView
+- [x] Backend: annotation.list/create/update/delete procedures
+
+### Feature 5: Genre Benchmarking Dashboard
+- [x] Aggregate scores by genre across all users
+- [x] Show percentile ranking for each scoring dimension
+- [x] Visual comparison chart (radar/bar) vs genre average
+- [x] Backend: benchmark.genres + benchmark.byGenre procedures, getAllGenresWithCounts + getGenreBenchmarks helpers
+- [x] Frontend: GenreBenchmarks page with genre cards, score bars, and percentile rankings
+- [x] Navigation: Added Benchmarks item to DashboardLayout sidebar + route in App.tsx
+
+### Feature 6: Export to DAW Session Notes
+- [x] Generate structured text with timestamped suggestions
+- [x] Organized by section (intro, verse, chorus, etc.)
+- [x] Include technical mix notes and review highlights
+- [x] Backend: dawExport.generate procedure + generateDAWSessionNotes in analysisService.ts
+- [x] Frontend: DAWExportButton component in TrackView action bar (visible when reviews exist)
+
+### Feature 7: Songwriting Structure Analysis
+- [x] Detect song structure (intro, verse, chorus, bridge, outro)
+- [x] Analyze arrangement effectiveness for the genre
+- [x] Flag timing issues (e.g., late chorus arrival)
+- [x] Visual structure map with section labels and color-coded bars
+- [x] Backend: structure.get/generate procedures + generateStructureAnalysis in analysisService.ts
+- [x] Frontend: StructureAnalysisView component + Structure tab in TrackView
+
+### Feature 8: Mood/Energy Curve Visualization
+- [x] Plot emotional arc over time (energy, tension, release) via energy bar chart
+- [x] Section-by-section energy breakdown with descriptions
+- [x] Mood badges and arrangement analysis (density, layering, transitions)
+- [x] Backend: moodEnergy.get procedure extracting from existing Gemini analysis data
+- [x] Frontend: MoodEnergyChart component + Mood/Energy tab in TrackView
+
+### Infrastructure
+- [x] Database schema: added waveformAnnotations, structureAnalyses, mixReports tables
+- [x] All 211 tests passing (19 new for Round 37)
+- [x] Zero TypeScript errors

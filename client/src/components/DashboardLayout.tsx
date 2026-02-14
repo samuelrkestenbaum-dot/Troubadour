@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home, Target } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -33,6 +33,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: FolderOpen, label: "Projects", path: "/projects" },
   { icon: FileText, label: "Templates", path: "/templates" },
+  { icon: Target, label: "Benchmarks", path: "/benchmarks" },
   { icon: TrendingUp, label: "Analytics", path: "/analytics" },
   { icon: BarChart3, label: "Usage", path: "/usage" },
   { icon: Crown, label: "Pricing", path: "/pricing" },

@@ -21,6 +21,7 @@ import CompareReviews from "./pages/CompareReviews";
 import QuickReview from "./pages/QuickReview";
 import Templates from "./pages/Templates";
 import AcceptInvite from "./pages/AcceptInvite";
+import GenreBenchmarks from "./pages/GenreBenchmarks";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -72,6 +73,7 @@ function DashboardRoutes() {
           }}
         </Route>
         <Route path="/templates" component={Templates} />
+        <Route path="/benchmarks" component={GenreBenchmarks} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />

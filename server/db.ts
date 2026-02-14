@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1063,4 +1063,183 @@ export async function getUserByEmail(email: string) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+
+// ── Waveform Annotations (Feature 4) ──
+
+export async function createAnnotation(data: InsertWaveformAnnotation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(waveformAnnotations).values(data);
+  return result[0].insertId;
+}
+
+export async function getAnnotationsByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: waveformAnnotations.id,
+    trackId: waveformAnnotations.trackId,
+    userId: waveformAnnotations.userId,
+    userName: users.name,
+    timestampMs: waveformAnnotations.timestampMs,
+    content: waveformAnnotations.content,
+    resolved: waveformAnnotations.resolved,
+    createdAt: waveformAnnotations.createdAt,
+  })
+    .from(waveformAnnotations)
+    .leftJoin(users, eq(waveformAnnotations.userId, users.id))
+    .where(eq(waveformAnnotations.trackId, trackId))
+    .orderBy(asc(waveformAnnotations.timestampMs));
+}
+
+export async function updateAnnotation(id: number, userId: number, data: { content?: string; resolved?: boolean }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(waveformAnnotations)
+    .set(data)
+    .where(and(eq(waveformAnnotations.id, id), eq(waveformAnnotations.userId, userId)));
+}
+
+export async function deleteAnnotation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(waveformAnnotations)
+    .where(and(eq(waveformAnnotations.id, id), eq(waveformAnnotations.userId, userId)));
+}
+
+// ── Mix Reports (Feature 3) ──
+
+export async function createMixReport(data: InsertMixReport) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(mixReports).values(data);
+  return result[0].insertId;
+}
+
+export async function getMixReportByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(mixReports)
+    .where(eq(mixReports.trackId, trackId))
+    .orderBy(desc(mixReports.createdAt))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ── Structure Analysis (Feature 7) ──
+
+export async function upsertStructureAnalysis(data: InsertStructureAnalysis) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(structureAnalyses).values(data)
+    .onDuplicateKeyUpdate({ set: { sectionsJson: data.sectionsJson, structureScore: data.structureScore, genreExpectations: data.genreExpectations, suggestions: data.suggestions } });
+}
+
+export async function getStructureAnalysis(trackId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(structureAnalyses)
+    .where(eq(structureAnalyses.trackId, trackId))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ── Genre Benchmarking (Feature 5) ──
+
+export async function getGenreBenchmarks(genre: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Get average scores for all tracks in this genre
+  const result = await db.select({
+    trackCount: count(tracks.id),
+  }).from(tracks)
+    .where(eq(tracks.detectedGenre, genre));
+  
+  // Get all reviews with scores for tracks in this genre
+  const reviewRows = await db.select({
+    scoresJson: reviews.scoresJson,
+  }).from(reviews)
+    .innerJoin(tracks, eq(reviews.trackId, tracks.id))
+    .where(and(
+      eq(tracks.detectedGenre, genre),
+      eq(reviews.isLatest, true),
+      eq(reviews.reviewType, "track"),
+    ));
+  
+  return { trackCount: result[0]?.trackCount || 0, reviews: reviewRows };
+}
+
+export async function getAllGenresWithCounts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    genre: tracks.detectedGenre,
+    count: count(tracks.id),
+  }).from(tracks)
+    .where(sql`${tracks.detectedGenre} IS NOT NULL AND ${tracks.detectedGenre} != ''`)
+    .groupBy(tracks.detectedGenre)
+    .orderBy(desc(count(tracks.id)));
+}
+
+// ── Revision Timeline (Feature 2) ──
+
+export async function getVersionTimeline(parentTrackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all versions of a track including the parent
+  const allVersions = await db.select({
+    id: tracks.id,
+    versionNumber: tracks.versionNumber,
+    filename: tracks.originalFilename,
+    createdAt: tracks.createdAt,
+    status: tracks.status,
+  }).from(tracks)
+    .where(sql`${tracks.id} = ${parentTrackId} OR ${tracks.parentTrackId} = ${parentTrackId}`)
+    .orderBy(asc(tracks.versionNumber));
+  
+  // Get reviews with scores for each version
+  const trackIds = allVersions.map(v => v.id);
+  if (trackIds.length === 0) return [];
+  
+  const versionReviews = await db.select({
+    trackId: reviews.trackId,
+    scoresJson: reviews.scoresJson,
+    createdAt: reviews.createdAt,
+  }).from(reviews)
+    .where(and(
+      inArray(reviews.trackId, trackIds),
+      eq(reviews.isLatest, true),
+      eq(reviews.reviewType, "track"),
+    ));
+  
+  return allVersions.map(v => ({
+    ...v,
+    review: versionReviews.find(r => r.trackId === v.id) || null,
+  }));
+}
+
+// ── Export Session Notes (Feature 6) ──
+
+export async function getTrackExportData(trackId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId)).limit(1);
+  if (!track) return null;
+  
+  const [features] = await db.select().from(audioFeatures).where(eq(audioFeatures.trackId, trackId)).limit(1);
+  const [latestReview] = await db.select().from(reviews)
+    .where(and(eq(reviews.trackId, trackId), eq(reviews.isLatest, true), eq(reviews.reviewType, "track")))
+    .orderBy(desc(reviews.createdAt)).limit(1);
+  const [mixReport] = await db.select().from(mixReports)
+    .where(eq(mixReports.trackId, trackId))
+    .orderBy(desc(mixReports.createdAt)).limit(1);
+  const [structure] = await db.select().from(structureAnalyses)
+    .where(eq(structureAnalyses.trackId, trackId)).limit(1);
+  const [lyricsRow] = await db.select().from(lyrics)
+    .where(eq(lyrics.trackId, trackId)).limit(1);
+  
+  return { track, features: features || null, review: latestReview || null, mixReport: mixReport || null, structure: structure || null, lyrics: lyricsRow || null };
 }

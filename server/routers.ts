@@ -11,6 +11,7 @@ import { enqueueJob } from "./services/jobProcessor";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { generateFollowUp, generateReferenceComparison } from "./services/claudeCritic";
 import { compareReferenceWithGemini } from "./services/geminiAudio";
+import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks } from "./services/analysisService";
 
 // ── Usage gating helper ──
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -1630,6 +1631,190 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       }
       return results;
     }),
+  }),
+
+  // ── Waveform Annotations (Feature 4) ──
+  annotation: router({
+    list: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getAnnotationsByTrack(input.trackId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        timestampMs: z.number().min(0),
+        content: z.string().min(1).max(2000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await db.createAnnotation({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          timestampMs: input.timestampMs,
+          content: input.content,
+        });
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        content: z.string().min(1).max(2000).optional(),
+        resolved: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        await db.updateAnnotation(id, ctx.user.id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteAnnotation(input.id, ctx.user.id);
+        return { success: true };
+      }),
+  }),
+
+  // ── Mix Report (Feature 3) ──
+  mixReport: router({
+    get: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getMixReportByTrack(input.trackId) ?? null;
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertFeatureAllowed(ctx.user.tier, "mixReport");
+        const track = await db.getTrackById(input.trackId);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        const features = await db.getAudioFeaturesByTrack(input.trackId);
+        if (!features?.geminiAnalysisJson) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Track needs audio analysis first. Run a review to generate analysis." });
+        const analysis = features.geminiAnalysisJson as any;
+        const trackReviews = await db.getReviewsByTrack(input.trackId);
+        const latestReview = trackReviews.length > 0 ? trackReviews[0] : null;
+        const report = await generateMixReport(analysis, track.originalFilename, track.detectedGenre || "Unknown", latestReview?.reviewMarkdown);
+        const id = await db.createMixReport({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          reportMarkdown: report.reportMarkdown,
+          frequencyAnalysis: report.frequencyAnalysis,
+          dynamicsAnalysis: report.dynamicsAnalysis,
+          stereoAnalysis: report.stereoAnalysis,
+          loudnessData: report.loudnessData,
+          dawSuggestions: report.dawSuggestions,
+        });
+        return { id, ...report };
+      }),
+  }),
+
+  // ── Structure Analysis (Feature 7) ──
+  structure: router({
+    get: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getStructureAnalysis(input.trackId) ?? null;
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertFeatureAllowed(ctx.user.tier, "structureAnalysis");
+        const track = await db.getTrackById(input.trackId);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        const features = await db.getAudioFeaturesByTrack(input.trackId);
+        if (!features?.geminiAnalysisJson) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Track needs audio analysis first. Run a review to generate analysis." });
+        const analysis = features.geminiAnalysisJson as any;
+        const lyricsRow = await db.getLyricsByTrack(input.trackId);
+        const result = await generateStructureAnalysis(analysis, track.originalFilename, track.detectedGenre || "Unknown", lyricsRow?.[0]?.text || undefined);
+        await db.upsertStructureAnalysis({
+          trackId: input.trackId,
+          sectionsJson: result.sections,
+          structureScore: result.structureScore,
+          genreExpectations: result.genreExpectations,
+          suggestions: result.suggestions,
+        });
+        return result;
+      }),
+  }),
+
+  // ── Genre Benchmarks (Feature 5) ──
+  benchmark: router({
+    genres: protectedProcedure.query(async () => {
+      return db.getAllGenresWithCounts();
+    }),
+
+    byGenre: protectedProcedure
+      .input(z.object({ genre: z.string() }))
+      .query(async ({ input }) => {
+        const data = await db.getGenreBenchmarks(input.genre);
+        if (!data || data.trackCount === 0) return null;
+        const scores = data.reviews
+          .map(r => {
+            try { return typeof r.scoresJson === "string" ? JSON.parse(r.scoresJson) : r.scoresJson; } catch { return null; }
+          })
+          .filter((s): s is Record<string, number> => s !== null);
+        return aggregateGenreBenchmarks(input.genre, data.trackCount, scores);
+      }),
+  }),
+
+  // ── Revision Timeline (Feature 2) ──
+  timeline: router({
+    get: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getVersionTimeline(input.trackId);
+      }),
+  }),
+
+  // ── DAW Session Notes Export (Feature 6) ──
+  dawExport: router({
+    generate: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertFeatureAllowed(ctx.user.tier, "dawExport");
+        const exportData = await db.getTrackExportData(input.trackId);
+        if (!exportData) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        const features = await db.getAudioFeaturesByTrack(input.trackId);
+        if (!features?.geminiAnalysisJson) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Track needs audio analysis first." });
+        const analysis = features.geminiAnalysisJson as any;
+        const notes = await generateDAWSessionNotes(
+          analysis,
+          exportData.track.originalFilename,
+          exportData.track.detectedGenre || "Unknown",
+          exportData.review?.reviewMarkdown,
+          exportData.mixReport?.reportMarkdown,
+        );
+        return notes;
+      }),
+  }),
+
+  // ── Mood/Energy Curve (Feature 8) — reads from existing Gemini analysis ──
+  moodEnergy: router({
+    get: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        const features = await db.getAudioFeaturesByTrack(input.trackId);
+        if (!features?.geminiAnalysisJson) return null;
+        const analysis = features.geminiAnalysisJson as any;
+        return {
+          energyCurve: analysis.energy?.curve || [],
+          overallEnergy: analysis.energy?.overall || "unknown",
+          dynamicRange: analysis.energy?.dynamicRange || "unknown",
+          mood: analysis.mood || [],
+          sections: (analysis.sections || []).map((s: any) => ({
+            name: s.name,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            energy: s.energy,
+            description: s.description,
+          })),
+          arrangement: analysis.arrangement || {},
+        };
+      }),
   }),
 });
 
