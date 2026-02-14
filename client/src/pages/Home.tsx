@@ -103,13 +103,13 @@ export default function Home() {
     }
   }, [loading, user, setLocation]);
 
-  // Auto-rotate roles
+  // Auto-rotate roles — reset timer when user clicks a role
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveRole((prev) => (prev + 1) % roles.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeRole]);
 
   const currentRole = roles[activeRole];
 

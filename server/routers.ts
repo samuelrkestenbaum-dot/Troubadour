@@ -74,20 +74,18 @@ export const appRouter = router({
   project: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const projects = await db.getProjectsByUser(ctx.user.id);
-      const result = [];
-      for (const p of projects) {
-        const tracks = await db.getTracksByProject(p.id);
-        const reviewedCount = tracks.filter(t => t.status === "reviewed").length;
-        const processingCount = tracks.filter(t => t.status === "analyzing" || t.status === "reviewing").length;
-        // Derive display status from actual track states
+      if (projects.length === 0) return [];
+      // Batch fetch all track counts in a single query (fixes N+1)
+      const trackCounts = await db.getTrackCountsByProjects(projects.map(p => p.id));
+      return projects.map(p => {
+        const counts = trackCounts.get(p.id) || { total: 0, reviewed: 0, processing: 0 };
         let derivedStatus = p.status;
-        if (tracks.length === 0) derivedStatus = "draft";
-        else if (processingCount > 0) derivedStatus = "processing";
-        else if (reviewedCount === tracks.length) derivedStatus = "reviewed";
-        else if (reviewedCount > 0) derivedStatus = "processing";
-        result.push({ ...p, status: derivedStatus, trackCount: tracks.length, reviewedCount });
-      }
-      return result;
+        if (counts.total === 0) derivedStatus = "draft";
+        else if (counts.processing > 0) derivedStatus = "processing";
+        else if (counts.reviewed === counts.total) derivedStatus = "reviewed";
+        else if (counts.reviewed > 0) derivedStatus = "processing";
+        return { ...p, status: derivedStatus, trackCount: counts.total, reviewedCount: counts.reviewed };
+      });
     }),
 
     get: protectedProcedure

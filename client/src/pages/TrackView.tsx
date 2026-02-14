@@ -140,9 +140,13 @@ function ReferenceTrackSection({ trackId }: { trackId: number }) {
               )}
             </div>
 
-            <audio controls className="w-full mb-3" src={ref.storageUrl} preload="metadata">
-              Your browser does not support audio playback.
-            </audio>
+            <AudioPlayer
+              src={ref.storageUrl}
+              title={ref.originalFilename}
+              subtitle="Reference Track"
+              compact
+              className="mb-3"
+            />
 
             {ref.comparisonResult && (
               <div className="mt-3 pt-3 border-t border-border/50">
@@ -309,7 +313,7 @@ function ProgressTracker({ trackId }: { trackId: number }) {
   const chartData = scoreHistory.map(v => ({
     versionNumber: v.versionNumber,
     filename: v.filename,
-    scores: typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores,
+    scores: typeof v.scores === "string" ? (() => { try { return JSON.parse(v.scores); } catch { return {}; } })() : (v.scores || {}),
   }));
 
   const latest = chartData[chartData.length - 1];
@@ -378,7 +382,7 @@ function ProgressTracker({ trackId }: { trackId: number }) {
                 )}
               </div>
               {(() => {
-                const scores = typeof v.scores === "string" ? JSON.parse(v.scores) : v.scores;
+                const scores = typeof v.scores === "string" ? (() => { try { return JSON.parse(v.scores); } catch { return {}; } })() : (v.scores || {});
                 const overall = scores.overall;
                 return overall !== undefined ? (
                   <span className={`text-lg font-bold shrink-0 ${scoreColor(overall)}`}>

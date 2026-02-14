@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -18,6 +18,12 @@ import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
 
+/** Safely parse a route param as a positive integer, returning null if invalid */
+function safeParseId(raw: string): number | null {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function DashboardRoutes() {
   return (
     <DashboardLayout>
@@ -26,16 +32,28 @@ function DashboardRoutes() {
         <Route path="/projects" component={Dashboard} />
         <Route path="/projects/new" component={NewProject} />
         <Route path="/projects/:id">
-          {(params) => <ProjectView id={parseInt(params.id)} />}
+          {(params) => {
+            const id = safeParseId(params.id);
+            return id ? <ProjectView id={id} /> : <NotFound />;
+          }}
         </Route>
         <Route path="/tracks/:id">
-          {(params) => <TrackView id={parseInt(params.id)} />}
+          {(params) => {
+            const id = safeParseId(params.id);
+            return id ? <TrackView id={id} /> : <NotFound />;
+          }}
         </Route>
         <Route path="/reviews/:id">
-          {(params) => <ReviewView id={parseInt(params.id)} />}
+          {(params) => {
+            const id = safeParseId(params.id);
+            return id ? <ReviewView id={id} /> : <NotFound />;
+          }}
         </Route>
         <Route path="/tracks/:id/diff">
-          {(params) => <VersionDiff trackId={parseInt(params.id)} />}
+          {(params) => {
+            const id = safeParseId(params.id);
+            return id ? <VersionDiff trackId={id} /> : <NotFound />;
+          }}
         </Route>
         <Route path="/analytics" component={Analytics} />
         <Route path="/usage" component={Usage} />

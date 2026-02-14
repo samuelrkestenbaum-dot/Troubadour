@@ -250,9 +250,10 @@ export function ChatSidebar() {
             ) : (
               <div className="p-2">
                 {sessionsQuery.data.map((session) => (
-                  <div
+                  <button
                     key={session.id}
-                    className="group flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-accent cursor-pointer"
+                    type="button"
+                    className="group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-accent cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => openSession(session.id)}
                   >
                     <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -264,16 +265,26 @@ export function ChatSidebar() {
                         {new Date(session.lastActiveAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <button
+                    <span
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteSession.mutate({ sessionId: session.id });
                       }}
-                      className="opacity-0 group-hover:opacity-100 rounded p-1 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          deleteSession.mutate({ sessionId: session.id });
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 rounded p-1 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+                      aria-label={`Delete conversation: ${session.title}`}
                     >
                       <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             )}

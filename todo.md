@@ -427,3 +427,22 @@
 - [x] P2: Improved Analytics empty state with CTA
 - [x] P2: Track failed files in multi-upload batch (per-file error handling + summary toast)
 - [x] All 186 tests passing, zero TypeScript errors
+## Round 26 - Gemini 2.5 Pro Audit Fixes (Claude 4.5)
+
+### P1 Fixes
+- [x] P1: createReview versioning wrapped in transaction (already done in Round 24)
+- [x] P1: N+1 query optimization — getTrackCountsByProjects batch query for Dashboard
+- [x] P1: Unhandled JSON.parse — all frontend JSON.parse calls already wrapped in try/catch
+- [x] P1: Viewport maximum-scale=1 — already absent (not blocking pinch-to-zoom)
+- [x] P1: Math.max(...waveform) stack overflow — already uses reduce() instead of spread
+- [x] P1: tsconfig includes test files — test files now type-checked
+- [x] P1: upsertLyrics race condition — replaced read-then-write with atomic ON DUPLICATE KEY UPDATE
+
+### P2 Fixes
+- [x] P2: NaN route params — added safeParseId() validation, shows NotFound for invalid IDs
+- [x] P2: Role carousel timer — reset interval on activeRole change (user click resets auto-rotate)
+- [x] P2: Parallel file uploads — replaced sequential for-loop with Promise.allSettled
+- [x] P2: ChatSidebar keyboard accessibility — replaced div with button elements, added focus ring
+- [x] P2: Waveform seek bar keyboard accessibility — added role="slider", arrow key handlers, ARIA attributes
+- [x] P2: Reference track native audio — replaced <audio> with AudioPlayer component
+- [x] All 186 tests passing, zero TypeScript errors

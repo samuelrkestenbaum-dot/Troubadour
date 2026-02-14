@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, count, avg, isNull } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
@@ -173,6 +173,25 @@ export async function createTrack(data: InsertTrack) {
   if (!db) throw new Error("Database not available");
   const result = await db.insert(tracks).values(data);
   return { id: result[0].insertId };
+}
+
+export async function getTrackCountsByProjects(projectIds: number[]) {
+  if (projectIds.length === 0) return new Map<number, { total: number; reviewed: number; processing: number }>();
+  const db = await getDb();
+  if (!db) return new Map();
+  const allTracks = await db.select({
+    projectId: tracks.projectId,
+    status: tracks.status,
+  }).from(tracks).where(inArray(tracks.projectId, projectIds));
+  const result = new Map<number, { total: number; reviewed: number; processing: number }>();
+  for (const t of allTracks) {
+    if (!result.has(t.projectId)) result.set(t.projectId, { total: 0, reviewed: 0, processing: 0 });
+    const c = result.get(t.projectId)!;
+    c.total++;
+    if (t.status === "reviewed") c.reviewed++;
+    if (t.status === "analyzing" || t.status === "reviewing") c.processing++;
+  }
+  return result;
 }
 
 export async function getTracksByProject(projectId: number) {
@@ -360,13 +379,14 @@ export async function getTrackTags(trackId: number): Promise<string[]> {
 export async function upsertLyrics(trackId: number, lyricsText: string, source: "user" | "transcribed") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const existing = await db.select().from(lyrics).where(and(eq(lyrics.trackId, trackId), eq(lyrics.source, source))).limit(1);
-  if (existing.length > 0) {
-    await db.update(lyrics).set({ text: lyricsText }).where(eq(lyrics.id, existing[0].id));
-    return { id: existing[0].id };
-  }
-  const result = await db.insert(lyrics).values({ trackId, text: lyricsText, source });
-  return { id: result[0].insertId };
+  // Atomic upsert using unique index on (trackId, source) — no race condition
+  const result = await db.insert(lyrics).values({ trackId, text: lyricsText, source })
+    .onDuplicateKeyUpdate({ set: { text: lyricsText } });
+  // onDuplicateKeyUpdate returns insertId=0 on update, so look up the row if needed
+  if (result[0].insertId) return { id: result[0].insertId };
+  const existing = await db.select({ id: lyrics.id }).from(lyrics)
+    .where(and(eq(lyrics.trackId, trackId), eq(lyrics.source, source))).limit(1);
+  return { id: existing[0]?.id ?? 0 };
 }
 
 export async function getLyricsByTrack(trackId: number) {
@@ -402,35 +422,37 @@ export async function createReview(data: InsertReview) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // If this is a track review, handle versioning
+  // If this is a track review, handle versioning atomically
   if (data.trackId && data.reviewType === "track") {
-    // Get the current latest version number for this track
-    const existing = await db.select({ reviewVersion: reviews.reviewVersion })
-      .from(reviews)
-      .where(and(
-        eq(reviews.trackId, data.trackId),
-        eq(reviews.reviewType, "track"),
-        eq(reviews.isLatest, true)
-      ))
-      .orderBy(desc(reviews.reviewVersion))
-      .limit(1);
+    return db.transaction(async (tx) => {
+      // Get the current latest version number for this track
+      const existing = await tx.select({ reviewVersion: reviews.reviewVersion })
+        .from(reviews)
+        .where(and(
+          eq(reviews.trackId, data.trackId!),
+          eq(reviews.reviewType, "track"),
+          eq(reviews.isLatest, true)
+        ))
+        .orderBy(desc(reviews.reviewVersion))
+        .limit(1);
 
-    const nextVersion = existing.length > 0 ? (existing[0].reviewVersion ?? 1) + 1 : 1;
+      const nextVersion = existing.length > 0 ? (existing[0].reviewVersion ?? 1) + 1 : 1;
 
-    // Mark all previous reviews for this track as not latest
-    await db.update(reviews).set({ isLatest: false })
-      .where(and(
-        eq(reviews.trackId, data.trackId),
-        eq(reviews.reviewType, "track")
-      ));
+      // Mark all previous reviews for this track as not latest
+      await tx.update(reviews).set({ isLatest: false })
+        .where(and(
+          eq(reviews.trackId, data.trackId!),
+          eq(reviews.reviewType, "track")
+        ));
 
-    // Insert with version info
-    const result = await db.insert(reviews).values({
-      ...data,
-      reviewVersion: nextVersion,
-      isLatest: true,
+      // Insert with version info
+      const result = await tx.insert(reviews).values({
+        ...data,
+        reviewVersion: nextVersion,
+        isLatest: true,
+      });
+      return { id: result[0].insertId };
     });
-    return { id: result[0].insertId };
   }
 
   // For album/comparison reviews, just insert normally

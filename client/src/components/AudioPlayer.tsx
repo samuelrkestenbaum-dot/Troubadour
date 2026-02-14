@@ -36,7 +36,7 @@ function generateWaveformData(audioBuffer: AudioBuffer, bars: number): number[] 
   }
 
   // Normalize to 0-1
-  const max = Math.max(...waveform, 0.001);
+  const max = waveform.reduce((m, v) => v > m ? v : m, 0.001);
   return waveform.map(v => v / max);
 }
 
@@ -74,13 +74,40 @@ const Waveform = React.memo(function Waveform({
     handleClick(e);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (duration <= 0) return;
+    const step = duration * 0.02; // 2% per key press
+    const currentTime = (progress / 100) * duration;
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+      e.preventDefault();
+      onSeek(Math.min(duration, currentTime + step));
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+      e.preventDefault();
+      onSeek(Math.max(0, currentTime - step));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      onSeek(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      onSeek(duration);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
-      className="relative cursor-pointer group select-none"
+      className="relative cursor-pointer group select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
       style={{ height }}
+      role="slider"
+      tabIndex={0}
+      aria-label="Audio seek bar"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration)}
+      aria-valuenow={Math.round((progress / 100) * duration)}
+      aria-valuetext={`${Math.round((progress / 100) * duration)} of ${Math.round(duration)} seconds`}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
+      onKeyDown={handleKeyDown}
     >
       {/* Waveform bars */}
       <svg

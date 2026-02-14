@@ -55,6 +55,7 @@ vi.mock("./db", () => {
     getTracksByProject: vi.fn().mockImplementation(async (projectId: number) => {
       return mockTracks.filter(t => t.projectId === projectId);
     }),
+    getTrackCountsByProjects: vi.fn().mockResolvedValue(new Map()),
     getTrackById: vi.fn().mockImplementation(async (id: number) => {
       return mockTracks.find(t => t.id === id) || null;
     }),
@@ -96,9 +97,8 @@ vi.mock("./db", () => {
     getScoreHistoryForTrack: vi.fn().mockResolvedValue([]),
     getNextQueuedJob: vi.fn().mockResolvedValue(null),
     getStaleRunningJobs: vi.fn().mockResolvedValue([]),
-    claimNextJob: vi.fn().mockResolvedValue(null),
+    claimNextQueuedJob: vi.fn().mockResolvedValue(null),
     updateJobHeartbeat: vi.fn().mockResolvedValue(undefined),
-    resetStaleRunningJobs: vi.fn().mockResolvedValue(undefined),
     getJobsByBatchId: vi.fn().mockResolvedValue([]),
     getReviewHistory: vi.fn().mockResolvedValue([
       { id: 2, reviewVersion: 2, isLatest: true, modelUsed: "claude-sonnet-4-5-20250929", scoresJson: { overall: 8 }, quickTake: "Great improvement", createdAt: new Date() },
@@ -132,8 +132,6 @@ vi.mock("./db", () => {
     // Webhook idempotency
     isWebhookEventProcessed: vi.fn().mockResolvedValue(false),
     markWebhookEventProcessed: vi.fn().mockResolvedValue(undefined),
-    // Atomic job claiming
-    claimNextQueuedJob: vi.fn().mockResolvedValue(null),
     // Stripe
     getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
     updateUserSubscription: vi.fn().mockResolvedValue(undefined),
@@ -177,7 +175,7 @@ vi.mock("./storage", () => ({
 // Mock job processor (don't actually run jobs)
 vi.mock("./services/jobProcessor", () => ({
   enqueueJob: vi.fn(),
-  startJobQueuePoller: vi.fn(),
+  startJobQueue: vi.fn(),
 }));
 
 // Mock voice transcription
@@ -795,7 +793,7 @@ describe("Claude model version", () => {
 describe("persistent job queue", () => {
   it("exports startJobQueuePoller function", async () => {
     const mod = await import("./services/jobProcessor");
-    expect(typeof mod.startJobQueuePoller).toBe("function");
+    expect(typeof mod.startJobQueue).toBe("function");
   });
 
   it("exports enqueueJob function", async () => {
@@ -857,7 +855,7 @@ describe("db queue helpers", () => {
 
   it("updateTrackGenre resolves without error", async () => {
     const db = await import("./db");
-    await expect(db.updateTrackGenre(1, "Rock", "Alternative, Indie", "Radiohead, Coldplay")).resolves.toBeUndefined();
+    await expect(db.updateTrackGenre(1, "Rock", ["Alternative", "Indie"], ["Radiohead", "Coldplay"])).resolves.toBeUndefined();
   });
 });
 
@@ -1123,7 +1121,7 @@ describe("jobProcessor batch notification", () => {
   it("exports checkBatchCompletion-related functions", async () => {
     const mod = await import("./services/jobProcessor");
     expect(typeof mod.enqueueJob).toBe("function");
-    expect(typeof mod.startJobQueuePoller).toBe("function");
+    expect(typeof mod.startJobQueue).toBe("function");
   });
 });
 
@@ -1773,9 +1771,9 @@ describe("new db helpers for audit fixes", () => {
     expect(typeof db.getLatestJobForTrack).toBe("function");
   });
 
-  it("claimNextJob is exported", async () => {
+  it("claimNextQueuedJob is exported", async () => {
     const db = await import("./db");
-    expect(typeof db.claimNextJob).toBe("function");
+    expect(typeof db.claimNextQueuedJob).toBe("function");
   });
 
   it("updateJobHeartbeat is exported", async () => {
@@ -1783,9 +1781,9 @@ describe("new db helpers for audit fixes", () => {
     expect(typeof db.updateJobHeartbeat).toBe("function");
   });
 
-  it("resetStaleRunningJobs is exported", async () => {
+  it("getStaleRunningJobs is exported", async () => {
     const db = await import("./db");
-    expect(typeof db.resetStaleRunningJobs).toBe("function");
+    expect(typeof db.getStaleRunningJobs).toBe("function");
   });
 });
 

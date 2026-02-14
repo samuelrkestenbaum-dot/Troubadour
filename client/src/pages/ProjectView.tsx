@@ -133,18 +133,23 @@ export default function ProjectView({ id }: { id: number }) {
     let succeeded = 0;
     let failed = 0;
     try {
+      // Validate files first, then upload valid ones in parallel
+      const validFiles: File[] = [];
       for (const file of fileArr) {
         if (!file.type.startsWith("audio/")) {
           toast.error(`${file.name} is not an audio file`);
           failed++;
-          continue;
-        }
-        if (file.size > 50 * 1024 * 1024) {
+        } else if (file.size > 50 * 1024 * 1024) {
           toast.error(`${file.name} exceeds 50MB limit`);
           failed++;
-          continue;
+        } else {
+          validFiles.push(file);
         }
-        try {
+      }
+
+      // Upload valid files in parallel using Promise.allSettled
+      const results = await Promise.allSettled(
+        validFiles.map(async (file) => {
           const reader = new FileReader();
           const base64 = await new Promise<string>((resolve, reject) => {
             reader.onload = () => {
@@ -162,12 +167,20 @@ export default function ProjectView({ id }: { id: number }) {
             fileSize: file.size,
             ...(parentTrackId ? { parentTrackId, versionNumber: 2 } : {}),
           });
+          return file.name;
+        })
+      );
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.status === "fulfilled") {
           succeeded++;
-        } catch (e: any) {
-          toast.error(`Failed to upload ${file.name}: ${e?.message || "Unknown error"}`);
+        } else {
+          toast.error(`Failed to upload ${validFiles[i].name}: ${result.reason?.message || "Unknown error"}`);
           failed++;
         }
       }
+
       // Show summary for multi-file uploads
       if (fileArr.length > 1) {
         if (failed === 0) {
