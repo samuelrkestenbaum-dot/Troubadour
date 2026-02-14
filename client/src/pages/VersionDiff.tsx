@@ -9,13 +9,7 @@ import {
   ArrowLeft, ArrowUp, ArrowDown, Minus, GitCompare, TrendingUp, TrendingDown, BarChart3
 } from "lucide-react";
 import { Streamdown } from "streamdown";
-
-function formatLabel(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, s => s.toUpperCase())
-    .trim();
-}
+import { formatLabel } from "@/lib/utils";
 
 function DeltaIndicator({ delta }: { delta: number }) {
   if (delta > 0) {

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, mediumtext, timestamp, varchar, json, bigint, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, mediumtext, timestamp, varchar, json, bigint, boolean, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 import { index, uniqueIndex } from "drizzle-orm/mysql-core";
 import { foreignKey } from "drizzle-orm/mysql-core";
 import { unique } from "drizzle-orm/mysql-core";
@@ -13,8 +13,8 @@ export const users = mysqlTable("users", {
   audioMinutesUsed: int("audioMinutesUsed").default(0).notNull(),
   audioMinutesLimit: int("audioMinutesLimit").default(60).notNull(),
   tier: mysqlEnum("tier", ["free", "artist", "pro"]).default("free").notNull(),
-  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
-  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).unique(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }).unique(),
   monthlyReviewCount: int("monthlyReviewCount").default(0).notNull(),
   monthlyResetAt: timestamp("monthlyResetAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -62,7 +62,7 @@ export const tracks = mysqlTable("tracks", {
   duration: int("duration"),
   trackOrder: int("trackOrder").default(0).notNull(),
   versionNumber: int("versionNumber").default(1).notNull(),
-  parentTrackId: int("parentTrackId"),
+  parentTrackId: int("parentTrackId").references((): AnyMySqlColumn => tracks.id, { onDelete: "set null" }),
   detectedGenre: varchar("detectedGenre", { length: 255 }),
   detectedSubgenres: text("detectedSubgenres"),
   detectedInfluences: text("detectedInfluences"),
@@ -77,6 +77,7 @@ export const tracks = mysqlTable("tracks", {
   index("idx_tracks_projectId_trackOrder").on(t.projectId, t.trackOrder),
   foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
   foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+
 ]);
 
 export type Track = typeof tracks.$inferSelect;
@@ -139,6 +140,7 @@ export const reviews = mysqlTable("reviews", {
   uniqueIndex("uq_reviews_shareToken").on(t.shareToken),
   foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
   foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.comparedTrackId], foreignColumns: [tracks.id] }).onDelete("set null"),
 ]);
 
 export type Review = typeof reviews.$inferSelect;
@@ -160,7 +162,7 @@ export const jobs = mysqlTable("jobs", {
   heartbeatAt: timestamp("heartbeatAt"),
   maxAttempts: int("maxAttempts").default(3).notNull(),
   attempts: int("attempts").default(0).notNull(),
-  dependsOnJobId: int("dependsOnJobId"),
+  dependsOnJobId: int("dependsOnJobId").references((): AnyMySqlColumn => jobs.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   completedAt: timestamp("completedAt"),
@@ -173,6 +175,7 @@ export const jobs = mysqlTable("jobs", {
   index("idx_jobs_dependsOnJobId").on(t.dependsOnJobId),
   foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
   foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+
 ]);
 
 export type Job = typeof jobs.$inferSelect;

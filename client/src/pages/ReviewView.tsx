@@ -317,7 +317,9 @@ export default function ReviewView({ id }: { id: number }) {
       a.download = `review-${review.id}-${review.reviewType}.md`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Review exported");
+      toast.success("Review exported (basic format)", {
+        description: "Exported raw review content without additional metadata.",
+      });
     }
   };
 

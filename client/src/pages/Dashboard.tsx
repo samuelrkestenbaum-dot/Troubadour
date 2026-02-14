@@ -29,7 +29,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const { data: projects, isLoading } = trpc.project.list.useQuery();
+  const { data: projects, isLoading, error } = trpc.project.list.useQuery();
   const shownUpgradeToast = useRef(false);
 
   useEffect(() => {
@@ -59,7 +59,14 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Failed to load projects</h3>
+          <p className="text-muted-foreground text-sm mb-4">Something went wrong. Please try refreshing the page.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Refresh</Button>
+        </div>
+      ) : isLoading ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="gradient-card">

@@ -394,3 +394,22 @@
 - [x] Story 8: Settings — account info, subscription, notifications, danger zone all clean
 - [x] Fix: replaced raw model name "claude-sonnet-4-5-20250929" with "Troubadour" in TrackView review cards
 - [x] All 186 tests passing
+
+## Round 24 - GPT-5 Comprehensive End-to-End Audit
+- [x] Gathered full codebase inventory (59 source files, 14,500+ lines)
+- [x] GPT-5 audit: Backend — schema, routers, services, jobs, Stripe, security
+- [x] GPT-5 audit: Frontend — all pages, components, state management, UX
+- [x] GPT-5 audit: Infrastructure — database, S3, auth, webhooks, rate limiting
+- [x] GPT-5 audit: Business readiness — billing, onboarding, analytics, compliance
+- [x] GPT-5 audit: Every site page and surface — visual and functional walkthrough
+- [x] P0 FIX: Added FK constraints (jobs.dependsOnJobId, reviews.comparedTrackId, tracks.parentTrackId)
+- [x] P0 FIX: Added parentTrack ownership check in track.getVersions (authorization bypass)
+- [x] P1 FIX: Added unique indexes on stripeCustomerId and stripeSubscriptionId
+- [x] P1 FIX: Added track ownership verification in job.retry
+- [x] P1 FIX: Added error state handling to Dashboard
+- [x] P1 FIX: Clarified fallback export toast in ReviewView
+- [x] P1 FIX: Rewrote NotFound page with Go Back button and dark theme
+- [x] P2 FIX: Added file validation (audio type + 50MB) to version upload in TrackView
+- [x] P2 FIX: Extracted shared formatLabel utility to lib/utils.ts
+- [x] P2 FIX: Added link to main site in SharedReview footer, removed model name
+- [x] All 186 tests passing, zero TypeScript errors

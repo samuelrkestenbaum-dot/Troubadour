@@ -247,8 +247,11 @@ export const appRouter = router({
         }
         const parentId = track.parentTrackId || track.id;
         const parentTrack = await db.getTrackById(parentId);
+        if (!parentTrack || parentTrack.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
         const childVersions = await db.getTrackVersions(parentId);
-        return parentTrack ? [parentTrack, ...childVersions] : childVersions;
+        return [parentTrack, ...childVersions];
       }),
   }),
 
@@ -466,6 +469,9 @@ export const appRouter = router({
         // Reset the track status if needed
         if (oldJob.trackId) {
           const track = await db.getTrackById(oldJob.trackId);
+          if (track && track.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+          }
           if (track) {
             if (oldJob.type === "analyze") {
               await db.updateTrackStatus(track.id, "uploaded");

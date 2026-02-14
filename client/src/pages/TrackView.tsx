@@ -624,6 +624,14 @@ export default function TrackView({ id }: { id: number }) {
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
+            if (!file.type.startsWith("audio/")) {
+              toast.error("Invalid file type", { description: "Please upload an audio file (MP3, WAV, FLAC, etc.)" });
+              return;
+            }
+            if (file.size > 50 * 1024 * 1024) {
+              toast.error("File too large", { description: "Maximum file size is 50MB." });
+              return;
+            }
             const reader = new FileReader();
             const base64 = await new Promise<string>((resolve, reject) => {
               reader.onload = () => resolve((reader.result as string).split(",")[1]);
