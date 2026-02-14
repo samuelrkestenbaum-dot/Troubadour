@@ -333,3 +333,12 @@
 - [x] Wire Settings page to existing tRPC endpoints (auth.me, subscription.status, subscription.checkout, subscription.manageBilling)
 - [x] Verify Stripe checkout flow doesn't touch existing data — CONFIRMED SAFE
 - [x] All 180 tests passing
+
+## Round 18 - Delete Account Flow (Claude 4.5)
+- [x] Add deletedAt column to users table for soft-delete
+- [x] Backend: subscription.deleteAccount endpoint (cancel Stripe subscription, soft-delete user, clear session)
+- [x] Backend: Exclude soft-deleted users from auth context (getUserById/getUserByOpenId filter isNull(deletedAt))
+- [x] Frontend: Confirmation dialog with "type DELETE to confirm" safety check
+- [x] Frontend: Wire Delete Account button in Settings Danger Zone
+- [x] Tests for delete account flow (6 tests: auth, confirmation, soft-delete, Stripe cancel, Stripe failure resilience, user not found)
+- [x] All 186 tests passing

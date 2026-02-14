@@ -1239,6 +1239,35 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         });
         return { url };
       }),
+
+    deleteAccount: protectedProcedure
+      .input(z.object({ confirmation: z.literal("DELETE") }))
+      .mutation(async ({ ctx }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+        // Cancel active Stripe subscription if exists
+        if (user.stripeSubscriptionId) {
+          try {
+            const { getStripe } = await import("./stripe/stripe");
+            const stripe = getStripe();
+            await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+            console.log(`[DeleteAccount] Cancelled Stripe subscription ${user.stripeSubscriptionId} for user ${user.id}`);
+          } catch (err: any) {
+            console.warn(`[DeleteAccount] Failed to cancel Stripe subscription: ${err.message}`);
+            // Continue with deletion even if Stripe cancel fails
+          }
+        }
+
+        // Soft-delete the user (sets deletedAt, clears subscription data, zeroes limits)
+        await db.softDeleteUser(user.id);
+        console.log(`[DeleteAccount] Soft-deleted user ${user.id} (${user.email})`);
+
+        // Clear the session cookie
+        ctx.res.clearCookie("session", { path: "/" });
+
+        return { success: true };
+      }),
   }),
 });
 

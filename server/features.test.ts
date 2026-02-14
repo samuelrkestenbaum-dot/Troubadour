@@ -165,6 +165,7 @@ vi.mock("./db", () => {
       { trackId: 1, overall: 9, quickTake: "Excellent", reviewVersion: 1, filename: "hit-song.wav", genre: "Pop" },
       { trackId: 2, overall: 8, quickTake: "Great", reviewVersion: 1, filename: "banger.mp3", genre: "Hip-Hop" },
     ]),
+    softDeleteUser: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -220,6 +221,9 @@ function createTestUser(): User {
     audioMinutesUsed: 5,
     audioMinutesLimit: 60,
     tier: "free",
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+    deletedAt: null,
     monthlyReviewCount: 0,
     monthlyResetAt: new Date(),
     createdAt: new Date(),
@@ -2313,5 +2317,101 @@ describe("health check endpoint", () => {
     };
     const overallHealthy = Object.values(checks).every(c => c.status !== "unhealthy");
     expect(overallHealthy).toBe(true); // degraded != unhealthy
+  });
+});
+
+// ── Delete Account Tests ──
+describe("delete account flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("requires authentication to delete account", async () => {
+    const caller = appRouter.createCaller(createUnauthContext());
+    await expect(
+      caller.subscription.deleteAccount({ confirmation: "DELETE" })
+    ).rejects.toThrow("Please login");
+  });
+
+  it("requires exact DELETE confirmation string", async () => {
+    const user = createTestUser();
+    const caller = appRouter.createCaller(createAuthContext(user));
+    // z.literal("DELETE") should reject any other string
+    await expect(
+      caller.subscription.deleteAccount({ confirmation: "delete" } as any)
+    ).rejects.toThrow();
+  });
+
+  it("soft-deletes user without Stripe subscription", async () => {
+    const user = createTestUser();
+    const ctx = createAuthContext(user);
+    const { getUserById, softDeleteUser } = await import("./db");
+    (getUserById as any).mockResolvedValueOnce(user);
+
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.subscription.deleteAccount({ confirmation: "DELETE" });
+
+    expect(result.success).toBe(true);
+    expect(softDeleteUser).toHaveBeenCalledWith(user.id);
+    expect(ctx.res.clearCookie).toHaveBeenCalledWith("session", { path: "/" });
+  });
+
+  it("cancels Stripe subscription before soft-deleting user", async () => {
+    const user = { ...createTestUser(), stripeSubscriptionId: "sub_test_123", stripeCustomerId: "cus_test_456" };
+    const ctx = createAuthContext(user);
+    const { getUserById, softDeleteUser } = await import("./db");
+    (getUserById as any).mockResolvedValueOnce(user);
+
+    // Mock the dynamic Stripe import
+    const mockCancel = vi.fn().mockResolvedValue({});
+    vi.doMock("./stripe/stripe", () => ({
+      getStripe: () => ({
+        subscriptions: { cancel: mockCancel },
+      }),
+    }));
+
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.subscription.deleteAccount({ confirmation: "DELETE" });
+
+    expect(result.success).toBe(true);
+    expect(softDeleteUser).toHaveBeenCalledWith(user.id);
+    expect(ctx.res.clearCookie).toHaveBeenCalledWith("session", { path: "/" });
+
+    vi.doUnmock("./stripe/stripe");
+  });
+
+  it("still soft-deletes user even if Stripe cancellation fails", async () => {
+    const user = { ...createTestUser(), stripeSubscriptionId: "sub_test_fail" };
+    const ctx = createAuthContext(user);
+    const { getUserById, softDeleteUser } = await import("./db");
+    (getUserById as any).mockResolvedValueOnce(user);
+
+    // Mock Stripe to throw an error
+    vi.doMock("./stripe/stripe", () => ({
+      getStripe: () => ({
+        subscriptions: { cancel: vi.fn().mockRejectedValue(new Error("Stripe error")) },
+      }),
+    }));
+
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.subscription.deleteAccount({ confirmation: "DELETE" });
+
+    // Should still succeed - Stripe failure is non-blocking
+    expect(result.success).toBe(true);
+    expect(softDeleteUser).toHaveBeenCalledWith(user.id);
+
+    vi.doUnmock("./stripe/stripe");
+  });
+
+  it("returns NOT_FOUND if user doesn't exist", async () => {
+    const user = createTestUser();
+    const ctx = createAuthContext(user);
+    const { getUserById } = await import("./db");
+    (getUserById as any).mockResolvedValueOnce(null);
+
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.subscription.deleteAccount({ confirmation: "DELETE" })
+    ).rejects.toThrow("NOT_FOUND");
   });
 });

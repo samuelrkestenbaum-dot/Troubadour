@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, count, avg } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
@@ -85,7 +85,7 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db.select().from(users).where(and(eq(users.openId, openId), isNull(users.deletedAt))).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -93,7 +93,7 @@ export async function getUserByOpenId(openId: string) {
 export async function getUserById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  const result = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -837,4 +837,20 @@ export async function resetMonthlyUsageIfNeeded(userId: number): Promise<void> {
 export async function getMonthlyReviewCount(userId: number): Promise<number> {
   const user = await getUserById(userId);
   return user?.monthlyReviewCount ?? 0;
+}
+
+export async function softDeleteUser(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users)
+    .set({
+      deletedAt: new Date(),
+      tier: "free",
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      audioMinutesUsed: 0,
+      audioMinutesLimit: 0,
+      monthlyReviewCount: 0,
+    })
+    .where(eq(users.id, userId));
 }

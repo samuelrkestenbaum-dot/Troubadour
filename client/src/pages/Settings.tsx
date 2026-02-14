@@ -1,11 +1,21 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2 } from "lucide-react";
+import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 
 const TIER_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
@@ -21,6 +31,9 @@ const TIER_LABELS: Record<string, string> = {
 
 export default function Settings() {
   const { user } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+
   const subscriptionQuery = trpc.subscription.status.useQuery(undefined, {
     retry: false,
   });
@@ -49,6 +62,20 @@ export default function Settings() {
     },
   });
 
+  const deleteAccountMutation = trpc.subscription.deleteAccount.useMutation({
+    onSuccess: () => {
+      toast.success("Account deleted. Redirecting...");
+      setDeleteDialogOpen(false);
+      // Redirect to landing page after a short delay
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to delete account");
+    },
+  });
+
   const tier = subscriptionQuery.data?.tier ?? user?.tier ?? "free";
   const sub = subscriptionQuery.data?.subscription;
 
@@ -58,6 +85,11 @@ export default function Settings() {
 
   const handleManageBilling = () => {
     billingMutation.mutate({ origin: window.location.origin });
+  };
+
+  const handleDeleteAccount = () => {
+    if (deleteConfirmation !== "DELETE") return;
+    deleteAccountMutation.mutate({ confirmation: "DELETE" });
   };
 
   return (
@@ -296,7 +328,7 @@ export default function Settings() {
                 variant="outline"
                 size="sm"
                 className="border-destructive/50 text-destructive hover:bg-destructive/10 shrink-0 ml-4"
-                onClick={() => toast.info("Account deletion coming soon. Contact support for now.")}
+                onClick={() => setDeleteDialogOpen(true)}
               >
                 Delete Account
               </Button>
@@ -304,6 +336,66 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) setDeleteConfirmation("");
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription className="text-left space-y-3 pt-2">
+              <span className="block">This action is <strong className="text-foreground">permanent and irreversible</strong>. Deleting your account will:</span>
+              <span className="block text-sm space-y-1">
+                <span className="block">• Cancel any active subscription immediately</span>
+                <span className="block">• Remove access to all your projects and reviews</span>
+                <span className="block">• Delete your profile and usage data</span>
+              </span>
+              <span className="block pt-1">
+                Type <strong className="text-foreground font-mono">DELETE</strong> below to confirm.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              placeholder="Type DELETE to confirm"
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              className="font-mono"
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeleteConfirmation("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmation !== "DELETE" || deleteAccountMutation.isPending}
+            >
+              {deleteAccountMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete My Account"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
