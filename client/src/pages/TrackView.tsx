@@ -31,21 +31,45 @@ import { RevisionTimeline } from "@/components/RevisionTimeline";
 
 // ── Mix Report Tab Wrapper ──
 function MixReportTab({ trackId }: { trackId: number }) {
-  const [report, setReport] = useState<any>(null);
+  const { data: existingReport, refetch } = trpc.mixReport.get.useQuery({ trackId });
+  const [generatedReport, setGeneratedReport] = useState<any>(null);
   const generateMutation = trpc.mixReport.generate.useMutation({
-    onSuccess: (data: any) => setReport(data),
+    onSuccess: (data: any) => {
+      setGeneratedReport(data);
+      refetch();
+    },
     onError: (err: any) => toast.error(err.message),
   });
+  // Use generated report if available (fresh from mutation), otherwise use DB report
+  const report = generatedReport || (existingReport ? {
+    reportMarkdown: existingReport.reportMarkdown,
+    frequencyAnalysis: existingReport.frequencyAnalysis as any,
+    dynamicsAnalysis: existingReport.dynamicsAnalysis as any,
+    stereoAnalysis: existingReport.stereoAnalysis as any,
+    loudnessData: existingReport.loudnessData as any,
+    dawSuggestions: existingReport.dawSuggestions as any,
+  } : null);
   return <MixReportView data={report} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} />;
 }
 
 // ── Structure Analysis Tab Wrapper ──
 function StructureTab({ trackId }: { trackId: number }) {
-  const [data, setData] = useState<any>(null);
+  const { data: existingData, refetch } = trpc.structure.get.useQuery({ trackId });
+  const [generatedData, setGeneratedData] = useState<any>(null);
   const generateMutation = trpc.structure.generate.useMutation({
-    onSuccess: (d: any) => setData(d),
+    onSuccess: (d: any) => {
+      setGeneratedData(d);
+      refetch();
+    },
     onError: (err: any) => toast.error(err.message),
   });
+  // Use generated data if available, otherwise use DB data
+  const data = generatedData || (existingData ? {
+    sections: existingData.sectionsJson as any,
+    structureScore: existingData.structureScore,
+    genreExpectations: existingData.genreExpectations as any,
+    suggestions: existingData.suggestions as any,
+  } : null);
   return <StructureAnalysisView data={data} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} />;
 }
 
@@ -54,7 +78,9 @@ function MoodEnergyTab({ trackId }: { trackId: number }) {
   const { data: trackData } = trpc.track.get.useQuery({ id: trackId });
   const features = trackData?.features;
   const geminiData = features?.geminiAnalysisJson ? (typeof features.geminiAnalysisJson === 'string' ? JSON.parse(features.geminiAnalysisJson as string) : features.geminiAnalysisJson) : null;
-  const energyCurve = geminiData?.energyCurve || geminiData?.energy_curve || [];
+  // Energy data is nested under geminiData.energy in the Gemini analysis JSON
+  const energyObj = geminiData?.energy || {};
+  const energyCurve = energyObj?.curve || geminiData?.energyCurve || geminiData?.energy_curve || [];
   const sections = (geminiData?.sections || []).map((s: any) => ({
     name: s.name || s.section || '',
     startTime: s.startTime || s.start_time || '',
@@ -64,8 +90,8 @@ function MoodEnergyTab({ trackId }: { trackId: number }) {
   }));
   const moodData = {
     energyCurve,
-    overallEnergy: geminiData?.overallEnergy || geminiData?.overall_energy || 'N/A',
-    dynamicRange: geminiData?.dynamicRange || geminiData?.dynamic_range || 'N/A',
+    overallEnergy: energyObj?.overall || geminiData?.overallEnergy || geminiData?.overall_energy || 'N/A',
+    dynamicRange: energyObj?.dynamicRange || geminiData?.dynamicRange || geminiData?.dynamic_range || 'N/A',
     mood: geminiData?.mood || geminiData?.moods || [],
     sections,
     arrangement: geminiData?.arrangement || {},

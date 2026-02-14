@@ -14,21 +14,21 @@ interface SectionData {
 }
 
 interface StructureData {
-  sections: SectionData[];
-  structureScore: number;
-  genreExpectations: {
-    genre: string;
-    typicalStructure: string;
-    expectedChorusArrival: string;
-    expectedSongLength: string;
-    structureNotes: string;
-  };
-  suggestions: Array<{
-    section: string;
-    issue: string;
-    suggestion: string;
-    impact: "high" | "medium" | "low";
-  }>;
+  sections?: SectionData[] | null;
+  structureScore?: number | null;
+  genreExpectations?: {
+    genre?: string;
+    typicalStructure?: string;
+    expectedChorusArrival?: string;
+    expectedSongLength?: string;
+    structureNotes?: string;
+  } | null;
+  suggestions?: Array<{
+    section?: string;
+    issue?: string;
+    suggestion?: string;
+    impact?: "high" | "medium" | "low";
+  }> | null;
 }
 
 function ScoreRing({ score }: { score: number }) {
@@ -134,34 +134,40 @@ export function StructureAnalysisView({
     <div className="space-y-4">
       {/* Score + Genre Expectations */}
       <div className="grid md:grid-cols-[auto_1fr] gap-4">
-        <Card className="border-border/40">
-          <CardContent className="py-4 flex flex-col items-center">
-            <p className="text-xs text-muted-foreground mb-2">Structure Score</p>
-            <ScoreRing score={data.structureScore} />
-          </CardContent>
-        </Card>
-        <Card className="border-border/40">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Genre Expectations — {data.genreExpectations.genre}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div><span className="text-muted-foreground">Typical Structure:</span> <span>{data.genreExpectations.typicalStructure}</span></div>
-            <div><span className="text-muted-foreground">Expected Chorus Arrival:</span> <span>{data.genreExpectations.expectedChorusArrival}</span></div>
-            <div><span className="text-muted-foreground">Expected Song Length:</span> <span>{data.genreExpectations.expectedSongLength}</span></div>
-            <p className="text-muted-foreground border-t border-border/40 pt-2">{data.genreExpectations.structureNotes}</p>
-          </CardContent>
-        </Card>
+        {typeof data.structureScore === 'number' && (
+          <Card className="border-border/40">
+            <CardContent className="py-4 flex flex-col items-center">
+              <p className="text-xs text-muted-foreground mb-2">Structure Score</p>
+              <ScoreRing score={data.structureScore} />
+            </CardContent>
+          </Card>
+        )}
+        {data.genreExpectations && (
+          <Card className="border-border/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Genre Expectations{data.genreExpectations.genre ? ` — ${data.genreExpectations.genre}` : ''}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {data.genreExpectations.typicalStructure && <div><span className="text-muted-foreground">Typical Structure:</span> <span>{data.genreExpectations.typicalStructure}</span></div>}
+              {data.genreExpectations.expectedChorusArrival && <div><span className="text-muted-foreground">Expected Chorus Arrival:</span> <span>{data.genreExpectations.expectedChorusArrival}</span></div>}
+              {data.genreExpectations.expectedSongLength && <div><span className="text-muted-foreground">Expected Song Length:</span> <span>{data.genreExpectations.expectedSongLength}</span></div>}
+              {data.genreExpectations.structureNotes && <p className="text-muted-foreground border-t border-border/40 pt-2">{data.genreExpectations.structureNotes}</p>}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Section Timeline */}
-      <Card className="border-border/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Section Map</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SectionTimeline sections={data.sections} />
-        </CardContent>
-      </Card>
+      {data.sections && data.sections.length > 0 && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Section Map</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SectionTimeline sections={data.sections} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Suggestions */}
       {data.suggestions && data.suggestions.length > 0 && (

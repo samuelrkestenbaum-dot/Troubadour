@@ -53,9 +53,7 @@ export async function generateMixReport(
 ): Promise<MixReportData> {
   const systemPrompt = `You are a world-class mixing and mastering engineer with 20+ years of experience. You provide detailed, technical mix feedback that producers can immediately act on in their DAW. You speak in precise technical terms but explain concepts clearly. You always reference specific frequencies, dB levels, and timestamps.`;
 
-  const userMessage = `Analyze this track's mix and provide a comprehensive technical mix report.
-
-**Track:** "${trackTitle}"
+  const analysisContext = `**Track:** "${trackTitle}"
 **Genre:** ${genre}
 
 ## Audio Analysis Data
@@ -77,64 +75,89 @@ ${audioAnalysis.energy.curve?.map(e => `${e.timestamp}: Level ${e.level}/10 — 
 ## Sections
 ${audioAnalysis.sections?.map(s => `${s.name} (${s.startTime}-${s.endTime}): Energy ${s.energy}/10 — ${s.description}`).join("\n") || "No section data"}
 
-${existingReview ? `## Existing Review Context\n${existingReview.substring(0, 2000)}` : ""}
+${existingReview ? `## Existing Review Context\n${existingReview.substring(0, 2000)}` : ""}`;
 
-Return your analysis as a JSON object with this exact structure:
+  // Step 1: Get the detailed markdown report
+  const markdownPrompt = `Analyze this track's mix and write a comprehensive technical mix report in markdown format.
+
+${analysisContext}
+
+Write a detailed 1000-2000 word mix report with these sections:
+## Overview
+## Frequency Analysis (with subsections for Low End 20-250Hz, Mid Range 250Hz-4kHz, High End 4kHz-20kHz)
+## Dynamics & Loudness
+## Stereo Image & Spatial
+## Section-by-Section Notes (reference specific timestamps)
+## Priority Action Items (numbered list of 8-12 specific DAW actions)
+## Mastering Readiness
+
+Return ONLY the markdown text, no JSON wrapping.`;
+
+  const reportMarkdown = await callClaude(systemPrompt, [{ role: "user", content: markdownPrompt }], 4000);
+
+  // Step 2: Get structured data as a separate call
+  const structuredPrompt = `Based on this audio analysis data, provide structured mix feedback data.
+
+${analysisContext}
+
+Return ONLY a valid JSON object (no markdown fences, no explanation) with this exact structure:
 {
-  "reportMarkdown": "A detailed 1000-2000 word mix report in markdown format with sections: ## Overview, ## Frequency Analysis, ## Dynamics & Loudness, ## Stereo Image & Spatial, ## Section-by-Section Notes, ## Priority Action Items, ## Mastering Readiness",
   "frequencyAnalysis": {
-    "lowEnd": { "rating": "weak|adequate|good|excellent", "notes": "specific feedback about sub-bass and bass (20-250Hz)" },
-    "midRange": { "rating": "weak|adequate|good|excellent", "notes": "specific feedback about mids (250Hz-4kHz)" },
-    "highEnd": { "rating": "weak|adequate|good|excellent", "notes": "specific feedback about highs (4kHz-20kHz)" },
-    "overallBalance": "summary of frequency balance"
+    "lowEnd": { "rating": "weak|adequate|good|excellent", "notes": "1-2 sentence feedback about sub-bass and bass (20-250Hz)" },
+    "midRange": { "rating": "weak|adequate|good|excellent", "notes": "1-2 sentence feedback about mids (250Hz-4kHz)" },
+    "highEnd": { "rating": "weak|adequate|good|excellent", "notes": "1-2 sentence feedback about highs (4kHz-20kHz)" },
+    "overallBalance": "1 sentence summary"
   },
   "dynamicsAnalysis": {
     "dynamicRange": "compressed|moderate|wide|very wide",
-    "compression": "notes on compression usage",
-    "transients": "notes on transient handling",
-    "loudness": "notes on perceived loudness"
+    "compression": "1-2 sentences",
+    "transients": "1-2 sentences",
+    "loudness": "1-2 sentences"
   },
   "stereoAnalysis": {
     "width": "narrow|moderate|wide|very wide",
-    "balance": "notes on L/R balance",
-    "monoCompatibility": "good|fair|poor — with explanation",
-    "panningNotes": "notes on panning decisions"
+    "balance": "1-2 sentences",
+    "monoCompatibility": "good|fair|poor",
+    "panningNotes": "1-2 sentences"
   },
   "loudnessData": {
-    "estimatedLUFS": <estimated integrated LUFS as number>,
-    "targetLUFS": <recommended target LUFS for this genre>,
+    "estimatedLUFS": -14,
+    "targetLUFS": -14,
     "genre": "${genre}",
-    "recommendation": "specific loudness recommendation"
+    "recommendation": "1-2 sentences"
   },
   "dawSuggestions": [
-    {
-      "timestamp": "M:SS or section name",
-      "element": "specific element (e.g., 'kick drum', 'vocal', 'synth pad')",
-      "issue": "what's wrong",
-      "suggestion": "specific DAW action to fix it (e.g., 'Cut 2dB at 400Hz on the kick bus')",
-      "priority": "high|medium|low"
-    }
+    { "timestamp": "M:SS", "element": "instrument", "issue": "problem", "suggestion": "fix", "priority": "high|medium|low" }
   ]
 }
 
-Provide at least 8-12 DAW suggestions. Be specific with frequencies, dB values, and plugin recommendations where appropriate.`;
+Provide 8-12 dawSuggestions. Keep all string values short (under 200 chars). Return ONLY the JSON.`;
 
-  const response = await callClaude(systemPrompt, [{ role: "user", content: userMessage }], 6000);
-  
+  const structuredResponse = await callClaude(systemPrompt, [{ role: "user", content: structuredPrompt }], 3000);
+
+  // Parse the structured data
+  let structured: Omit<MixReportData, "reportMarkdown">;
   try {
-    const cleaned = response.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {
-    // If JSON parsing fails, wrap the raw response
-    return {
-      reportMarkdown: response,
-      frequencyAnalysis: { lowEnd: { rating: "adequate", notes: "" }, midRange: { rating: "adequate", notes: "" }, highEnd: { rating: "adequate", notes: "" }, overallBalance: "" },
-      dynamicsAnalysis: { dynamicRange: "moderate", compression: "", transients: "", loudness: "" },
-      stereoAnalysis: { width: "moderate", balance: "", monoCompatibility: "fair", panningNotes: "" },
-      loudnessData: { estimatedLUFS: -14, targetLUFS: -14, genre, recommendation: "" },
+    const cleaned = structuredResponse.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    structured = JSON.parse(cleaned);
+  } catch (err) {
+    console.warn("[MixReport] Could not parse structured data, using defaults:", err);
+    structured = {
+      frequencyAnalysis: { lowEnd: { rating: "adequate", notes: "See full report" }, midRange: { rating: "adequate", notes: "See full report" }, highEnd: { rating: "adequate", notes: "See full report" }, overallBalance: "See full report for details" },
+      dynamicsAnalysis: { dynamicRange: "moderate", compression: "See full report", transients: "See full report", loudness: "See full report" },
+      stereoAnalysis: { width: "moderate", balance: "See full report", monoCompatibility: "fair", panningNotes: "See full report" },
+      loudnessData: { estimatedLUFS: -14, targetLUFS: -14, genre, recommendation: "See full report" },
       dawSuggestions: [],
     };
   }
+
+  // Clean the markdown (remove any code fences the LLM may have wrapped it in)
+  const cleanedMarkdown = reportMarkdown.replace(/^```markdown\n?/g, "").replace(/```$/g, "").trim();
+
+  return {
+    reportMarkdown: cleanedMarkdown,
+    ...structured,
+  };
 }
 
 // ── Songwriting Structure Analysis (Feature 7) ──

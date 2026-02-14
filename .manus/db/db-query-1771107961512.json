@@ -1,0 +1,13 @@
+{
+  "query": "SELECT JSON_KEYS(geminiAnalysisJson) as top_keys FROM audioFeatures WHERE trackId = 30001 LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT JSON_KEYS(geminiAnalysisJson) as top_keys FROM audioFeatures WHERE trackId = 30001 LIMIT 1",
+  "rows": [
+    {
+      "top_keys": "[\"arrangement\", \"energy\", \"estimatedDuration\", \"genre\", \"instrumentation\", \"key\", \"melodicAnalysis\", \"mood\", \"overview\", \"production\", \"rhythmicAnalysis\", \"sections\", \"strengths\", \"tempo\", \"weaknesses\"]"
+    }
+  ],
+  "messages": [],
+  "stdout": "top_keys\n[\"arrangement\", \"energy\", \"estimatedDuration\", \"genre\", \"instrumentation\", \"key\", \"melodicAnalysis\", \"mood\", \"overview\", \"production\", \"rhythmicAnalysis\", \"sections\", \"strengths\", \"tempo\", \"weaknesses\"]\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

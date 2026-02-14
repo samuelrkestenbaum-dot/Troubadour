@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, trackId, frequencyAnalysis, dynamicsAnalysis FROM mixReports ORDER BY id DESC LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT id, trackId, frequencyAnalysis, dynamicsAnalysis FROM mixReports ORDER BY id DESC LIMIT 1",
+  "rows": [
+    {
+      "id": "1",
+      "trackId": "30001",
+      "frequencyAnalysis": "NULL",
+      "dynamicsAnalysis": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttrackId\tfrequencyAnalysis\tdynamicsAnalysis\n1\t30001\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 85
+}

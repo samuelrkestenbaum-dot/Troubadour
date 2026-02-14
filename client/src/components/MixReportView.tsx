@@ -10,39 +10,41 @@ interface FreqBand {
 }
 
 interface MixReportData {
-  reportMarkdown: string;
-  frequencyAnalysis: {
-    lowEnd: FreqBand;
-    midRange: FreqBand;
-    highEnd: FreqBand;
-    overallBalance: string;
-  };
-  dynamicsAnalysis: {
-    dynamicRange: string;
-    compression: string;
-    transients: string;
-    loudness: string;
-  };
-  stereoAnalysis: {
-    width: string;
-    balance: string;
-    monoCompatibility: string;
-    panningNotes: string;
-  };
-  loudnessData: {
-    estimatedLUFS: number;
-    targetLUFS: number;
-    genre: string;
-    recommendation: string;
-  };
-  dawSuggestions: Array<{
-    timestamp: string;
-    element: string;
-    issue: string;
-    suggestion: string;
-    priority: "high" | "medium" | "low";
-  }>;
+  reportMarkdown?: string;
+  frequencyAnalysis?: {
+    lowEnd?: FreqBand;
+    midRange?: FreqBand;
+    highEnd?: FreqBand;
+    overallBalance?: string;
+  } | null;
+  dynamicsAnalysis?: {
+    dynamicRange?: string;
+    compression?: string;
+    transients?: string;
+    loudness?: string;
+  } | null;
+  stereoAnalysis?: {
+    width?: string;
+    balance?: string;
+    monoCompatibility?: string;
+    panningNotes?: string;
+  } | null;
+  loudnessData?: {
+    estimatedLUFS?: number;
+    targetLUFS?: number;
+    genre?: string;
+    recommendation?: string;
+  } | null;
+  dawSuggestions?: Array<{
+    timestamp?: string;
+    element?: string;
+    issue?: string;
+    suggestion?: string;
+    priority?: "high" | "medium" | "low";
+  }> | null;
 }
+
+const defaultBand: FreqBand = { rating: "adequate", notes: "No data available" };
 
 function RatingBadge({ rating }: { rating: string }) {
   const colors: Record<string, string> = {
@@ -93,6 +95,24 @@ function LUFSMeter({ estimated, target }: { estimated: number; target: number })
   );
 }
 
+function cleanReportMarkdown(md: string | undefined): string | undefined {
+  if (!md) return md;
+  // If the reportMarkdown is actually a JSON string (from old broken generation), extract the inner markdown
+  const trimmed = md.trim();
+  if (trimmed.startsWith('```json') || trimmed.startsWith('{')) {
+    try {
+      const cleaned = trimmed.replace(/^```json\n?/, '').replace(/```$/, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.reportMarkdown && typeof parsed.reportMarkdown === 'string') {
+        return parsed.reportMarkdown;
+      }
+    } catch {
+      // Not valid JSON, return as-is
+    }
+  }
+  return md;
+}
+
 export function MixReportView({
   data,
   isGenerating,
@@ -119,99 +139,118 @@ export function MixReportView({
     );
   }
 
+  const freq = data.frequencyAnalysis;
+  const dynamics = data.dynamicsAnalysis;
+  const stereo = data.stereoAnalysis;
+  const loudness = data.loudnessData;
+  const suggestions = data.dawSuggestions;
+  const hasStructuredData = freq || dynamics || stereo || loudness;
+
   return (
     <div className="space-y-4">
       {/* Frequency Analysis */}
-      <Card className="border-border/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Radio className="h-4 w-4 text-primary" /> Frequency Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3">
-            {[
-              { label: "Low End (20–250Hz)", ...data.frequencyAnalysis.lowEnd },
-              { label: "Mid Range (250Hz–4kHz)", ...data.frequencyAnalysis.midRange },
-              { label: "High End (4kHz–20kHz)", ...data.frequencyAnalysis.highEnd },
-            ].map((band) => (
-              <div key={band.label} className="flex items-start gap-3">
-                <div className="w-40 shrink-0">
-                  <p className="text-sm font-medium">{band.label}</p>
-                  <RatingBadge rating={band.rating} />
+      {freq && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Radio className="h-4 w-4 text-primary" /> Frequency Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3">
+              {[
+                { label: "Low End (20–250Hz)", ...(freq.lowEnd || defaultBand) },
+                { label: "Mid Range (250Hz–4kHz)", ...(freq.midRange || defaultBand) },
+                { label: "High End (4kHz–20kHz)", ...(freq.highEnd || defaultBand) },
+              ].map((band) => (
+                <div key={band.label} className="flex items-start gap-3">
+                  <div className="w-40 shrink-0">
+                    <p className="text-sm font-medium">{band.label}</p>
+                    <RatingBadge rating={band.rating} />
+                  </div>
+                  <p className="text-sm text-muted-foreground">{band.notes}</p>
                 </div>
-                <p className="text-sm text-muted-foreground">{band.notes}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-sm border-t border-border/40 pt-3 text-muted-foreground">
-            <strong className="text-foreground">Overall:</strong> {data.frequencyAnalysis.overallBalance}
-          </p>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+            {freq.overallBalance && (
+              <p className="text-sm border-t border-border/40 pt-3 text-muted-foreground">
+                <strong className="text-foreground">Overall:</strong> {freq.overallBalance}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Dynamics & Loudness */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="border-border/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4 text-primary" /> Dynamics
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div><span className="text-muted-foreground">Range:</span> <span className="capitalize font-medium">{data.dynamicsAnalysis.dynamicRange}</span></div>
-            <div><span className="text-muted-foreground">Compression:</span> <span>{data.dynamicsAnalysis.compression}</span></div>
-            <div><span className="text-muted-foreground">Transients:</span> <span>{data.dynamicsAnalysis.transients}</span></div>
-            <div><span className="text-muted-foreground">Loudness:</span> <span>{data.dynamicsAnalysis.loudness}</span></div>
-          </CardContent>
-        </Card>
+      {(dynamics || loudness) && (
+        <div className="grid md:grid-cols-2 gap-4">
+          {dynamics && (
+            <Card className="border-border/40">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <ArrowUpDown className="h-4 w-4 text-primary" /> Dynamics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {dynamics.dynamicRange && <div><span className="text-muted-foreground">Range:</span> <span className="capitalize font-medium">{dynamics.dynamicRange}</span></div>}
+                {dynamics.compression && <div><span className="text-muted-foreground">Compression:</span> <span>{dynamics.compression}</span></div>}
+                {dynamics.transients && <div><span className="text-muted-foreground">Transients:</span> <span>{dynamics.transients}</span></div>}
+                {dynamics.loudness && <div><span className="text-muted-foreground">Loudness:</span> <span>{dynamics.loudness}</span></div>}
+              </CardContent>
+            </Card>
+          )}
 
-        <Card className="border-border/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-primary" /> Loudness Target
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LUFSMeter estimated={data.loudnessData.estimatedLUFS} target={data.loudnessData.targetLUFS} />
-            <p className="text-xs text-muted-foreground mt-2">{data.loudnessData.recommendation}</p>
-          </CardContent>
-        </Card>
-      </div>
+          {loudness && typeof loudness.estimatedLUFS === "number" && typeof loudness.targetLUFS === "number" && (
+            <Card className="border-border/40">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-primary" /> Loudness Target
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LUFSMeter estimated={loudness.estimatedLUFS} target={loudness.targetLUFS} />
+                {loudness.recommendation && <p className="text-xs text-muted-foreground mt-2">{loudness.recommendation}</p>}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Stereo Analysis */}
-      <Card className="border-border/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Stereo Image</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div><span className="text-muted-foreground text-xs block">Width</span><span className="capitalize font-medium">{data.stereoAnalysis.width}</span></div>
-          <div><span className="text-muted-foreground text-xs block">Balance</span><span>{data.stereoAnalysis.balance}</span></div>
-          <div><span className="text-muted-foreground text-xs block">Mono Compat.</span><span className="capitalize">{data.stereoAnalysis.monoCompatibility}</span></div>
-          <div><span className="text-muted-foreground text-xs block">Panning</span><span>{data.stereoAnalysis.panningNotes}</span></div>
-        </CardContent>
-      </Card>
+      {stereo && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Stereo Image</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            {stereo.width && <div><span className="text-muted-foreground text-xs block">Width</span><span className="capitalize font-medium">{stereo.width}</span></div>}
+            {stereo.balance && <div><span className="text-muted-foreground text-xs block">Balance</span><span>{stereo.balance}</span></div>}
+            {stereo.monoCompatibility && <div><span className="text-muted-foreground text-xs block">Mono Compat.</span><span className="capitalize">{stereo.monoCompatibility}</span></div>}
+            {stereo.panningNotes && <div><span className="text-muted-foreground text-xs block">Panning</span><span>{stereo.panningNotes}</span></div>}
+          </CardContent>
+        </Card>
+      )}
 
       {/* DAW Suggestions */}
-      {data.dawSuggestions && data.dawSuggestions.length > 0 && (
+      {suggestions && suggestions.length > 0 && (
         <Card className="border-border/40">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Download className="h-4 w-4 text-primary" /> DAW Action Items ({data.dawSuggestions.length})
+              <Download className="h-4 w-4 text-primary" /> DAW Action Items ({suggestions.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {data.dawSuggestions.map((s, i) => (
+              {suggestions.map((s, i) => (
                 <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-muted/30 border border-border/20">
-                  <PriorityBadge priority={s.priority} />
+                  <PriorityBadge priority={s.priority || "medium"} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-mono text-muted-foreground">{s.timestamp}</span>
-                      <span className="text-sm font-medium">{s.element}</span>
+                      <span className="text-xs font-mono text-muted-foreground">{s.timestamp || ""}</span>
+                      <span className="text-sm font-medium">{s.element || ""}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{s.issue}</p>
-                    <p className="text-sm mt-0.5">{s.suggestion}</p>
+                    {s.issue && <p className="text-xs text-muted-foreground">{s.issue}</p>}
+                    {s.suggestion && <p className="text-sm mt-0.5">{s.suggestion}</p>}
                   </div>
                 </div>
               ))}
@@ -220,15 +259,26 @@ export function MixReportView({
         </Card>
       )}
 
-      {/* Full Report Markdown */}
-      <Card className="border-border/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Full Mix Report</CardTitle>
-        </CardHeader>
-        <CardContent className="prose prose-invert prose-sm max-w-none">
-          <Streamdown>{data.reportMarkdown}</Streamdown>
-        </CardContent>
-      </Card>
+      {/* Full Report Markdown - always show if reportMarkdown exists */}
+      {data.reportMarkdown && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">
+              {hasStructuredData ? "Full Mix Report" : "Mix Report"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="prose prose-invert prose-sm max-w-none">
+            <Streamdown>{cleanReportMarkdown(data.reportMarkdown) || data.reportMarkdown}</Streamdown>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Regenerate button */}
+      <div className="flex justify-center pt-2">
+        <Button variant="outline" size="sm" onClick={onGenerate} disabled={isGenerating} className="gap-2">
+          {isGenerating ? <><Loader2 className="h-4 w-4 animate-spin" /> Regenerating…</> : "Regenerate Mix Report"}
+        </Button>
+      </div>
     </div>
   );
 }

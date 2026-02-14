@@ -1,0 +1,16 @@
+{
+  "query": "SELECT JSON_KEYS(geminiAnalysisJson) as top_keys, JSON_EXTRACT(geminiAnalysisJson, '$.overallEnergy') as overallEnergy, JSON_EXTRACT(geminiAnalysisJson, '$.dynamicRange') as dynamicRange, JSON_EXTRACT(geminiAnalysisJson, '$.sections[0]') as firstSection FROM audioFeatures WHERE trackId = 30001 LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT JSON_KEYS(geminiAnalysisJson) as top_keys, JSON_EXTRACT(geminiAnalysisJson, '$.overallEnergy') as overallEnergy, JSON_EXTRACT(geminiAnalysisJson, '$.dynamicRange') as dynamicRange, JSON_EXTRACT(geminiAnalysisJson, '$.sections[0]') as firstSection FROM audioFeatures WHERE trackId = 30001 LIMIT 1",
+  "rows": [
+    {
+      "top_keys": "[\"arrangement\", \"energy\", \"estimatedDuration\", \"genre\", \"instrumentation\", \"key\", \"melodicAnalysis\", \"mood\", \"overview\", \"production\", \"rhythmicAnalysis\", \"sections\", \"strengths\", \"tempo\", \"weaknesses\"]",
+      "overallEnergy": "NULL",
+      "dynamicRange": "NULL",
+      "firstSection": "{\"description\": \"Clean electric guitar plays the main arpeggiated riff, joined by light drums with hi-hats and a subtle kick.\", \"endTime\": \"0:20\", \"energy\": 2, \"musicalElements\": [\"Clean electric guitar riff\", \"Drums (hi-hats, kick)\"], \"name\": \"Intro\", \"startTime\": \"0:00\"}"
+    }
+  ],
+  "messages": [],
+  "stdout": "top_keys\toverallEnergy\tdynamicRange\tfirstSection\n[\"arrangement\", \"energy\", \"estimatedDuration\", \"genre\", \"instrumentation\", \"key\", \"melodicAnalysis\", \"mood\", \"overview\", \"production\", \"rhythmicAnalysis\", \"sections\", \"strengths\", \"tempo\", \"weaknesses\"]\tNULL\tNULL\t{\"description\": \"Clean electric guitar plays the main arpeggiated riff, joined by light drums with hi-hats and a subtle kick.\", \"endTime\": \"0:20\", \"energy\": 2, \"musicalElements\": [\"Clean electric guitar riff\", \"Drums (hi-hats, kick)\"], \"name\": \"Intro\", \"startTime\": \"0:00\"}\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

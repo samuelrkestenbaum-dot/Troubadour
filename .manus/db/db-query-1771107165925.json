@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, trackId, frequencyAnalysis IS NULL as freq_null FROM mixReports",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT id, trackId, frequencyAnalysis IS NULL as freq_null FROM mixReports",
+  "rows": [
+    {
+      "id": "1",
+      "trackId": "30001",
+      "freq_null": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttrackId\tfreq_null\n1\t30001\t0\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

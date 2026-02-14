@@ -706,3 +706,16 @@
 - [x] Database schema: added waveformAnnotations, structureAnalyses, mixReports tables
 - [x] All 211 tests passing (19 new for Round 37)
 - [x] Zero TypeScript errors
+
+### End-to-End Testing (Live with "When It Rains" track)
+- [x] Uploaded track, ran Analyze & Review pipeline — completed successfully
+- [x] Mix Report: Generated with two-call LLM approach — frequency cards, dynamics, loudness, stereo, 10 DAW action items, full markdown report
+- [x] Structure Analysis: 9/10 score, 13 sections detected, genre expectations, 5 structural suggestions
+- [x] Mood/Energy: Energy curve (10 points), mood badges, section map with energy ratings, arrangement analysis
+- [x] Notes: Created annotation at 1:03, CRUD working, open/resolved badges
+- [x] DAW Export: Full session notes with priority actions, section-by-section notes, mix notes, arrangement notes
+- [x] Genre Benchmarks: Alternative Rock (2 tracks), Indie Rock (1 track), score bars, strengths/weaknesses
+- [x] Back to Home: Navigates from Dashboard to landing page, shows "Go to Dashboard" button
+- [x] Bug fix: MixReportView crash on null JSON fields — added defensive null checks
+- [x] Bug fix: MoodEnergyChart showing N/A — fixed data extraction path from Gemini JSON
+- [x] Bug fix: Mix report JSON parsing failure — split into two separate LLM calls (markdown + structured data)

@@ -1,0 +1,15 @@
+{
+  "query": "SELECT CAST(JSON_KEYS(geminiAnalysisJson) AS CHAR) as top_keys, CAST(JSON_EXTRACT(geminiAnalysisJson, '$.overallEnergy') AS CHAR) as overallEnergy, CAST(JSON_EXTRACT(geminiAnalysisJson, '$.dynamicRange') AS CHAR) as dynamicRange FROM audioFeatures WHERE trackId = 30001 LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT CAST(JSON_KEYS(geminiAnalysisJson) AS CHAR) as top_keys, CAST(JSON_EXTRACT(geminiAnalysisJson, '$.overallEnergy') AS CHAR) as overallEnergy, CAST(JSON_EXTRACT(geminiAnalysisJson, '$.dynamicRange') AS CHAR) as dynamicRange FROM audioFeatures WHERE trackId = 30001 LIMIT 1",
+  "rows": [
+    {
+      "top_keys": "[\"arrangement\", \"energy\", \"estimatedDuration\", \"genre\", \"instrumentation\", \"key\", \"melodicAnalysis\", \"mood\", \"overview\", \"production\", \"rhythmicAnalysis\", \"sections\", \"strengths\", \"tempo\", \"weaknesses\"]",
+      "overallEnergy": "NULL",
+      "dynamicRange": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "top_keys\toverallEnergy\tdynamicRange\n[\"arrangement\", \"energy\", \"estimatedDuration\", \"genre\", \"instrumentation\", \"key\", \"melodicAnalysis\", \"mood\", \"overview\", \"production\", \"rhythmicAnalysis\", \"sections\", \"strengths\", \"tempo\", \"weaknesses\"]\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}
