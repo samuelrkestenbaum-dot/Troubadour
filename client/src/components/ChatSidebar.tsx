@@ -265,25 +265,17 @@ export function ChatSidebar() {
                         {new Date(session.lastActiveAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <span
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteSession.mutate({ sessionId: session.id });
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          deleteSession.mutate({ sessionId: session.id });
-                        }
                       }}
                       className="opacity-0 group-hover:opacity-100 focus:opacity-100 rounded p-1 hover:bg-destructive/10 hover:text-destructive transition-opacity"
                       aria-label={`Delete conversation: ${session.title}`}
                     >
                       <Trash2 className="h-3 w-3" />
-                    </span>
+                    </button>
                   </button>
                 ))}
               </div>

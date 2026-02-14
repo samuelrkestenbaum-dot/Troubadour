@@ -646,12 +646,15 @@ export default function ProjectView({ id }: { id: number }) {
                           size="sm"
                           variant="ghost"
                           onClick={() => {
-                            setUploadingVersion(track.id);
-                            versionInputRef.current?.click();
+                            if (!uploadTrack.isPending) {
+                              setUploadingVersion(track.id);
+                              versionInputRef.current?.click();
+                            }
                           }}
                           title="Upload new version"
+                          disabled={uploadTrack.isPending && uploadingVersion === track.id}
                         >
-                          <Upload className="h-3.5 w-3.5" />
+                          {(uploadTrack.isPending && uploadingVersion === track.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                         </Button>
                       </div>
                     </div>

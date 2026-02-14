@@ -327,8 +327,8 @@ export default function NewProject() {
                     ? "You can also upload tracks after creating the project."
                     : "Genre, tempo, and key are detected automatically."}
               </p>
-              <Button type="submit" disabled={isCreating} size="lg">
-                {isCreating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button type="submit" disabled={isCreating || createProject.isPending} size="lg">
+                {(isCreating || createProject.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {isCreating ? "Working..." : trackedFiles.length > 0 ? "Create & Upload" : "Create Project"}
               </Button>
             </div>

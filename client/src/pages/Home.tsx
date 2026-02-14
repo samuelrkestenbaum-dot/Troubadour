@@ -97,12 +97,6 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [activeRole, setActiveRole] = useState(0);
 
-  useEffect(() => {
-    if (!loading && user) {
-      setLocation("/dashboard");
-    }
-  }, [loading, user, setLocation]);
-
   // Auto-rotate roles — reset timer when user clicks a role
   useEffect(() => {
     const timer = setInterval(() => {
@@ -126,9 +120,15 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-3">
             <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="default" size="sm" className="shadow-md shadow-primary/20">
-              Get Started
-            </Button>
+            {user ? (
+              <Button onClick={() => setLocation("/dashboard")} variant="default" size="sm" className="shadow-md shadow-primary/20">
+                Go to Dashboard
+              </Button>
+            ) : (
+              <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="default" size="sm" className="shadow-md shadow-primary/20">
+                Get Started
+              </Button>
+            )}
           </div>
         </div>
       </nav>

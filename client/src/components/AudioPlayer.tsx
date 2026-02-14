@@ -90,6 +90,12 @@ const Waveform = React.memo(function Waveform({
     } else if (e.key === "End") {
       e.preventDefault();
       onSeek(duration);
+    } else if (e.key === "PageUp") {
+      e.preventDefault();
+      onSeek(Math.min(duration, currentTime + duration * 0.1));
+    } else if (e.key === "PageDown") {
+      e.preventDefault();
+      onSeek(Math.max(0, currentTime - duration * 0.1));
     }
   };
 

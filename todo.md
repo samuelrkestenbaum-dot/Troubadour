@@ -588,3 +588,30 @@
 - [x] governanceAudit on full platform: Score 100/100, all 5 analyzers passed, release not blocked
 - [x] appealDecision submitted for false positive on AI critique prompt ("financial" misclassification of music scores)
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 35 - Comprehensive UX Audit & Fixes (Claude 4.5)
+
+### Critical Fixes (User-Reported)
+- [x] Fix: Removed auto-redirect in Home.tsx — logged-in users can now view landing page, nav shows "Go to Dashboard" button
+- [x] Fix: Mobile sidebar auto-closes on navigation — added setOpenMobile(false) to DashboardLayout menu item clicks
+
+### High-Priority Fixes (Loading States & Button Feedback)
+- [x] Fix: Pricing.tsx — all upgrade buttons disabled during any checkout mutation (prevents double-click)
+- [x] Fix: NewProject.tsx — submit button also disabled during createProject.isPending
+- [x] Fix: ProjectView.tsx — "Upload New Version" button shows spinner during upload, disabled when pending
+- [x] Fix: TrackView.tsx — "Upload New Version" button shows spinner and "Uploading..." text during upload
+- [x] Fix: CollaborationPanel.tsx — Invite button shows Loader2 spinner during inviteMutation.isPending
+
+### Medium-Priority Fixes (Accessibility & Visual Consistency)
+- [x] Fix: AudioPlayer.tsx — Added PageUp/PageDown keyboard support for waveform slider (10% jumps)
+- [x] Fix: ChatSidebar.tsx — Changed delete session element from span[role=button] to semantic <button>
+- [x] Fix: Dashboard.tsx — Added hover:bg-card/80 to project cards for consistent hover effect
+- [x] Fix: TrackView.tsx — Changed lyrics empty state icon from Music to FileText (more appropriate)
+
+### Full UX Audit
+- [x] Audit all routing and redirect logic (App.tsx, auth flow, OAuth callback)
+- [x] Audit sidebar/DashboardLayout navigation behavior (mobile + desktop)
+- [x] Audit all page transitions, loading states, and empty states
+- [x] Audit all interactive elements for proper feedback (buttons, links, forms)
+- [x] Fix all UX quirks identified by Claude 4.5 audit (11 fixes applied)
+- [x] All 186 tests passing, zero TypeScript errors

@@ -448,7 +448,7 @@ export default function Dashboard() {
                   <Card
                     key={project.id}
                     className={cn(
-                      "cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden",
+                      "cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 hover:bg-card/80 group relative overflow-hidden",
                       isProcessing && "animate-pulse-border-glow"
                     )}
                     onClick={() => setLocation(`/projects/${project.id}`)}

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, UserPlus, Mail, Check, Clock, Trash2, Copy, Link } from "lucide-react";
+import { Users, UserPlus, Mail, Check, Clock, Trash2, Copy, Link, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export function CollaborationPanel({ projectId, isOwner }: { projectId: number; isOwner: boolean }) {
@@ -80,7 +80,9 @@ export function CollaborationPanel({ projectId, isOwner }: { projectId: number; 
                     onKeyDown={e => { if (e.key === "Enter") handleInvite(); }}
                   />
                   <Button onClick={handleInvite} disabled={inviteMutation.isPending || !email.trim()}>
-                    {inviteMutation.isPending ? "Sending..." : "Invite"}
+                    {inviteMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</>
+                    ) : "Invite"}
                   </Button>
                 </div>
               </DialogContent>

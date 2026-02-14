@@ -650,9 +650,10 @@ export default function TrackView({ id }: { id: number }) {
         <Button
           variant="outline"
           onClick={() => versionInputRef.current?.click()}
+          disabled={uploadTrack.isPending}
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload New Version
+          {uploadTrack.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+          {uploadTrack.isPending ? "Uploading..." : "Upload New Version"}
         </Button>
         <input
           ref={versionInputRef}
@@ -937,7 +938,7 @@ export default function TrackView({ id }: { id: number }) {
           ) : (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center">
-                <Music className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm">No lyrics yet. Add them manually or auto-transcribe.</p>
               </CardContent>
             </Card>

@@ -225,7 +225,7 @@ export default function Pricing() {
                     <Button
                       className={`w-full ${plan.key === "artist" ? "bg-amber-500 hover:bg-amber-600 text-black" : "bg-violet-500 hover:bg-violet-600"}`}
                       onClick={() => handleUpgrade(plan.key)}
-                      disabled={loadingPlan === plan.key}
+                      disabled={!!loadingPlan || checkoutMutation.isPending}
                     >
                       {loadingPlan === plan.key
                         ? "Redirecting..."
