@@ -459,3 +459,10 @@
 - [x] Landing page role carousel preserved for marketing (no changes needed)
 - [x] Update tests for simplified flow (3 new tests: minimal input, explicit type, optional fields)
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 28 - UX Enhancements (Claude 4.5)
+- [x] Upload progress indicators: per-file status (waiting → reading → uploading → done/error) with Progress bars and status icons
+- [x] Auto-start analysis after upload: automatically calls analyzeAndReview for each uploaded track after creation
+- [x] Quick-upload shortcut on Dashboard: drag audio files onto Dashboard shows overlay, drops navigate to /projects/new with files pre-loaded
+- [x] Global type declaration for window.__troubadourPendingFiles
+- [x] All 186 tests passing, zero TypeScript errors

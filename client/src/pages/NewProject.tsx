@@ -3,73 +3,133 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, UploadCloud, Music, X, FileAudio } from "lucide-react";
+import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle } from "lucide-react";
 import { trackProjectCreated } from "@/lib/analytics";
 import { DropZone } from "@/components/DropZone";
+
+type UploadStatus = "waiting" | "reading" | "uploading" | "done" | "error";
+
+interface TrackedFile {
+  file: File;
+  id: string;
+  status: UploadStatus;
+  progress: number;
+}
+
+const generateFileId = (file: File, index: number) =>
+  `${file.name}-${file.size}-${file.lastModified}-${index}`;
 
 export default function NewProject() {
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
+  const [trackedFiles, setTrackedFiles] = useState<TrackedFile[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
   const uploadTrack = trpc.track.upload.useMutation();
+  const analyzeAndReview = trpc.job.analyzeAndReview.useMutation();
+
+  // Pick up files passed from Dashboard quick-upload
+  useEffect(() => {
+    if (window.__troubadourPendingFiles && window.__troubadourPendingFiles.length > 0) {
+      handleFilesSelected(window.__troubadourPendingFiles);
+      window.__troubadourPendingFiles = undefined;
+    }
+  }, []);
+
+  const updateFileStatus = (id: string, status: UploadStatus, progress?: number) => {
+    setTrackedFiles(prev =>
+      prev.map(tf => tf.id === id ? { ...tf, status, progress: progress ?? tf.progress } : tf)
+    );
+  };
 
   const createProject = trpc.project.create.useMutation({
     onSuccess: async (projectData) => {
       trackProjectCreated(projectData.id, title.trim());
 
-      if (files.length === 0) {
+      if (trackedFiles.length === 0) {
         toast.success("Project created");
         setLocation(`/projects/${projectData.id}`);
         setIsCreating(false);
         return;
       }
 
-      toast.info(`Uploading ${files.length} ${files.length === 1 ? "track" : "tracks"}...`);
-
+      // Upload all files with per-file progress tracking
+      const trackIds: number[] = [];
       let succeeded = 0;
       let failed = 0;
 
       const results = await Promise.allSettled(
-        files.map(async (file) => {
-          const reader = new FileReader();
-          const base64 = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => {
-              const result = reader.result as string;
-              resolve(result.split(",")[1]);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          await uploadTrack.mutateAsync({
-            projectId: projectData.id,
-            filename: file.name,
-            mimeType: file.type,
-            fileBase64: base64,
-            fileSize: file.size,
-          });
-          return file.name;
+        trackedFiles.map(async (tf) => {
+          updateFileStatus(tf.id, "reading", 0);
+
+          try {
+            // Read file to base64
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onprogress = (e) => {
+                if (e.lengthComputable) {
+                  updateFileStatus(tf.id, "reading", Math.round((e.loaded / e.total) * 100));
+                }
+              };
+              reader.onload = () => {
+                const result = reader.result as string;
+                resolve(result.split(",")[1]);
+              };
+              reader.onerror = () => reject(new Error("Failed to read file"));
+              reader.readAsDataURL(tf.file);
+            });
+
+            updateFileStatus(tf.id, "uploading", 50);
+
+            const uploadResult = await uploadTrack.mutateAsync({
+              projectId: projectData.id,
+              filename: tf.file.name,
+              mimeType: tf.file.type,
+              fileBase64: base64,
+              fileSize: tf.file.size,
+            });
+
+            updateFileStatus(tf.id, "done", 100);
+            succeeded++;
+            trackIds.push(uploadResult.trackId);
+            return uploadResult.trackId;
+          } catch (error: any) {
+            updateFileStatus(tf.id, "error", 0);
+            failed++;
+            toast.error(`Failed: ${tf.file.name} — ${error?.message || "Unknown error"}`);
+            throw error;
+          }
         })
       );
 
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].status === "fulfilled") {
-          succeeded++;
-        } else {
-          const reason = (results[i] as PromiseRejectedResult).reason;
-          toast.error(`Failed to upload ${files[i].name}: ${reason?.message || "Unknown error"}`);
-          failed++;
-        }
-      }
+      // Auto-start analysis for all successfully uploaded tracks
+      if (trackIds.length > 0) {
+        const analysisResults = await Promise.allSettled(
+          trackIds.map(trackId =>
+            analyzeAndReview.mutateAsync({ trackId }).catch(err => {
+              console.error(`Analysis start failed for track ${trackId}:`, err);
+            })
+          )
+        );
+        const analysisStarted = analysisResults.filter(r => r.status === "fulfilled").length;
 
-      if (failed === 0) {
-        toast.success(`Project created with ${succeeded} ${succeeded === 1 ? "track" : "tracks"}`);
-      } else if (succeeded > 0) {
-        toast.warning(`${succeeded} of ${files.length} tracks uploaded. ${failed} failed.`);
+        if (failed === 0) {
+          toast.success(
+            `Project created with ${succeeded} ${succeeded === 1 ? "track" : "tracks"}. Analysis & review started!`,
+            { duration: 5000 }
+          );
+        } else if (succeeded > 0) {
+          toast.warning(
+            `${succeeded} of ${trackedFiles.length} tracks uploaded. ${failed} failed. Analysis started for ${analysisStarted} tracks.`,
+            { duration: 5000 }
+          );
+        }
+      } else {
+        toast.error("Project created, but all track uploads failed.");
       }
 
       setLocation(`/projects/${projectData.id}`);
@@ -92,11 +152,22 @@ export default function NewProject() {
       toast.error(`${oversized.length} ${oversized.length === 1 ? "file exceeds" : "files exceed"} the 50MB limit`);
     }
     const valid = audioFiles.filter(f => f.size <= 50 * 1024 * 1024);
-    setFiles(prev => [...prev, ...valid]);
+    setTrackedFiles(prev => {
+      const existingIds = new Set(prev.map(tf => tf.id));
+      const newTracked = valid
+        .map((file, i) => ({
+          file,
+          id: generateFileId(file, prev.length + i),
+          status: "waiting" as UploadStatus,
+          progress: 0,
+        }))
+        .filter(tf => !existingIds.has(tf.id));
+      return [...prev, ...newTracked];
+    });
   }, []);
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+  const removeFile = (id: string) => {
+    setTrackedFiles(prev => prev.filter(tf => tf.id !== id));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -106,7 +177,7 @@ export default function NewProject() {
       return;
     }
     setIsCreating(true);
-    const projectType = files.length > 1 ? "album" : "single";
+    const projectType = trackedFiles.length > 1 ? "album" : "single";
     createProject.mutate({
       title: title.trim(),
       type: projectType,
@@ -116,6 +187,30 @@ export default function NewProject() {
   const formatSize = (bytes: number) => {
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getStatusIcon = (status: UploadStatus) => {
+    switch (status) {
+      case "done":
+        return <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />;
+      case "error":
+        return <XCircle className="h-4 w-4 text-destructive shrink-0" />;
+      case "reading":
+      case "uploading":
+        return <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />;
+      default:
+        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />;
+    }
+  };
+
+  const getStatusLabel = (status: UploadStatus) => {
+    switch (status) {
+      case "waiting": return "Queued";
+      case "reading": return "Reading...";
+      case "uploading": return "Uploading...";
+      case "done": return "Done";
+      case "error": return "Failed";
+    }
   };
 
   return (
@@ -156,47 +251,66 @@ export default function NewProject() {
             </div>
 
             {/* File Upload */}
-            <div className="space-y-2">
-              <Label>Audio Files</Label>
-              <DropZone
-                onFiles={(f) => handleFilesSelected(f as File[])}
-                disabled={isCreating}
-                uploading={isCreating}
-                accept="audio/*"
-                maxSizeMB={50}
-              />
-            </div>
+            {!isCreating && (
+              <div className="space-y-2">
+                <Label>Audio Files</Label>
+                <DropZone
+                  onFiles={(f) => handleFilesSelected(f as File[])}
+                  disabled={isCreating}
+                  uploading={isCreating}
+                  accept="audio/*"
+                  maxSizeMB={50}
+                />
+              </div>
+            )}
 
-            {/* File List */}
-            {files.length > 0 && (
+            {/* File List with Progress */}
+            {trackedFiles.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm">
-                    {files.length} {files.length === 1 ? "track" : "tracks"} ready
-                    {files.length > 1 && <span className="text-muted-foreground ml-1">(album)</span>}
-                    {files.length === 1 && <span className="text-muted-foreground ml-1">(single)</span>}
+                    {trackedFiles.length} {trackedFiles.length === 1 ? "track" : "tracks"}
+                    {!isCreating && " ready"}
+                    {trackedFiles.length > 1 && !isCreating && <span className="text-muted-foreground ml-1">(album)</span>}
+                    {trackedFiles.length === 1 && !isCreating && <span className="text-muted-foreground ml-1">(single)</span>}
                   </Label>
-                  {files.length > 1 && !isCreating && (
-                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setFiles([])}>
+                  {trackedFiles.length > 1 && !isCreating && (
+                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setTrackedFiles([])}>
                       Clear all
                     </Button>
                   )}
                 </div>
                 <div className="border border-border/50 rounded-lg divide-y divide-border/30">
-                  {files.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-                      <FileAudio className="h-4 w-4 text-primary/60 shrink-0" />
-                      <span className="truncate flex-1">{file.name}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">{formatSize(file.size)}</span>
-                      {!isCreating && (
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded"
-                          aria-label={`Remove ${file.name}`}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                  {trackedFiles.map((tf) => (
+                    <div key={tf.id} className="px-3 py-2.5">
+                      <div className="flex items-center gap-3 text-sm">
+                        {isCreating ? getStatusIcon(tf.status) : (
+                          <FileAudio className="h-4 w-4 text-primary/60 shrink-0" />
+                        )}
+                        <span className="truncate flex-1">{tf.file.name}</span>
+                        {isCreating ? (
+                          <span className={`text-xs shrink-0 ${tf.status === "done" ? "text-emerald-500" : tf.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                            {getStatusLabel(tf.status)}
+                          </span>
+                        ) : (
+                          <>
+                            <span className="text-xs text-muted-foreground shrink-0">{formatSize(tf.file.size)}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(tf.id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded"
+                              aria-label={`Remove ${tf.file.name}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {isCreating && (tf.status === "reading" || tf.status === "uploading") && (
+                        <Progress
+                          value={tf.status === "reading" ? tf.progress : 100}
+                          className="h-1 mt-2"
+                        />
                       )}
                     </div>
                   ))}
@@ -207,13 +321,15 @@ export default function NewProject() {
             {/* Submit */}
             <div className="flex items-center justify-between pt-2">
               <p className="text-xs text-muted-foreground">
-                {files.length === 0
-                  ? "You can also upload tracks after creating the project."
-                  : "Genre, tempo, and key are detected automatically."}
+                {isCreating
+                  ? "Creating project and uploading tracks..."
+                  : trackedFiles.length === 0
+                    ? "You can also upload tracks after creating the project."
+                    : "Genre, tempo, and key are detected automatically."}
               </p>
               <Button type="submit" disabled={isCreating} size="lg">
                 {isCreating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {files.length > 0 ? "Create & Upload" : "Create Project"}
+                {isCreating ? "Working..." : trackedFiles.length > 0 ? "Create & Upload" : "Create Project"}
               </Button>
             </div>
           </CardContent>

@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
-import { Plus, FolderOpen, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useRef } from "react";
-
+import { useEffect, useRef, useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ElementType; glow?: string }> = {
@@ -24,6 +24,61 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { data: projects, isLoading, error } = trpc.project.list.useQuery();
   const shownUpgradeToast = useRef(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounter = useRef(0);
+
+  // Global drag listeners for quick-upload overlay
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current++;
+      // Only show overlay if dragging files (not text, etc.)
+      if (e.dataTransfer?.types?.includes("Files")) {
+        setIsDragOver(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current--;
+      if (dragCounter.current <= 0) {
+        dragCounter.current = 0;
+        setIsDragOver(false);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDragOver(false);
+
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const audioFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("audio/"));
+        if (audioFiles.length > 0) {
+          window.__troubadourPendingFiles = audioFiles;
+          setLocation("/projects/new");
+        } else {
+          toast.error("No audio files detected. Please drop MP3, WAV, or FLAC files.");
+        }
+      }
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, [setLocation]);
 
   useEffect(() => {
     if (shownUpgradeToast.current) return;
@@ -34,13 +89,23 @@ export default function Dashboard() {
         description: "Your subscription is now active. It may take a moment for your tier to update.",
         duration: 6000,
       });
-      // Clean up the URL
       window.history.replaceState({}, "", "/dashboard");
     }
   }, []);
 
   return (
     <div className="space-y-8">
+      {/* Quick-Upload Drag Overlay */}
+      {isDragOver && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-4 p-12 rounded-3xl border-4 border-dashed border-primary/60 bg-primary/10">
+            <UploadCloud className="h-20 w-20 text-primary animate-pulse" />
+            <p className="text-2xl font-bold text-white">Drop to create new project</p>
+            <p className="text-base text-gray-300">Audio files only (MP3, WAV, FLAC, etc.)</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
