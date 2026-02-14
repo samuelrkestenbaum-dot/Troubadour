@@ -6,19 +6,13 @@ import { Separator } from "@/components/ui/separator";
 import { Music, AlertCircle, BarChart3, Disc3 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { RadarChart } from "@/components/RadarChart";
+import { scoreColor } from "@/lib/scoreColor";
 
 function formatLabel(key: string): string {
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, s => s.toUpperCase())
     .trim();
-}
-
-function scoreColor(score: number): string {
-  if (score >= 8) return "text-emerald-400";
-  if (score >= 6) return "text-sky-400";
-  if (score >= 4) return "text-amber-400";
-  return "text-rose-400";
 }
 
 export default function SharedReview({ token }: { token: string }) {

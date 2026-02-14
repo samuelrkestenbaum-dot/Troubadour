@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getScoreColorConfig } from "@/lib/scoreColor";
 
 interface RadarChartProps {
   scores: Record<string, number>;
@@ -74,17 +75,9 @@ export function RadarChart({
   // Generate grid rings
   const rings = [2, 4, 6, 8, 10];
 
-  // Score color based on value
-  const getScoreColor = (score: number) => {
-    if (score >= 8) return { fill: "rgba(52, 211, 153, 0.15)", stroke: "rgba(52, 211, 153, 0.8)" };
-    if (score >= 6) return { fill: "rgba(56, 189, 248, 0.15)", stroke: "rgba(56, 189, 248, 0.8)" };
-    if (score >= 4) return { fill: "rgba(251, 191, 36, 0.12)", stroke: "rgba(251, 191, 36, 0.7)" };
-    return { fill: "rgba(251, 113, 133, 0.12)", stroke: "rgba(251, 113, 133, 0.7)" };
-  };
-
   // Average score for color
   const avgScore = entries.reduce((sum, [, v]) => sum + (typeof v === "number" ? v : 0), 0) / n;
-  const colors = getScoreColor(avgScore);
+  const colors = getScoreColorConfig(avgScore);
 
   return (
     <div className="flex flex-col items-center">
@@ -146,7 +139,7 @@ export function RadarChart({
         {entries.map(([, value], i) => {
           const numValue = typeof value === "number" ? value : 0;
           const p = getPoint(i, numValue);
-          const pointColor = getScoreColor(numValue);
+          const pointColor = getScoreColorConfig(numValue);
           return (
             <circle
               key={i}

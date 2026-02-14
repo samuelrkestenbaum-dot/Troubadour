@@ -8,13 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-
-const scoreColor = (score: number) => {
-  if (score >= 8) return "text-emerald-400";
-  if (score >= 6) return "text-sky-400";
-  if (score >= 4) return "text-amber-400";
-  return "text-rose-400";
-};
+import { scoreColor } from "@/lib/scoreColor";
 
 const scoreBg = (score: number) => {
   if (score >= 8) return "bg-emerald-400/10";

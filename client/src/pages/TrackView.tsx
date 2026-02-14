@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
+import { scoreColor } from "@/lib/scoreColor";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
@@ -158,13 +159,6 @@ function ReferenceTrackSection({ trackId }: { trackId: number }) {
 }
 
 // ── Progress Tracker ──
-
-const scoreColor = (score: number) => {
-  if (score >= 8) return "text-emerald-400";
-  if (score >= 6) return "text-sky-400";
-  if (score >= 4) return "text-amber-400";
-  return "text-rose-400";
-};
 
 const scoreBgColor = (score: number) => {
   if (score >= 8) return "bg-emerald-400/20";

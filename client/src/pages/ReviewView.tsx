@@ -18,6 +18,7 @@ import {
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
+import { scoreColor } from "@/lib/scoreColor";
 
 const scoreLabels: Record<string, string> = {
   production: "Production Quality",
@@ -34,13 +35,6 @@ const scoreLabels: Record<string, string> = {
   structure: "Structure",
   commercial: "Commercial Potential",
   lyrics: "Lyrics",
-};
-
-const scoreColor = (score: number) => {
-  if (score >= 8) return "text-emerald-400";
-  if (score >= 6) return "text-sky-400";
-  if (score >= 4) return "text-amber-400";
-  return "text-rose-400";
 };
 
 const scoreBgGlow = (score: number) => {

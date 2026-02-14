@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /shared/
+
+Disallow: /dashboard
+Disallow: /projects/
+Disallow: /reviews/
+Disallow: /analytics
+Disallow: /usage
+Disallow: /settings
+Disallow: /api/
+
+Sitemap: https://firstspin.ai/sitemap.xml
