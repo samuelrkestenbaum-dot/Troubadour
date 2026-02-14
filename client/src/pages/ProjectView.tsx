@@ -15,7 +15,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
-  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw
+  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
@@ -39,6 +39,10 @@ export default function ProjectView({ id }: { id: number }) {
   const [uploadingVersion, setUploadingVersion] = useState<number | null>(null);
   const { setContext } = useChat();
 
+  // Full-page drag overlay state
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounter = useRef(0);
+
   useEffect(() => {
     setContext({ projectId: id, trackId: null });
   }, [id, setContext]);
@@ -53,11 +57,6 @@ export default function ProjectView({ id }: { id: number }) {
   });
 
   const uploadTrack = trpc.track.upload.useMutation({
-    onSuccess: () => {
-      trackTrackUploaded(id, "track");
-      utils.project.get.invalidate({ id });
-      toast.success("Track uploaded");
-    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -97,7 +96,6 @@ export default function ProjectView({ id }: { id: number }) {
   const analyzeAndReview = trpc.job.analyzeAndReview.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id });
-      toast.success("Analyze & Review started");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -132,8 +130,10 @@ export default function ProjectView({ id }: { id: number }) {
     const fileArr = Array.from(files);
     let succeeded = 0;
     let failed = 0;
+    const uploadedTrackIds: number[] = [];
+
     try {
-      // Validate files first, then upload valid ones in parallel
+      // Validate files first
       const validFiles: File[] = [];
       for (const file of fileArr) {
         if (!file.type.startsWith("audio/")) {
@@ -147,7 +147,7 @@ export default function ProjectView({ id }: { id: number }) {
         }
       }
 
-      // Upload valid files in parallel using Promise.allSettled
+      // Upload valid files in parallel
       const results = await Promise.allSettled(
         validFiles.map(async (file) => {
           const reader = new FileReader();
@@ -159,7 +159,7 @@ export default function ProjectView({ id }: { id: number }) {
             reader.onerror = reject;
             reader.readAsDataURL(file);
           });
-          await uploadTrack.mutateAsync({
+          const uploadResult = await uploadTrack.mutateAsync({
             projectId: id,
             filename: file.name,
             mimeType: file.type,
@@ -167,7 +167,8 @@ export default function ProjectView({ id }: { id: number }) {
             fileSize: file.size,
             ...(parentTrackId ? { parentTrackId, versionNumber: 2 } : {}),
           });
-          return file.name;
+          trackTrackUploaded(id, "track");
+          return uploadResult.trackId;
         })
       );
 
@@ -175,6 +176,7 @@ export default function ProjectView({ id }: { id: number }) {
         const result = results[i];
         if (result.status === "fulfilled") {
           succeeded++;
+          uploadedTrackIds.push(result.value);
         } else {
           toast.error(`Failed to upload ${validFiles[i].name}: ${result.reason?.message || "Unknown error"}`);
           failed++;
@@ -188,14 +190,79 @@ export default function ProjectView({ id }: { id: number }) {
         } else if (succeeded > 0) {
           toast.warning(`${succeeded} of ${fileArr.length} tracks uploaded. ${failed} failed.`);
         }
+      } else if (succeeded === 1) {
+        toast.success("Track uploaded");
+      }
+
+      // Auto-trigger analyzeAndReview for newly uploaded tracks (not versions)
+      if (uploadedTrackIds.length > 0 && !parentTrackId) {
+        const analyzeResults = await Promise.allSettled(
+          uploadedTrackIds.map(trackId => analyzeAndReview.mutateAsync({ trackId }))
+        );
+        const analyzedCount = analyzeResults.filter(r => r.status === "fulfilled").length;
+        if (analyzedCount > 0) {
+          toast.success(
+            `${analyzedCount} track${analyzedCount !== 1 ? "s" : ""} queued for analysis & review`,
+            { description: "Sit back — Troubadour is listening." }
+          );
+        }
+      } else if (uploadedTrackIds.length > 0 && parentTrackId) {
+        toast.info("New version uploaded. Use 'Full Review' to analyze it.");
       }
     } catch (e) {
-      // handled above per-file
+      // Individual errors handled above
     } finally {
       setUploading(false);
       setUploadingVersion(null);
+      utils.project.get.invalidate({ id });
     }
-  }, [id, uploadTrack]);
+  }, [id, uploadTrack, analyzeAndReview, utils.project.get]);
+
+  // Global drag listeners for full-page drag overlay
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current++;
+      if (e.dataTransfer?.types?.includes("Files")) {
+        setIsDragOver(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current--;
+      if (dragCounter.current <= 0) {
+        dragCounter.current = 0;
+        setIsDragOver(false);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDragOver(false);
+
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        handleFileUpload(e.dataTransfer.files);
+      }
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, [handleFileUpload]);
 
   const handleAnalyzeAll = () => {
     if (!data) return;
@@ -246,6 +313,17 @@ export default function ProjectView({ id }: { id: number }) {
 
   return (
     <div className="space-y-6">
+      {/* Full-page Drag Overlay */}
+      {isDragOver && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-4 p-12 rounded-3xl border-4 border-dashed border-primary/60 bg-primary/10">
+            <UploadCloud className="h-20 w-20 text-primary animate-pulse" />
+            <p className="text-2xl font-bold text-white">Drop to add tracks</p>
+            <p className="text-base text-gray-300">Audio files only (MP3, WAV, FLAC, etc.)</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div className="flex items-center gap-3">

@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -22,7 +23,14 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const { data: projects, isLoading, error } = trpc.project.list.useQuery();
+  const { data: projects, isLoading, error } = trpc.project.list.useQuery(undefined, {
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      if (!d) return false;
+      const hasProcessing = d.some((p: any) => p.status === "processing");
+      return hasProcessing ? 5000 : false;
+    },
+  });
   const shownUpgradeToast = useRef(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
@@ -32,7 +40,6 @@ export default function Dashboard() {
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
       dragCounter.current++;
-      // Only show overlay if dragging files (not text, etc.)
       if (e.dataTransfer?.types?.includes("Files")) {
         setIsDragOver(true);
       }
@@ -188,10 +195,16 @@ export default function Dashboard() {
           {projects.map((project) => {
             const status = statusConfig[project.status] || statusConfig.pending;
             const StatusIcon = status.icon;
+            const isProcessing = project.status === "processing";
+            const progress = project.trackCount > 0 ? (project.reviewedCount / project.trackCount) * 100 : 0;
+
             return (
               <Card
                 key={project.id}
-                className={`cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 group`}
+                className={cn(
+                  "cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden",
+                  isProcessing && "animate-pulse-border-glow"
+                )}
                 onClick={() => setLocation(`/projects/${project.id}`)}
                 role="link"
                 tabIndex={0}
@@ -204,7 +217,7 @@ export default function Dashboard() {
                       {project.title}
                     </CardTitle>
                     <Badge variant={status.variant} className="ml-2 shrink-0 text-xs">
-                      <StatusIcon className={`h-3 w-3 mr-1 ${project.status === "processing" ? "animate-spin" : ""}`} />
+                      <StatusIcon className={`h-3 w-3 mr-1 ${isProcessing ? "animate-spin" : ""}`} />
                       {status.label}
                     </Badge>
                   </div>
@@ -215,8 +228,17 @@ export default function Dashboard() {
                       <Music className="h-3.5 w-3.5 text-primary/60" />
                       <span>{project.trackCount ?? 0} {(project.trackCount ?? 0) === 1 ? 'track' : 'tracks'}</span>
                     </div>
-                    <span className="text-border">|</span>
-                    <span className="capitalize">{project.type}</span>
+                    {isProcessing && project.trackCount > 0 ? (
+                      <>
+                        <span className="text-border">|</span>
+                        <span className="text-amber-400">{project.reviewedCount} of {project.trackCount} reviewed</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-border">|</span>
+                        <span className="capitalize">{project.type}</span>
+                      </>
+                    )}
                   </div>
                   {project.genre && (
                     <div className="flex flex-wrap gap-1.5 mt-2.5">
@@ -226,6 +248,17 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground mt-3">
                     {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
                   </p>
+                  {/* Processing progress bar at bottom of card */}
+                  {isProcessing && project.trackCount > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1">
+                      <div className="h-full w-full bg-amber-500/10">
+                        <div
+                          className="h-full bg-amber-500 transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

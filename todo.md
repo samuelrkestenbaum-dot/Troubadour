@@ -466,3 +466,10 @@
 - [x] Quick-upload shortcut on Dashboard: drag audio files onto Dashboard shows overlay, drops navigate to /projects/new with files pre-loaded
 - [x] Global type declaration for window.__troubadourPendingFiles
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 29 - UX Enhancements Part 2 (Claude 4.5)
+- [x] Processing status animation on Dashboard cards: pulsing border glow (CSS keyframes), progress bar at card bottom, auto-refresh every 5s
+- [x] "X of Y reviewed" text on processing cards, spinning Loader2 icon on status badge
+- [x] Batch upload from ProjectView: full-page drag overlay + parallel upload + auto-analyze after upload
+- [x] CSS animation pulse-border-glow added to index.css
+- [x] All 186 tests passing, zero TypeScript errors

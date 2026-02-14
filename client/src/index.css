@@ -221,3 +221,23 @@
     box-shadow: 0 0 20px oklch(0.70 0.14 70 / 0.15), 0 0 60px oklch(0.70 0.14 70 / 0.05);
   }
 }
+
+/* Processing card pulse animation */
+@keyframes pulse-border-glow {
+  0% {
+    border-color: oklch(0.70 0.14 70 / 0.2);
+    box-shadow: 0 0 0px oklch(0.70 0.14 70 / 0);
+  }
+  50% {
+    border-color: oklch(0.70 0.14 70 / 0.6);
+    box-shadow: 0 0 8px oklch(0.70 0.14 70 / 0.2), 0 0 16px oklch(0.70 0.14 70 / 0.1);
+  }
+  100% {
+    border-color: oklch(0.70 0.14 70 / 0.2);
+    box-shadow: 0 0 0px oklch(0.70 0.14 70 / 0);
+  }
+}
+
+.animate-pulse-border-glow {
+  animation: pulse-border-glow 2s infinite ease-in-out;
+}
