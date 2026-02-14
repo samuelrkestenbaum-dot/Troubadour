@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -936,4 +936,131 @@ export async function getFavoriteTrackIds(userId: number): Promise<number[]> {
     .from(favorites)
     .where(eq(favorites.userId, userId));
   return rows.map(r => r.trackId);
+}
+
+
+// ── Review Templates ──
+
+export async function createReviewTemplate(data: InsertReviewTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(reviewTemplates).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getReviewTemplatesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviewTemplates).where(eq(reviewTemplates.userId, userId)).orderBy(desc(reviewTemplates.createdAt));
+}
+
+export async function getReviewTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(reviewTemplates).where(eq(reviewTemplates.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateReviewTemplate(id: number, data: Partial<InsertReviewTemplate>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reviewTemplates).set(data).where(eq(reviewTemplates.id, id));
+}
+
+export async function deleteReviewTemplate(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(reviewTemplates).where(eq(reviewTemplates.id, id));
+}
+
+export async function setDefaultTemplate(userId: number, templateId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Unset all defaults for this user
+  await db.update(reviewTemplates).set({ isDefault: false }).where(eq(reviewTemplates.userId, userId));
+  // Set the new default
+  await db.update(reviewTemplates).set({ isDefault: true }).where(and(eq(reviewTemplates.id, templateId), eq(reviewTemplates.userId, userId)));
+}
+
+// ── Project Collaborators ──
+
+export async function createCollaboratorInvite(data: InsertProjectCollaborator) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(projectCollaborators).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getCollaboratorsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: projectCollaborators.id,
+      projectId: projectCollaborators.projectId,
+      invitedUserId: projectCollaborators.invitedUserId,
+      invitedEmail: projectCollaborators.invitedEmail,
+      role: projectCollaborators.role,
+      status: projectCollaborators.status,
+      createdAt: projectCollaborators.createdAt,
+      userName: users.name,
+    })
+    .from(projectCollaborators)
+    .leftJoin(users, eq(projectCollaborators.invitedUserId, users.id))
+    .where(eq(projectCollaborators.projectId, projectId))
+    .orderBy(desc(projectCollaborators.createdAt));
+}
+
+export async function getCollaboratorByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(projectCollaborators).where(eq(projectCollaborators.inviteToken, token)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function acceptCollaboratorInvite(token: string, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(projectCollaborators).set({
+    status: "accepted",
+    invitedUserId: userId,
+  }).where(eq(projectCollaborators.inviteToken, token));
+}
+
+export async function removeCollaborator(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(projectCollaborators).where(eq(projectCollaborators.id, id));
+}
+
+export async function isUserCollaborator(userId: number, projectId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select().from(projectCollaborators)
+    .where(and(
+      eq(projectCollaborators.projectId, projectId),
+      eq(projectCollaborators.invitedUserId, userId),
+      eq(projectCollaborators.status, "accepted")
+    )).limit(1);
+  return result.length > 0;
+}
+
+export async function getSharedProjectIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ projectId: projectCollaborators.projectId })
+    .from(projectCollaborators)
+    .where(and(
+      eq(projectCollaborators.invitedUserId, userId),
+      eq(projectCollaborators.status, "accepted")
+    ));
+  return rows.map(r => r.projectId);
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
 }

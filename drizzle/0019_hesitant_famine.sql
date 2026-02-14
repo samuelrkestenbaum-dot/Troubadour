@@ -1,0 +1,1 @@
+ALTER TABLE `reviewTemplates` MODIFY COLUMN `focusAreas` json NOT NULL;

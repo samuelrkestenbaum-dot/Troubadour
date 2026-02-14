@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `reviewTemplates` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `userId` int(11) NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `focusAreas` json NOT NULL,\n  `isDefault` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_reviewTemplates_userId` (`userId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE `reviewTemplates` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `userId` int(11) NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `focusAreas` json NOT NULL,\n  `isDefault` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_reviewTemplates_userId` (`userId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 198
+}

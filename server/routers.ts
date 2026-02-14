@@ -1446,6 +1446,154 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return { success: true };
       }),
   }),
+
+  // ── Review Templates ──
+  template: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.getReviewTemplatesByUser(ctx.user.id);
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(255),
+        description: z.string().optional(),
+        focusAreas: z.array(z.string()).min(1),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.isDefault) {
+          await db.setDefaultTemplate(ctx.user.id, -1); // unset all defaults
+        }
+        const result = await db.createReviewTemplate({
+          userId: ctx.user.id,
+          name: input.name,
+          description: input.description || null,
+          focusAreas: input.focusAreas,
+          isDefault: input.isDefault || false,
+        });
+        if (input.isDefault) {
+          await db.setDefaultTemplate(ctx.user.id, result.id);
+        }
+        return result;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().optional(),
+        focusAreas: z.array(z.string()).min(1).optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const template = await db.getReviewTemplateById(input.id);
+        if (!template || template.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+        }
+        const { id, isDefault, ...data } = input;
+        await db.updateReviewTemplate(id, data as any);
+        if (isDefault !== undefined) {
+          if (isDefault) {
+            await db.setDefaultTemplate(ctx.user.id, id);
+          } else {
+            await db.updateReviewTemplate(id, { isDefault: false });
+          }
+        }
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const template = await db.getReviewTemplateById(input.id);
+        if (!template || template.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+        }
+        await db.deleteReviewTemplate(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ── Collaboration ──
+  collaboration: router({
+    invite: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        email: z.string().email(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only the project owner can invite collaborators" });
+        }
+        if (input.email === ctx.user.email) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot invite yourself" });
+        }
+        const existing = await db.getCollaboratorsByProject(input.projectId);
+        if (existing.some(c => c.invitedEmail === input.email)) {
+          throw new TRPCError({ code: "CONFLICT", message: "This email has already been invited" });
+        }
+        const inviteToken = nanoid(32);
+        const invitedUser = await db.getUserByEmail(input.email);
+        const result = await db.createCollaboratorInvite({
+          projectId: input.projectId,
+          invitedEmail: input.email,
+          invitedUserId: invitedUser?.id || null,
+          inviteToken,
+          status: invitedUser ? "accepted" : "pending",
+        });
+        return { success: true, inviteToken, autoAccepted: !!invitedUser };
+      }),
+
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+        const isOwner = project.userId === ctx.user.id;
+        const isCollab = await db.isUserCollaborator(ctx.user.id, input.projectId);
+        if (!isOwner && !isCollab) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        return db.getCollaboratorsByProject(input.projectId);
+      }),
+
+    accept: protectedProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const invite = await db.getCollaboratorByToken(input.token);
+        if (!invite) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found or expired" });
+        }
+        if (invite.status === "accepted") {
+          return { success: true, projectId: invite.projectId, alreadyAccepted: true };
+        }
+        await db.acceptCollaboratorInvite(input.token, ctx.user.id);
+        return { success: true, projectId: invite.projectId, alreadyAccepted: false };
+      }),
+
+    remove: protectedProcedure
+      .input(z.object({ id: z.number(), projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only the project owner can remove collaborators" });
+        }
+        await db.removeCollaborator(input.id);
+        return { success: true };
+      }),
+
+    sharedProjects: protectedProcedure.query(async ({ ctx }) => {
+      const sharedIds = await db.getSharedProjectIds(ctx.user.id);
+      if (sharedIds.length === 0) return [];
+      const results = [];
+      for (const id of sharedIds) {
+        const project = await db.getProjectById(id);
+        if (project) results.push(project);
+      }
+      return results;
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

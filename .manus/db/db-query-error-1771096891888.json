@@ -1,0 +1,21 @@
+{
+  "query": "SHOW CREATE TABLE projectCollaborators; SHOW CREATE TABLE reviewTemplates;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SHOW CREATE TABLE projectCollaborators; SHOW CREATE TABLE reviewTemplates;",
+  "returncode": 1,
+  "logs": [
+    "Table\tCreate Table",
+    "projectCollaborators\tCREATE TABLE `projectCollaborators` (",
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `projectId` int(11) NOT NULL,",
+    "  `invitedUserId` int(11) DEFAULT NULL,",
+    "  `invitedEmail` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `collabRole` enum('viewer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'viewer',",
+    "  `inviteToken` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `collabStatus` enum('pending','accepted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  UNIQUE KEY `projectCollaborators_inviteToken_unique` (`inviteToken`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "ERROR 1146 (42S02) at line 1: Table 'zpobkhoyuogeaapeucl3sk.reviewTemplates' doesn't exist"
+  ]
+}

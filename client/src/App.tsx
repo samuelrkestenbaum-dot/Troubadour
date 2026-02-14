@@ -18,6 +18,9 @@ import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
 import CompareReviews from "./pages/CompareReviews";
+import QuickReview from "./pages/QuickReview";
+import Templates from "./pages/Templates";
+import AcceptInvite from "./pages/AcceptInvite";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -62,6 +65,13 @@ function DashboardRoutes() {
             return id ? <CompareReviews projectId={id} /> : <NotFound />;
           }}
         </Route>
+        <Route path="/projects/:id/quick-review">
+          {(params) => {
+            const id = safeParseId(params.id);
+            return id ? <QuickReview /> : <NotFound />;
+          }}
+        </Route>
+        <Route path="/templates" component={Templates} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />
@@ -79,6 +89,7 @@ function Router() {
         {(params) => <SharedReview token={params.token} />}
       </Route>
       <Route path="/pricing" component={Pricing} />
+      <Route path="/invite/:token" component={AcceptInvite} />
       <Route path="/404" component={NotFound} />
       <Route>
         <DashboardRoutes />

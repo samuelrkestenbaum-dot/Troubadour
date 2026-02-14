@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
+import { CollaborationPanel } from "@/components/CollaborationPanel";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
 
@@ -34,6 +36,7 @@ const trackStatusConfig: Record<string, { label: string; color: string }> = {
 export default function ProjectView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const { user } = useAuth();
   const versionInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingVersion, setUploadingVersion] = useState<number | null>(null);
@@ -409,6 +412,12 @@ export default function ProjectView({ id }: { id: number }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {tracks.some(t => t.status === "reviewed") && (
+            <Button variant="outline" size="sm" onClick={() => setLocation(`/projects/${id}/quick-review`)}>
+              <Zap className="h-3.5 w-3.5 mr-1.5" />
+              Quick Review
+            </Button>
+          )}
           {tracks.filter(t => t.status === "reviewed").length >= 2 && (
             <Button variant="outline" size="sm" onClick={() => setLocation(`/projects/${id}/compare`)}>
               <GitCompare className="h-3.5 w-3.5 mr-1.5" />
@@ -665,6 +674,10 @@ export default function ProjectView({ id }: { id: number }) {
           }
         }}
       />
+
+      {/* Collaboration Section */}
+      <Separator />
+      <CollaborationPanel projectId={id} isOwner={user?.id === data.project.userId} />
 
       {/* Album Review Section */}
       {reviews.filter(r => r.reviewType === "album").length > 0 && (

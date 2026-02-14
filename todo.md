@@ -527,3 +527,32 @@
 
 ### General
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 33 - Quick Review, Templates & Collaboration (Claude 4.5)
+
+### Feature 1: Quick Review Mode
+- [x] Create /projects/:id/quick-review route in App.tsx
+- [x] Build QuickReview page: score rings (SVG), quick take, top 3 suggestions per track, expandable full review
+- [x] Add "Quick Review" button (Zap icon) to ProjectView header (visible when reviewed tracks exist)
+- [x] Project-level stats: total tracks, reviewed count, average score
+- [x] Separate sections for reviewed and unreviewed tracks
+
+### Feature 2: Review Templates/Presets
+- [x] Add reviewTemplates table to schema (userId, name, description, focusAreas JSON, isDefault)
+- [x] Push schema migration (manual SQL due to db:push conflict)
+- [x] Create template CRUD tRPC mutations (create, list, update, delete) with setDefaultTemplate
+- [x] Template management UI: /templates page with create/edit/delete, suggested focus areas chips, custom area input
+- [x] Default template highlighted with amber border and star badge
+- [x] Templates nav item added to DashboardLayout sidebar
+
+### Feature 3: Collaborative Sharing
+- [x] Add projectCollaborators table to schema (projectId, invitedEmail, invitedUserId, inviteToken, status)
+- [x] Push schema migration (manual SQL)
+- [x] Create collaboration tRPC mutations (invite, list, accept, remove, sharedProjects)
+- [x] Auto-accept invites when user already exists; pending status for unknown emails
+- [x] CollaborationPanel component on ProjectView with invite dialog and collaborator list
+- [x] AcceptInvite page at /invite/:token with auth redirect
+- [x] Owner-only controls: only project owner can invite/remove collaborators
+
+### General
+- [x] All 186 tests passing, zero TypeScript errors

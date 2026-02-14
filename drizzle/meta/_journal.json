@@ -127,6 +127,20 @@
       "when": 1771086874474,
       "tag": "0017_empty_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1771096848553,
+      "tag": "0018_cute_namor",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1771096867997,
+      "tag": "0019_hesitant_famine",
+      "breakpoints": true
     }
   ]
 }

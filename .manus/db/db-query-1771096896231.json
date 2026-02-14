@@ -1,0 +1,26 @@
+{
+  "query": "SHOW CREATE TABLE projectCollaborators;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SHOW CREATE TABLE projectCollaborators;",
+  "rows": [
+    {
+      "Table": "projectCollaborators",
+      "Create Table": "CREATE TABLE `projectCollaborators` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `projectId` int(11) NOT NULL,",
+    "  `invitedUserId` int(11) DEFAULT NULL,",
+    "  `invitedEmail` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `collabRole` enum('viewer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'viewer',",
+    "  `inviteToken` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `collabStatus` enum('pending','accepted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  UNIQUE KEY `projectCollaborators_inviteToken_unique` (`inviteToken`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+  ],
+  "stdout": "Table\tCreate Table\nprojectCollaborators\tCREATE TABLE `projectCollaborators` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `projectId` int(11) NOT NULL,\n  `invitedUserId` int(11) DEFAULT NULL,\n  `invitedEmail` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `collabRole` enum('viewer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'viewer',\n  `inviteToken` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `collabStatus` enum('pending','accepted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  UNIQUE KEY `projectCollaborators_inviteToken_unique` (`inviteToken`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n",
+  "stderr": "",
+  "execution_time_ms": 48
+}

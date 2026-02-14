@@ -283,3 +283,44 @@ export const processedWebhookEvents = mysqlTable("processedWebhookEvents", {
 }, (t) => [
   uniqueIndex("uq_processedWebhookEvents_eventId").on(t.eventId),
 ]);
+
+
+// ── Review Templates ──
+
+export const reviewTemplates = mysqlTable("reviewTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  focusAreas: json("focusAreas").$type<string[]>().notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("idx_reviewTemplates_userId").on(t.userId),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type ReviewTemplate = typeof reviewTemplates.$inferSelect;
+export type InsertReviewTemplate = typeof reviewTemplates.$inferInsert;
+
+// ── Project Collaborators ──
+
+export const projectCollaborators = mysqlTable("projectCollaborators", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  invitedUserId: int("invitedUserId"),
+  invitedEmail: varchar("invitedEmail", { length: 320 }).notNull(),
+  role: mysqlEnum("collabRole", ["viewer"]).default("viewer").notNull(),
+  inviteToken: varchar("inviteToken", { length: 64 }).notNull().unique(),
+  status: mysqlEnum("collabStatus", ["pending", "accepted"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_projectCollaborators_projectId").on(t.projectId),
+  index("idx_projectCollaborators_invitedUserId").on(t.invitedUserId),
+  foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.invitedUserId], foreignColumns: [users.id] }).onDelete("set null"),
+]);
+
+export type ProjectCollaborator = typeof projectCollaborators.$inferSelect;
+export type InsertProjectCollaborator = typeof projectCollaborators.$inferInsert;
