@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import {
-  BarChart3, Music, FileText, FolderOpen, TrendingUp, Star, Trophy, Clock
+  BarChart3, Music, FileText, FolderOpen, TrendingUp, Star, Trophy, Clock, Lock, ArrowUpRight
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 
 const scoreColor = (score: number) => {
@@ -121,7 +122,9 @@ function AverageScoresChart({ averages }: { averages: Record<string, number> }) 
 
 export default function Analytics() {
   const [, setLocation] = useLocation();
-  const { data, isLoading } = trpc.analytics.dashboard.useQuery();
+  const { data, isLoading, error } = trpc.analytics.dashboard.useQuery(undefined, {
+    retry: false,
+  });
 
   if (isLoading) {
     return (
@@ -134,6 +137,24 @@ export default function Analytics() {
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
+      </div>
+    );
+  }
+
+  // Feature gating: show upgrade prompt for free users
+  if (error?.data?.code === "FORBIDDEN") {
+    return (
+      <div className="max-w-lg mx-auto py-20 text-center">
+        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-6">
+          <Lock className="h-8 w-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Unlock Analytics</h2>
+        <p className="text-muted-foreground mb-6">
+          The Analytics dashboard is available on the Artist plan and above. Upgrade to see score distributions, average scores, top tracks, and review activity.
+        </p>
+        <Button onClick={() => setLocation("/pricing")} size="lg">
+          View Plans <ArrowUpRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     );
   }

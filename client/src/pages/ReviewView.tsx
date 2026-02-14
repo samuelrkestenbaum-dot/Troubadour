@@ -9,10 +9,11 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@/contexts/ChatContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { RadarChart } from "@/components/RadarChart";
 import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
-  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check
+  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check, Lock
 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
@@ -49,16 +50,20 @@ const scoreBgGlow = (score: number) => {
   return "shadow-rose-400/20";
 };
 
-function ConversationPanel({ reviewId }: { reviewId: number }) {
+function ConversationPanel({ reviewId, userTier }: { reviewId: number; userTier: string }) {
   const [message, setMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const isChatGated = userTier === "free";
+
   const { data: messages, refetch } = trpc.conversation.list.useQuery(
     { reviewId },
-    { enabled: isOpen }
+    { enabled: isOpen && !isChatGated }
   );
+
+  const [, navigate] = useLocation();
 
   const sendMutation = trpc.conversation.send.useMutation({
     onSuccess: () => {
@@ -66,7 +71,17 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
       refetch();
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to send message");
+      if (err.data?.code === "FORBIDDEN") {
+        toast("Chat requires the Artist plan", {
+          description: "Upgrade to ask follow-up questions about your reviews.",
+          action: {
+            label: "View Plans",
+            onClick: () => navigate("/pricing"),
+          },
+        });
+      } else {
+        toast.error(err.message || "Failed to send message");
+      }
     },
   });
 
@@ -116,6 +131,19 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
 
       {isOpen && (
         <CardContent className="pt-0 px-4 pb-4">
+          {isChatGated ? (
+            <div className="text-center py-8">
+              <Lock className="h-8 w-8 text-amber-400/50 mx-auto mb-3" />
+              <p className="text-sm font-medium mb-1">Chat requires the Artist plan</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Upgrade to ask follow-up questions about your reviews and get deeper insights.
+              </p>
+              <Button size="sm" variant="outline" className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10" onClick={() => navigate("/pricing")}>
+                View Plans
+              </Button>
+            </div>
+          ) : (
+          <>
           <div
             ref={scrollRef}
             className="space-y-3 max-h-96 overflow-y-auto mb-4 pr-1"
@@ -204,6 +232,8 @@ function ConversationPanel({ reviewId }: { reviewId: number }) {
               )}
             </Button>
           </div>
+          </>
+          )}
         </CardContent>
       )}
     </Card>
@@ -240,6 +270,8 @@ export default function ReviewView({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const { data: review, isLoading, error } = trpc.review.get.useQuery({ id });
   const { setContext } = useChat();
+  const { user } = useAuth();
+  const userTier = user?.tier || "free";
 
   useEffect(() => {
     if (review?.trackId) {
@@ -256,6 +288,17 @@ export default function ReviewView({ id }: { id: number }) {
 
   const handleExport = async () => {
     if (!review) return;
+    // Check if export is gated for this tier
+    if (userTier === "free" || userTier === "artist") {
+      toast("Export requires the Pro plan", {
+        description: "Upgrade to export reviews as Markdown files.",
+        action: {
+          label: "View Plans",
+          onClick: () => setLocation("/pricing"),
+        },
+      });
+      return;
+    }
     try {
       const result = await exportQuery.refetch();
       if (result.data) {
@@ -289,7 +332,19 @@ export default function ReviewView({ id }: { id: number }) {
       navigator.clipboard.writeText(url);
       toast.success("Share link copied to clipboard!");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN") {
+        toast("Sharing requires the Artist plan", {
+          description: "Upgrade to generate shareable review links.",
+          action: {
+            label: "View Plans",
+            onClick: () => setLocation("/pricing"),
+          },
+        });
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const handleCopy = () => {
@@ -367,7 +422,11 @@ export default function ReviewView({ id }: { id: number }) {
             Copy
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />
+            {userTier !== "pro" ? (
+              <Lock className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+            ) : (
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+            )}
             Export .md
           </Button>
           <Button
@@ -387,6 +446,8 @@ export default function ReviewView({ id }: { id: number }) {
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
             ) : shareUrl ? (
               <Check className="h-3.5 w-3.5 mr-1.5" />
+            ) : userTier === "free" ? (
+              <Lock className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
             ) : (
               <Share2 className="h-3.5 w-3.5 mr-1.5" />
             )}
@@ -512,7 +573,7 @@ export default function ReviewView({ id }: { id: number }) {
 
       {/* Conversation Panel */}
       {review.reviewType === "track" && (
-        <ConversationPanel reviewId={review.id} />
+        <ConversationPanel reviewId={review.id} userTier={userTier} />
       )}
     </div>
   );

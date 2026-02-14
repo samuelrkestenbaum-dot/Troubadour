@@ -1,4 +1,4 @@
-import { Check, X, Zap, Crown, Music } from "lucide-react";
+import { Check, X, Zap, Crown, Music, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 
 const PLANS = [
@@ -81,6 +82,7 @@ const PLANS = [
 export default function Pricing() {
   const { user } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [, navigate] = useLocation();
 
   const checkoutMutation = trpc.subscription.checkout.useMutation({
     onSuccess: (data) => {
@@ -108,8 +110,27 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(user ? "/dashboard" : "/")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="text-sm">Back</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shadow-sm">
+              <Music className="h-4 w-4 text-primary" />
+            </div>
+            <span className="font-bold text-base tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>FirstSpin.ai</span>
+          </div>
+          <div className="w-20" /> {/* Spacer for centering */}
+        </div>
+      </nav>
+
       {/* Header */}
-      <div className="text-center pt-16 pb-12 px-4">
+      <div className="text-center pt-12 pb-12 px-4">
         <Badge variant="outline" className="mb-4 border-primary/30 text-primary">
           Simple Pricing
         </Badge>

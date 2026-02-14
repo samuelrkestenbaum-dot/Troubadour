@@ -1116,10 +1116,17 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
     get: protectedProcedure.query(async ({ ctx }) => {
       const user = await db.getUserById(ctx.user.id);
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      const plan = getPlanByTier(user.tier);
+      // Compute next reset date (1st of next month)
+      const resetAt = new Date(user.monthlyResetAt);
+      const nextReset = new Date(resetAt.getFullYear(), resetAt.getMonth() + 1, 1);
       return {
         audioMinutesUsed: user.audioMinutesUsed,
         audioMinutesLimit: user.audioMinutesLimit,
         tier: user.tier,
+        monthlyReviewCount: user.monthlyReviewCount,
+        monthlyReviewLimit: plan.monthlyReviewLimit,
+        monthlyResetDate: nextReset.toISOString(),
       };
     }),
   }),

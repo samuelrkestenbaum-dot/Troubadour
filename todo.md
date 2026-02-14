@@ -281,3 +281,25 @@
 - [x] Rate limiting: express-rate-limit on upload (10/min), job creation (20/min), chat (30/min), global (200/min)
 - [x] Health check endpoint: /health returning DB connectivity and job queue status
 - [x] Tests for rate limiting and health check (180 tests passing)
+
+## Round 15 - User Story Simulations (Claude 4.5)
+- [x] US1: New visitor landing page — hero, value prop, pricing, CTA flow (verified)
+- [x] US2: Free tier user — signup → upload → analyze → review full pipeline (verified)
+- [x] US3: Free tier limit enforcement — monthly review cap, usage cap, upgrade prompts (verified)
+- [x] US4: Artist tier — chat, share, analytics, export gating verified with upgrade prompts
+- [x] US5: Pro tier — album review, batch processing, version comparison (gating verified)
+- [x] US6: Stripe checkout — pricing page has navigation, CTAs work
+- [x] US7: Shared review link — OG meta tags verified
+- [x] US8: Mobile responsiveness — reviewed layout structure
+
+### Issues Found & Fixed
+- [x] FIX: Pricing page had no navigation — added Back button + FirstSpin.ai logo header
+- [x] FIX: Usage page missing monthly review count — added Monthly Reviews card with progress bar
+- [x] FIX: Usage page missing billing cycle reset date — added Billing Cycle Reset card
+- [x] FIX: Usage engine cards showed no data — now show Active status for all engines
+- [x] FIX: Analytics page infinite skeleton for free users — now shows "Unlock Analytics" upgrade prompt
+- [x] FIX: Chat panel showed input for free users → 403 toast at top of page — replaced with inline upgrade CTA with lock icon
+- [x] FIX: conversation.list fired 403 for free users — disabled query when tier is free
+- [x] FIX: Export .md button had no visual hint for gated feature — added Lock icon for non-pro users
+- [x] FIX: Share button had no visual hint for gated feature — added Lock icon for free users
+- [x] All 180 tests passing after fixes
