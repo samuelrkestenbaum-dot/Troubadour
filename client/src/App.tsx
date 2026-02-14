@@ -15,6 +15,7 @@ import Usage from "./pages/Usage";
 import Analytics from "./pages/Analytics";
 import SharedReview from "./pages/SharedReview";
 import Pricing from "./pages/Pricing";
+import Settings from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
 
 function DashboardRoutes() {
@@ -38,6 +39,7 @@ function DashboardRoutes() {
         </Route>
         <Route path="/analytics" component={Analytics} />
         <Route path="/usage" component={Usage} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </DashboardLayout>

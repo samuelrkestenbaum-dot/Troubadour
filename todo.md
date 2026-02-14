@@ -326,3 +326,10 @@
 - [x] VERIFIED: X-Forwarded-For trust proxy error resolved (no new occurrences since fix)
 - [x] VERIFIED: Shared review page shows clean error state for invalid tokens
 - [x] All 180 tests passing
+## Round 17 - Settings Page & Stripe Safety (Claude 4.5)
+- [x] Audit Stripe webhook handlers — CONFIRMED: only touches user subscription fields, never projects/tracks/reviews
+- [x] Build Settings page: Account info, Subscription management, Notifications, Danger Zone
+- [x] Add Settings link to sidebar navigation (gear icon)
+- [x] Wire Settings page to existing tRPC endpoints (auth.me, subscription.status, subscription.checkout, subscription.manageBilling)
+- [x] Verify Stripe checkout flow doesn't touch existing data — CONFIRMED SAFE
+- [x] All 180 tests passing
