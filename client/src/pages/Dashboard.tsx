@@ -3,20 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ElementType; glow?: string }> = {
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ElementType }> = {
   draft: { label: "Draft", variant: "outline", icon: Clock },
   pending: { label: "Pending", variant: "outline", icon: Clock },
-  processing: { label: "In Progress", variant: "secondary", icon: Loader2, glow: "shadow-amber-500/20" },
-  reviewed: { label: "Reviewed", variant: "default", icon: CheckCircle2, glow: "shadow-emerald-500/20" },
-  completed: { label: "Completed", variant: "default", icon: CheckCircle2, glow: "shadow-emerald-500/20" },
+  processing: { label: "In Progress", variant: "secondary", icon: Loader2 },
+  reviewed: { label: "Reviewed", variant: "default", icon: CheckCircle2 },
+  completed: { label: "Completed", variant: "default", icon: CheckCircle2 },
   error: { label: "Error", variant: "destructive", icon: AlertCircle },
   failed: { label: "Failed", variant: "destructive", icon: AlertCircle },
 };
@@ -34,6 +35,15 @@ export default function Dashboard() {
   const shownUpgradeToast = useRef(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
+
+  // Browser notification state
+  const previousStatuses = useRef<Record<number, string>>({});
+  const notifPermissionAsked = useRef(false);
+
+  // Search/filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
 
   // Global drag listeners for quick-upload overlay
   useEffect(() => {
@@ -100,6 +110,102 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Browser notification: detect processing → reviewed transitions
+  useEffect(() => {
+    if (!projects || projects.length === 0) return;
+
+    const currentStatuses: Record<number, string> = {};
+    let hasProcessing = false;
+
+    for (const project of projects) {
+      currentStatuses[project.id] = project.status;
+      if (project.status === "processing") hasProcessing = true;
+
+      // Check for transition from processing → reviewed
+      const prev = previousStatuses.current[project.id];
+      if (prev === "processing" && project.status === "reviewed") {
+        // Fire browser notification
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          try {
+            const notif = new Notification("Troubadour: Review Complete", {
+              body: `"${project.title}" — ${project.trackCount} track${project.trackCount !== 1 ? "s" : ""} reviewed`,
+              icon: "/favicon.ico",
+              tag: `project-reviewed-${project.id}`,
+            });
+            notif.onclick = () => {
+              window.focus();
+              setLocation(`/projects/${project.id}`);
+            };
+          } catch {
+            // Notification API not available in this context
+          }
+        }
+        // Also show in-app toast
+        toast.success(`"${project.title}" review complete!`, {
+          description: `All ${project.trackCount} tracks reviewed.`,
+          action: {
+            label: "View",
+            onClick: () => setLocation(`/projects/${project.id}`),
+          },
+        });
+      }
+    }
+
+    // Request notification permission when we first detect processing projects
+    if (hasProcessing && !notifPermissionAsked.current && typeof Notification !== "undefined") {
+      if (Notification.permission === "default") {
+        notifPermissionAsked.current = true;
+        Notification.requestPermission().then((perm) => {
+          if (perm === "granted") {
+            toast.success("Notifications enabled", {
+              description: "We'll notify you when reviews are ready.",
+              duration: 3000,
+            });
+          }
+        });
+      }
+    }
+
+    previousStatuses.current = currentStatuses;
+  }, [projects, setLocation]);
+
+  // Filtered and sorted projects
+  const filteredProjects = useMemo(() => {
+    if (!projects) return [];
+
+    let result = [...projects];
+
+    // Search filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(p => p.title.toLowerCase().includes(term));
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter(p => p.status === statusFilter);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortOrder) {
+        case "oldest":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "name-asc":
+          return a.title.localeCompare(b.title);
+        case "name-desc":
+          return b.title.localeCompare(a.title);
+        case "newest":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+    return result;
+  }, [projects, searchTerm, statusFilter, sortOrder]);
+
+  const showSearchBar = !isLoading && !error && projects && projects.length >= 2;
+
   return (
     <div className="space-y-8">
       {/* Quick-Upload Drag Overlay */}
@@ -123,6 +229,44 @@ export default function Dashboard() {
           New Project
         </Button>
       </div>
+
+      {/* Search / Filter / Sort bar */}
+      {showSearchBar && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="processing">In Progress</SelectItem>
+              <SelectItem value="reviewed">Reviewed</SelectItem>
+              <SelectItem value="error">Error</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name-asc">Name A-Z</SelectItem>
+              <SelectItem value="name-desc">Name Z-A</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {error ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -191,79 +335,93 @@ export default function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
-            const status = statusConfig[project.status] || statusConfig.pending;
-            const StatusIcon = status.icon;
-            const isProcessing = project.status === "processing";
-            const progress = project.trackCount > 0 ? (project.reviewedCount / project.trackCount) * 100 : 0;
+        <>
+          {/* Project grid */}
+          {filteredProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Search className="h-12 w-12 text-muted-foreground/40 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No projects match</h3>
+              <p className="text-muted-foreground text-sm mb-4">Try adjusting your search or filters.</p>
+              <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all"); setSortOrder("newest"); }}>
+                Reset Filters
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {filteredProjects.map((project) => {
+                const status = statusConfig[project.status] || statusConfig.pending;
+                const StatusIcon = status.icon;
+                const isProcessing = project.status === "processing";
+                const progress = project.trackCount > 0 ? (project.reviewedCount / project.trackCount) * 100 : 0;
 
-            return (
-              <Card
-                key={project.id}
-                className={cn(
-                  "cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden",
-                  isProcessing && "animate-pulse-border-glow"
-                )}
-                onClick={() => setLocation(`/projects/${project.id}`)}
-                role="link"
-                tabIndex={0}
-                aria-label={`Open project: ${project.title}`}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocation(`/projects/${project.id}`); } }}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base font-semibold leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                      {project.title}
-                    </CardTitle>
-                    <Badge variant={status.variant} className="ml-2 shrink-0 text-xs">
-                      <StatusIcon className={`h-3 w-3 mr-1 ${isProcessing ? "animate-spin" : ""}`} />
-                      {status.label}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <Music className="h-3.5 w-3.5 text-primary/60" />
-                      <span>{project.trackCount ?? 0} {(project.trackCount ?? 0) === 1 ? 'track' : 'tracks'}</span>
-                    </div>
-                    {isProcessing && project.trackCount > 0 ? (
-                      <>
-                        <span className="text-border">|</span>
-                        <span className="text-amber-400">{project.reviewedCount} of {project.trackCount} reviewed</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-border">|</span>
-                        <span className="capitalize">{project.type}</span>
-                      </>
+                return (
+                  <Card
+                    key={project.id}
+                    className={cn(
+                      "cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden",
+                      isProcessing && "animate-pulse-border-glow"
                     )}
-                  </div>
-                  {project.genre && (
-                    <div className="flex flex-wrap gap-1.5 mt-2.5">
-                      <Badge variant="outline" className="text-xs font-normal border-primary/20 text-primary/80">{project.genre}</Badge>
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-3">
-                    {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
-                  </p>
-                  {/* Processing progress bar at bottom of card */}
-                  {isProcessing && project.trackCount > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1">
-                      <div className="h-full w-full bg-amber-500/10">
-                        <div
-                          className="h-full bg-amber-500 transition-all duration-500"
-                          style={{ width: `${progress}%` }}
-                        />
+                    onClick={() => setLocation(`/projects/${project.id}`)}
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Open project: ${project.title}`}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocation(`/projects/${project.id}`); } }}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-base font-semibold leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                          {project.title}
+                        </CardTitle>
+                        <Badge variant={status.variant} className="ml-2 shrink-0 text-xs">
+                          <StatusIcon className={`h-3 w-3 mr-1 ${isProcessing ? "animate-spin" : ""}`} />
+                          {status.label}
+                        </Badge>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Music className="h-3.5 w-3.5 text-primary/60" />
+                          <span>{project.trackCount ?? 0} {(project.trackCount ?? 0) === 1 ? 'track' : 'tracks'}</span>
+                        </div>
+                        {isProcessing && project.trackCount > 0 ? (
+                          <>
+                            <span className="text-border">|</span>
+                            <span className="text-amber-400">{project.reviewedCount} of {project.trackCount} reviewed</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-border">|</span>
+                            <span className="capitalize">{project.type}</span>
+                          </>
+                        )}
+                      </div>
+                      {project.genre && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          <Badge variant="outline" className="text-xs font-normal border-primary/20 text-primary/80">{project.genre}</Badge>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-3">
+                        {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
+                      </p>
+                      {/* Processing progress bar at bottom of card */}
+                      {isProcessing && project.trackCount > 0 && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1">
+                          <div className="h-full w-full bg-amber-500/10">
+                            <div
+                              className="h-full bg-amber-500 transition-all duration-500"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

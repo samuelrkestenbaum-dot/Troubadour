@@ -473,3 +473,9 @@
 - [x] Batch upload from ProjectView: full-page drag overlay + parallel upload + auto-analyze after upload
 - [x] CSS animation pulse-border-glow added to index.css
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 30 - UX Enhancements Part 3 (Claude 4.5)
+- [x] Browser notification when reviews complete: tracks processing→reviewed transitions, requests permission on first processing detection, fires Notification + in-app toast with "View" action
+- [x] Project search/filter bar on Dashboard: search by name, filter by status (All/Draft/In Progress/Reviewed/Error), sort (Newest/Oldest/Name A-Z/Z-A), "No projects match" empty state with Reset Filters button
+- [x] Responsive search bar (stacks vertically on mobile)
+- [x] All 186 tests passing, zero TypeScript errors
