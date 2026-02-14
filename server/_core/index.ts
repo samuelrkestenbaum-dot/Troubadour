@@ -53,7 +53,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many requests. Please try again later." },
-    validate: { xForwardedForHeader: false },
+
   });
   app.use("/api/trpc", globalLimiter);
 
@@ -64,7 +64,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Upload rate limit exceeded. Please wait before uploading more files." },
-    validate: { xForwardedForHeader: false },
+
   });
   app.use("/api/trpc/track.upload", uploadLimiter);
 
@@ -75,7 +75,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Job creation rate limit exceeded. Please wait before submitting more jobs." },
-    validate: { xForwardedForHeader: false },
+
   });
   app.use("/api/trpc/job.analyze", jobLimiter);
   app.use("/api/trpc/job.review", jobLimiter);
@@ -92,7 +92,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Chat rate limit exceeded. Please slow down." },
-    validate: { xForwardedForHeader: false },
+
   });
   app.use("/api/trpc/chat.sendMessage", chatLimiter);
   app.use("/api/trpc/conversation.sendMessage", chatLimiter);

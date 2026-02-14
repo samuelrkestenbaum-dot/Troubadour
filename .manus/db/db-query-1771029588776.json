@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, title, userId FROM projects ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT id, title, userId FROM projects ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "title": "Test Track Upload",
+      "userId": "1"
+    },
+    {
+      "id": "2",
+      "title": "E2E Test - Genre Detection",
+      "userId": "1"
+    },
+    {
+      "id": "3",
+      "title": "E2E Test - New Track Upload",
+      "userId": "1"
+    },
+    {
+      "id": "30001",
+      "title": "Test",
+      "userId": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tuserId\n1\tTest Track Upload\t1\n2\tE2E Test - Genre Detection\t1\n3\tE2E Test - New Track Upload\t1\n30001\tTest\t1\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

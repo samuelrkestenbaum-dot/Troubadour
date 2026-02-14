@@ -52,6 +52,7 @@ const PLANS = [
       { text: "AI chat follow-ups", included: true },
       { text: "Reference track comparison", included: true },
       { text: "Shareable review links", included: true },
+      { text: "Analytics dashboard", included: true },
       { text: "Album-level A&R memos", included: false },
     ],
   },

@@ -303,3 +303,26 @@
 - [x] FIX: Export .md button had no visual hint for gated feature — added Lock icon for non-pro users
 - [x] FIX: Share button had no visual hint for gated feature — added Lock icon for free users
 - [x] All 180 tests passing after fixes
+
+## Round 16 - Full Site Sweep (Claude 4.5)
+- [x] Audit all console errors and network failures
+- [x] Audit Dashboard page
+- [x] Audit Dashboard and sidebar navigation
+- [x] Audit ProjectView / TrackView pages
+- [x] Audit ReviewView page (review content, chat, export, share)
+- [x] Audit Usage page
+- [x] Audit Analytics page
+- [x] Audit Pricing page
+- [x] Audit Landing page (unauthenticated)
+- [x] Audit shared review page
+- [x] Fix all identified issues
+
+### Issues Found & Fixed
+- [x] FIX: Pricing page missing "Analytics dashboard" in Artist tier feature list
+- [x] FIX: Removed redundant xForwardedForHeader:false validate overrides (trust proxy already set)
+- [x] FIX: Added Pricing link to sidebar navigation (Crown icon)
+- [x] VERIFIED: conversation.list query properly disabled for free users
+- [x] VERIFIED: JSX fragment error was transient HMR issue, now resolved
+- [x] VERIFIED: X-Forwarded-For trust proxy error resolved (no new occurrences since fix)
+- [x] VERIFIED: Shared review page shows clean error state for invalid tokens
+- [x] All 180 tests passing
