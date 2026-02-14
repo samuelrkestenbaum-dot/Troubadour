@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -205,6 +205,7 @@ export default function Dashboard() {
   }, [projects, searchTerm, statusFilter, sortOrder]);
 
   const { data: favoritesList } = trpc.favorite.list.useQuery();
+  const { data: sharedProjects } = trpc.collaboration.sharedProjects.useQuery();
 
   const showSearchBar = !isLoading && !error && projects && projects.length >= 2;
 
@@ -373,6 +374,54 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Shared With Me Section */}
+          {sharedProjects && sharedProjects.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-blue-400" />
+                Shared With Me
+              </h2>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {sharedProjects.map((sp: any) => {
+                  const spStatus = statusConfig[sp.status] || statusConfig.pending;
+                  const SpStatusIcon = spStatus.icon;
+                  return (
+                    <Card
+                      key={sp.id}
+                      className="cursor-pointer border-blue-500/20 hover:border-blue-500/40 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/5 group"
+                      onClick={() => setLocation(`/projects/${sp.id}`)}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocation(`/projects/${sp.id}`); } }}
+                    >
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          {sp.coverImageUrl ? (
+                            <img src={sp.coverImageUrl} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0 border border-border" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center shrink-0">
+                              <Music className="h-4 w-4 text-blue-500/60" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate group-hover:text-blue-400 transition-colors">{sp.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              by {sp.ownerName || 'Unknown'} · {sp.trackCount} track{sp.trackCount !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <Badge variant={spStatus.variant} className="shrink-0 text-xs">
+                            <SpStatusIcon className={`h-3 w-3 mr-1 ${sp.status === 'processing' ? 'animate-spin' : ''}`} />
+                            {spStatus.label}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -515,7 +515,7 @@ export const appRouter = router({
       }),
 
     analyzeAndReview: protectedProcedure
-      .input(z.object({ trackId: z.number() }))
+      .input(z.object({ trackId: z.number(), templateId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
         if (!track || track.userId !== ctx.user.id) {
@@ -527,12 +527,23 @@ export const appRouter = router({
         if (activeJob) {
           throw new TRPCError({ code: "CONFLICT", message: "Track is already being processed" });
         }
+        // If templateId provided, validate it belongs to user
+        let templateFocusAreas: string[] | undefined;
+        if (input.templateId) {
+          const template = await db.getReviewTemplateById(input.templateId);
+          if (!template || template.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+          }
+          templateFocusAreas = template.focusAreas as string[];
+        }
+        const jobMetadata = templateFocusAreas ? { templateId: input.templateId, focusAreas: templateFocusAreas } : undefined;
         // Create analyze job first
         const analyzeJob = await db.createJob({
           projectId: track.projectId,
           trackId: track.id,
           userId: ctx.user.id,
           type: "analyze",
+          metadata: jobMetadata,
         });
         // Create review job — depends on analyze completing first
         const reviewJob = await db.createJob({
@@ -541,6 +552,7 @@ export const appRouter = router({
           userId: ctx.user.id,
           type: "review",
           dependsOnJobId: analyzeJob.id,
+          metadata: jobMetadata,
         });
         enqueueJob(analyzeJob.id);
         enqueueJob(reviewJob.id);
@@ -1542,6 +1554,19 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           inviteToken,
           status: invitedUser ? "accepted" : "pending",
         });
+
+        // Send email notification (fire-and-forget, non-blocking)
+        const origin = ctx.req.headers.origin || ctx.req.headers.referer?.replace(/\/$/, '') || '';
+        const inviteUrl = `${origin}/invite/${inviteToken}`;
+        import("./services/emailNotification").then(({ sendCollaborationInvite }) => {
+          sendCollaborationInvite({
+            toEmail: input.email,
+            inviterName: ctx.user.name || ctx.user.email || "Someone",
+            projectTitle: project.title,
+            inviteUrl,
+          }).catch(err => console.error("[Email] invite send failed:", err));
+        }).catch(err => console.error("[Email] import failed:", err));
+
         return { success: true, inviteToken, autoAccepted: !!invitedUser };
       }),
 

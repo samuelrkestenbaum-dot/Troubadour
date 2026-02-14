@@ -278,6 +278,8 @@ export interface TrackReviewInput {
   referenceArtists?: string;
   artistNotes?: string;
   reviewFocus?: ReviewFocusRole;
+  /** Custom template focus areas from user-created templates */
+  templateFocusAreas?: string[];
   /** Previous review context for smart re-review */
   previousReview?: {
     reviewMarkdown: string;
@@ -337,6 +339,16 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
 
   if (input.referenceArtists) {
     prompt += `**Reference artists:** ${input.referenceArtists}\n`;
+  }
+
+  // Inject custom template focus areas if provided
+  if (input.templateFocusAreas?.length) {
+    prompt += `\n## Custom Focus Areas (from user's review template)\n\n`;
+    prompt += `The user has requested you pay special attention to these areas:\n`;
+    input.templateFocusAreas.forEach((area, i) => {
+      prompt += `${i + 1}. **${area}**\n`;
+    });
+    prompt += `\nPlease ensure your review addresses each of these focus areas with specific, actionable feedback. Dedicate a subsection or paragraph to each one within your review.\n`;
   }
 
   if (focus.label !== "Full Review") {

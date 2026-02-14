@@ -163,6 +163,7 @@ export const jobs = mysqlTable("jobs", {
   heartbeatAt: timestamp("heartbeatAt"),
   maxAttempts: int("maxAttempts").default(3).notNull(),
   attempts: int("attempts").default(0).notNull(),
+  metadata: json("metadata"),
   dependsOnJobId: int("dependsOnJobId").references((): AnyMySqlColumn => jobs.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

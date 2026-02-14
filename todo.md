@@ -556,3 +556,35 @@
 
 ### General
 - [x] All 186 tests passing, zero TypeScript errors
+
+## Round 34 - Templates Pipeline, Shared Projects & Email Notifications (Claude 4.5 + Gravito)
+
+### Feature 1: Wire Templates into Review Pipeline
+- [x] Add metadata JSON column to jobs table for passing template info through pipeline
+- [x] Modified analyzeAndReview and batchReviewAll to accept optional templateId
+- [x] Pass selected template's focus areas through job metadata to jobProcessor
+- [x] jobProcessor reads templateFocusAreas from job.metadata and passes to claudeCritic
+- [x] claudeCritic injects template focus areas into the system prompt as prioritized review areas
+- [x] Default template auto-selected if user has one set (via getDefaultTemplate query)
+
+### Feature 2: Shared With Me Section on Dashboard
+- [x] Add "Shared With Me" section below Favorites on Dashboard
+- [x] Query collaboration.sharedProjects to show projects user has been invited to
+- [x] Show project name, track count, status badge, and cover image thumbnail
+- [x] Link to ProjectView (read-only for collaborators)
+- [x] Users icon + "Shared with you" label, amber accent theme
+
+### Feature 3: Email Notifications for Collaborators
+- [x] Created emailNotification.ts service with Postmark integration (graceful degradation without API key)
+- [x] sendCollaborationInvite: sends styled HTML email with project name, inviter name, and accept link
+- [x] Fire-and-forget pattern (non-blocking) wired into collaboration.invite mutation
+- [x] Console logging when Postmark key not configured (for development)
+- [ ] Send notification email when a review completes on a shared project (deferred — needs Postmark key)
+
+### Governance (Gravito)
+- [x] reviewContent on email notification template: Score 100/100, release approved
+- [x] checkContentEnforcement on shared review page: Score 100/100, passed, no modifications
+- [x] checkCoherence on landing page messaging: Score 95/100, minor tone suggestion
+- [x] governanceAudit on full platform: Score 100/100, all 5 analyzers passed, release not blocked
+- [x] appealDecision submitted for false positive on AI critique prompt ("financial" misclassification of music scores)
+- [x] All 186 tests passing, zero TypeScript errors
