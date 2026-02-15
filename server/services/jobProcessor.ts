@@ -466,6 +466,19 @@ async function processReviewJob(jobId: number, job: any) {
     console.warn("[JobQueue] Notification failed:", e);
   }
 
+  // Create in-app notification
+  try {
+    await db.createNotification({
+      userId: job.userId,
+      type: "review_complete",
+      title: "Review Ready",
+      message: `Critique complete for "${track.originalFilename}". Overall: ${reviewResult.scores.overall || "N/A"}/10`,
+      link: `/projects/${project.id}/tracks/${track.id}`,
+    });
+  } catch (e) {
+    console.warn("[JobQueue] In-app notification failed:", e);
+  }
+
   // Notify collaborators on shared projects
   try {
     const baseUrl = process.env.VITE_APP_URL || process.env.VITE_FRONTEND_FORGE_API_URL?.replace("/api", "") || "";

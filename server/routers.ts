@@ -1674,6 +1674,23 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           return { success: true, projectId: invite.projectId, alreadyAccepted: true };
         }
         await db.acceptCollaboratorInvite(input.token, ctx.user.id);
+
+        // Notify project owner that collaborator joined
+        try {
+          const project = await db.getProjectById(invite.projectId);
+          if (project) {
+            await db.createNotification({
+              userId: project.userId,
+              type: "collaboration_accepted",
+              title: "Collaborator Joined",
+              message: `${ctx.user.name || ctx.user.email || "Someone"} accepted your invite to "${project.title}"`,
+              link: `/projects/${project.id}`,
+            });
+          }
+        } catch (e) {
+          console.warn("[Collaboration] Notification failed:", e);
+        }
+
         return { success: true, projectId: invite.projectId, alreadyAccepted: false };
       }),
 
@@ -1995,6 +2012,50 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           csv: csvRows.join("\n"),
           filename: `${project.title.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}-scores.csv`,
         };
+      }),
+  }),
+
+  // ── Notifications ──
+  notification: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const items = await db.getNotifications(ctx.user.id, input?.limit || 50);
+        const unreadCount = await db.getUnreadNotificationCount(ctx.user.id);
+        return { items, unreadCount };
+      }),
+
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return { count: await db.getUnreadNotificationCount(ctx.user.id) };
+    }),
+
+    markRead: protectedProcedure
+      .input(z.object({ notificationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.markNotificationRead(input.notificationId, ctx.user.id);
+        return { success: true };
+      }),
+
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.markAllNotificationsRead(ctx.user.id);
+      return { success: true };
+    }),
+  }),
+
+  // ── Review Quality ──
+  reviewQuality: router({
+    get: protectedProcedure
+      .input(z.object({ reviewId: z.number() }))
+      .query(async ({ input }) => {
+        const quality = await db.getReviewQualityMetadata(input.reviewId);
+        if (!quality) throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+        return quality;
+      }),
+
+    trackReviews: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getTrackReviewsWithQuality(input.trackId);
       }),
   }),
 });

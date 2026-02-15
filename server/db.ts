@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1512,4 +1512,151 @@ export async function getProjectSentimentTimeline(projectId: number) {
     });
   }
   return enriched;
+}
+
+
+// ── Notification Helpers ──
+
+export async function createNotification(data: InsertNotification) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(notifications).values(data);
+  return result[0].insertId;
+}
+
+export async function getNotifications(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(limit);
+}
+
+export async function getUnreadNotificationCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: count() }).from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  return result[0]?.count || 0;
+}
+
+export async function markNotificationRead(notificationId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId)));
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+}
+
+// ── Review Quality Helpers ──
+
+export async function getReviewQualityMetadata(reviewId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [review] = await db.select({
+    id: reviews.id,
+    reviewMarkdown: reviews.reviewMarkdown,
+    scoresJson: reviews.scoresJson,
+    quickTake: reviews.quickTake,
+    createdAt: reviews.createdAt,
+    trackId: reviews.trackId,
+  }).from(reviews).where(eq(reviews.id, reviewId));
+  if (!review) return null;
+
+  const text = review.reviewMarkdown || "";
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const sectionCount = (text.match(/^##\s/gm) || []).length;
+  const scores = (review.scoresJson as Record<string, number>) || {};
+  const scoreCount = Object.keys(scores).length;
+  const hasQuickTake = !!review.quickTake;
+
+  // Confidence: based on how complete the review is
+  let confidence = 0;
+  if (wordCount >= 200) confidence += 25;
+  if (wordCount >= 500) confidence += 15;
+  if (sectionCount >= 3) confidence += 20;
+  if (scoreCount >= 5) confidence += 20;
+  if (hasQuickTake) confidence += 10;
+  if (wordCount >= 800) confidence += 10;
+  confidence = Math.min(confidence, 100);
+
+  // Freshness: check if track was updated after review
+  let isStale = false;
+  if (review.trackId) {
+    const [track] = await db.select({ updatedAt: tracks.updatedAt }).from(tracks).where(eq(tracks.id, review.trackId));
+    if (track && track.updatedAt > review.createdAt) {
+      isStale = true;
+    }
+  }
+
+  return {
+    reviewId: review.id,
+    wordCount,
+    sectionCount,
+    scoreCount,
+    hasQuickTake,
+    confidence,
+    isStale,
+    createdAt: review.createdAt,
+  };
+}
+
+export async function getTrackReviewsWithQuality(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const trackReviews = await db.select({
+    id: reviews.id,
+    reviewMarkdown: reviews.reviewMarkdown,
+    scoresJson: reviews.scoresJson,
+    quickTake: reviews.quickTake,
+    reviewVersion: reviews.reviewVersion,
+    isLatest: reviews.isLatest,
+    createdAt: reviews.createdAt,
+    trackId: reviews.trackId,
+  }).from(reviews)
+    .where(and(eq(reviews.trackId, trackId), eq(reviews.reviewType, "track")))
+    .orderBy(desc(reviews.reviewVersion));
+
+  const [track] = await db.select({ updatedAt: tracks.updatedAt }).from(tracks).where(eq(tracks.id, trackId));
+
+  return trackReviews.map(r => {
+    const text = r.reviewMarkdown || "";
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    const sectionCount = (text.match(/^##\s/gm) || []).length;
+    const scores = (r.scoresJson as Record<string, number>) || {};
+    const scoreCount = Object.keys(scores).length;
+    const hasQuickTake = !!r.quickTake;
+
+    let confidence = 0;
+    if (wordCount >= 200) confidence += 25;
+    if (wordCount >= 500) confidence += 15;
+    if (sectionCount >= 3) confidence += 20;
+    if (scoreCount >= 5) confidence += 20;
+    if (hasQuickTake) confidence += 10;
+    if (wordCount >= 800) confidence += 10;
+    confidence = Math.min(confidence, 100);
+
+    const isStale = track ? track.updatedAt > r.createdAt : false;
+
+    return {
+      reviewId: r.id,
+      reviewVersion: r.reviewVersion,
+      isLatest: r.isLatest,
+      wordCount,
+      sectionCount,
+      scoreCount,
+      confidence,
+      isStale,
+      createdAt: r.createdAt,
+    };
+  });
 }

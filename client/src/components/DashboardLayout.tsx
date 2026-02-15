@@ -21,13 +21,15 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home, Target } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home, Target, Sparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { ChatSidebar, ChatToggleButton } from "./ChatSidebar";
+import { NotificationBell } from "./NotificationBell";
+import { WhatsNewModal, useHasNewChangelog } from "./WhatsNew";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -127,6 +129,8 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const hasNewChangelog = useHasNewChangelog();
 
   useEffect(() => {
     if (isCollapsed) {
@@ -218,6 +222,19 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
+            <div className="flex items-center gap-1 mb-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
+              <NotificationBell />
+              <button
+                onClick={() => setWhatsNewOpen(true)}
+                className="relative h-9 w-9 rounded-lg flex items-center justify-center hover:bg-accent transition-colors shrink-0"
+                aria-label="What's new"
+              >
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                {hasNewChangelog && (
+                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                )}
+              </button>
+            </div>
             <button
               onClick={() => {
                 setLocation("/");
@@ -281,10 +298,24 @@ function DashboardLayoutContent({
                 </div>
               </div>
             </div>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <button
+                onClick={() => setWhatsNewOpen(true)}
+                className="relative h-9 w-9 rounded-lg flex items-center justify-center hover:bg-accent transition-colors"
+                aria-label="What's new"
+              >
+                <Sparkles className="h-4.5 w-4.5 text-muted-foreground" />
+                {hasNewChangelog && (
+                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                )}
+              </button>
+            </div>
           </div>
         )}
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
+      <WhatsNewModal open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />
     </>
   );
 }

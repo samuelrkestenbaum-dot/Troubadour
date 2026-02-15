@@ -28,6 +28,7 @@ import { MoodEnergyChart } from "@/components/MoodEnergyChart";
 import { WaveformAnnotations } from "@/components/WaveformAnnotations";
 import { DAWExportButton } from "@/components/DAWExportButton";
 import { ReviewComparisonView } from "@/components/ReviewComparisonView";
+import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 import { RevisionTimeline } from "@/components/RevisionTimeline";
 
 // ── Mix Report Tab Wrapper ──
@@ -345,6 +346,9 @@ function ReviewHistorySection({ trackId, reviews, onNavigate }: { trackId: numbe
                 {entry.quickTake && (
                   <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{entry.quickTake}</p>
                 )}
+                <div className="mt-2">
+                  <ReviewQualityBadge reviewId={entry.id} compact />
+                </div>
               </CardContent>
             </Card>
           );

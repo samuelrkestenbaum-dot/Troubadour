@@ -408,3 +408,24 @@ export const projectInsights = mysqlTable("projectInsights", {
 
 export type ProjectInsight = typeof projectInsights.$inferSelect;
 export type InsertProjectInsight = typeof projectInsights.$inferInsert;
+
+
+// ── Notifications ──
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["review_complete", "collaboration_invite", "collaboration_accepted", "system"]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  link: varchar("link", { length: 500 }),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_notifications_userId").on(t.userId),
+  index("idx_notifications_userId_isRead").on(t.userId, t.isRead),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;

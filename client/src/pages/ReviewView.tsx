@@ -20,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
 import { trackExportUsed, trackShareLinkCreated, trackFeatureGated } from "@/lib/analytics";
 import { scoreColor } from "@/lib/scoreColor";
+import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 
 const scoreLabels: Record<string, string> = {
   production: "Production Quality",
@@ -413,6 +414,9 @@ export default function ReviewView({ id }: { id: number }) {
                 <Badge variant="secondary" className="text-xs">v1</Badge>
               )}
               <span>{formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}</span>
+            </div>
+            <div className="mt-2">
+              <ReviewQualityBadge reviewId={review.id} />
             </div>
           </div>
         </div>

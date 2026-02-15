@@ -823,3 +823,32 @@
 ### Testing
 - [x] 27 new tests for analytics trends, sentiment, command palette, heatmap, improvement rate
 - [x] All 269 tests passing, zero TypeScript errors
+
+## Round 42 - What's New Changelog, Notification Center & Review Quality Indicators (Claude 4.5)
+
+### Feature 1: What's New Changelog
+- [x] Create changelog data with recent feature additions (Rounds 37-41) — 5 version entries
+- [x] Build WhatsNew modal component with version badges, feature descriptions, and dismiss
+- [x] Track last-seen changelog version in localStorage (troubadour-whats-new-seen)
+- [x] Show "New" dot badge on Sparkles trigger when unseen updates exist
+- [x] Add changelog trigger (Sparkles icon) to DashboardLayout sidebar footer + mobile header
+
+### Feature 2: Notification Center (In-App)
+- [x] Database: notifications table (userId, type enum, title, message, link, isRead, createdAt)
+- [x] Backend: notification.list, notification.unreadCount, notification.markRead, notification.markAllRead procedures
+- [x] Backend: createNotification db helper + getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead
+- [x] Wire notifications into jobProcessor (review complete → in-app notification to project owner)
+- [x] Wire notifications into collaboration flow (invite accepted → notify project owner)
+- [x] Frontend: NotificationBell component in DashboardLayout sidebar footer with unread count badge
+- [x] Frontend: Notification dropdown panel with type icons, mark-read, mark-all-read, and navigation links
+
+### Feature 3: Review Quality Indicators
+- [x] Backend: reviewQuality.get procedure — compute word count, section count, confidence score on read
+- [x] Backend: reviewQuality.trackReviews — all reviews for a track with quality metadata
+- [x] Frontend: ReviewQualityBadge compact mode on TrackView review cards (word count, confidence%, stale)
+- [x] Frontend: ReviewQualityBadge full mode on ReviewView (word count, sections, confidence label, freshness, stale warning)
+- [x] Frontend: Confidence algorithm: 0-100% based on word count, sections, scores, quick take presence
+
+### Testing
+- [x] 20 new tests for changelog, notifications, and quality indicators
+- [x] All 289 tests passing, zero TypeScript errors
