@@ -36,6 +36,7 @@ import { CollapsibleReview } from "@/components/CollapsibleReview";
 import { TemplateSelector } from "@/components/TemplateSelector";
 import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
 import { ReviewDiffView } from "@/components/ReviewDiffView";
+import { ReviewComments } from "@/components/ReviewComments";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const scoreLabels: Record<string, string> = {
@@ -688,6 +689,9 @@ export default function ReviewView({ id }: { id: number }) {
           <CollapsibleReview markdown={stripDuplicateSections(review.reviewMarkdown)} />
         </CardContent>
       </Card>
+
+      {/* Review Comments */}
+      <ReviewComments reviewId={review.id} canComment={true} />
 
       {/* Conversation Panel */}
       {review.reviewType === "track" && (

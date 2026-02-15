@@ -314,7 +314,7 @@ export const projectCollaborators = mysqlTable("projectCollaborators", {
   projectId: int("projectId").notNull(),
   invitedUserId: int("invitedUserId"),
   invitedEmail: varchar("invitedEmail", { length: 320 }).notNull(),
-  role: mysqlEnum("collabRole", ["viewer"]).default("viewer").notNull(),
+  role: mysqlEnum("collabRole", ["viewer", "commenter"]).default("viewer").notNull(),
   inviteToken: varchar("inviteToken", { length: 64 }).notNull().unique(),
   status: mysqlEnum("collabStatus", ["pending", "accepted"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -327,6 +327,26 @@ export const projectCollaborators = mysqlTable("projectCollaborators", {
 
 export type ProjectCollaborator = typeof projectCollaborators.$inferSelect;
 export type InsertProjectCollaborator = typeof projectCollaborators.$inferInsert;
+
+// ── Review Comments ──
+
+export const reviewComments = mysqlTable("reviewComments", {
+  id: int("id").autoincrement().primaryKey(),
+  reviewId: int("reviewId").notNull(),
+  userId: int("userId").notNull(),
+  content: text("content").notNull(),
+  parentId: int("parentId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("idx_reviewComments_reviewId").on(t.reviewId),
+  index("idx_reviewComments_userId").on(t.userId),
+  foreignKey({ columns: [t.reviewId], foreignColumns: [reviews.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type ReviewComment = typeof reviewComments.$inferSelect;
+export type InsertReviewComment = typeof reviewComments.$inferInsert;
 
 // ── Waveform Annotations ──
 

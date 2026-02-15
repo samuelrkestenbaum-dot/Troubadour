@@ -27,6 +27,7 @@ import { ScoreMatrix } from "@/components/ScoreMatrix";
 import { SentimentTimeline } from "@/components/SentimentTimeline";
 import { BatchActionsToolbar } from "@/components/BatchActionsToolbar";
 import { DraggableTrackList } from "@/components/DraggableTrackList";
+import { PlaylistSuggestion } from "@/components/PlaylistSuggestion";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -609,6 +610,15 @@ export default function ProjectView({ id }: { id: number }) {
       </div>
 
       <Separator />
+
+      {/* Smart Playlist Ordering */}
+      {tracks.length > 1 && project.type === "album" && (
+        <PlaylistSuggestion
+          projectId={id}
+          trackCount={tracks.length}
+          onOrderApplied={() => utils.project.get.invalidate({ id })}
+        />
+      )}
 
       {/* Tracks List */}
       <div>

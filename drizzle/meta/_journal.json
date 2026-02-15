@@ -176,6 +176,13 @@
       "when": 1771179296975,
       "tag": "0024_outgoing_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1771195149777,
+      "tag": "0025_clean_firestar",
+      "breakpoints": true
     }
   ]
 }

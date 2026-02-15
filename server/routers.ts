@@ -12,6 +12,7 @@ import { transcribeAudio } from "./_core/voiceTranscription";
 import { generateFollowUp, generateReferenceComparison } from "./services/claudeCritic";
 import { compareReferenceWithGemini } from "./services/geminiAudio";
 import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "./services/analysisService";
+import { invokeLLM } from "./_core/llm";
 
 // ── Usage gating helper ──
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -1878,6 +1879,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       .input(z.object({
         projectId: z.number(),
         email: z.string().email(),
+        role: z.enum(["viewer", "commenter"]).default("viewer"),
       }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -1899,6 +1901,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           invitedUserId: invitedUser?.id || null,
           inviteToken,
           status: invitedUser ? "accepted" : "pending",
+          role: input.role,
         });
 
         // Send email notification (fire-and-forget, non-blocking)
@@ -1981,6 +1984,70 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       }
       return results;
     }),
+  }),
+
+  // ── Review Comments ──
+  comment: router({
+    list: protectedProcedure
+      .input(z.object({ reviewId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getReviewComments(input.reviewId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        reviewId: z.number(),
+        content: z.string().min(1).max(5000),
+        parentId: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Verify user has access to this review (owner or commenter collaborator)
+        const review = await db.getReviewById(input.reviewId);
+        if (!review) throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+        const project = await db.getProjectById(review.projectId);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        const isOwner = project.userId === ctx.user.id;
+        if (!isOwner) {
+          const collab = await db.getCollaboratorRole(ctx.user.id, project.id);
+          if (!collab || collab !== "commenter") {
+            throw new TRPCError({ code: "FORBIDDEN", message: "You need commenter access to leave comments" });
+          }
+        }
+        const result = await db.createReviewComment({
+          reviewId: input.reviewId,
+          userId: ctx.user.id,
+          content: input.content,
+          parentId: input.parentId || null,
+        });
+        // Notify project owner if commenter
+        if (!isOwner) {
+          try {
+            await db.createNotification({
+              userId: project.userId,
+              type: "review_complete" as const,
+              title: "New Comment on Review",
+              message: `${ctx.user.name || ctx.user.email || "A collaborator"} commented on a review in "${project.title}"`,
+              link: `/reviews/${input.reviewId}`,
+            });
+          } catch (e) { console.warn("[Comment] Notification failed:", e); }
+        }
+        return result;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        content: z.string().min(1).max(5000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.updateReviewComment(input.id, ctx.user.id, input.content);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return db.deleteReviewComment(input.id, ctx.user.id);
+      }),
   }),
 
   // ── Waveform Annotations (Feature 4) ──
@@ -2468,6 +2535,158 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return db.globalSearch(ctx.user.id, input.query, input.filter, input.limit);
       }),
    }),
+  // ── Smart Playlist Ordering ──
+  playlist: router({
+    suggestOrder: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        strategy: z.enum(["energy_arc", "key_flow", "mood_journey", "balanced"]).default("balanced"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const projectTracks = await db.getTracksByProject(input.projectId);
+        if (projectTracks.length < 2) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Need at least 2 tracks to suggest an order" });
+        }
+
+        // Gather audio features for each track
+        const trackData: Array<{
+          id: number;
+          title: string;
+          order: number;
+          tempo?: number;
+          key?: string;
+          modality?: string;
+          energy?: string;
+          mood?: string[];
+          genre?: string;
+          sections?: Array<{ name: string; energy: number }>;
+        }> = [];
+
+        for (const track of projectTracks) {
+          const features = await db.getAudioFeaturesByTrack(track.id);
+          const gemini = features?.geminiAnalysisJson as any;
+          trackData.push({
+            id: track.id,
+            title: track.originalFilename.replace(/\.[^.]+$/, ""),
+            order: track.trackOrder,
+            tempo: gemini?.tempo?.bpm,
+            key: gemini?.key?.estimated,
+            modality: gemini?.key?.modality,
+            energy: gemini?.energy?.overall,
+            mood: gemini?.mood,
+            genre: gemini?.genre?.primary,
+            sections: gemini?.sections?.map((s: any) => ({ name: s.name, energy: s.energy })),
+          });
+        }
+
+        const strategyDescriptions: Record<string, string> = {
+          energy_arc: "Create a classic album energy arc: open strong to hook the listener, build through the middle, hit a peak/climax around track 60-70%, then bring it down for an emotional cooldown before a memorable closer.",
+          key_flow: "Prioritize harmonic flow between tracks. Place songs in related keys next to each other (circle of fifths neighbors, relative major/minor). Avoid jarring key changes between consecutive tracks.",
+          mood_journey: "Create an emotional narrative journey. Group and sequence tracks to tell a story — start with an establishing mood, develop tension or contrast, and resolve with a satisfying emotional conclusion.",
+          balanced: "Balance all factors — energy arc, key relationships, mood flow, and tempo transitions — to create the most cohesive and engaging listening experience from start to finish.",
+        };
+
+        const prompt = `You are an expert A&R executive and album sequencing specialist. Given the following tracks from the album "${project.title}", suggest the optimal track order.
+
+## Sequencing Strategy
+${strategyDescriptions[input.strategy]}
+
+## Track Data
+${trackData.map((t, i) => `${i + 1}. "${t.title}" — Tempo: ${t.tempo || "unknown"} BPM, Key: ${t.key || "unknown"} (${t.modality || "unknown"}), Energy: ${t.energy || "unknown"}, Mood: ${t.mood?.join(", ") || "unknown"}, Genre: ${t.genre || "unknown"}`).join("\n")}
+
+## Instructions
+Return a JSON object with this exact schema:
+{
+  "suggestedOrder": [
+    {
+      "trackId": <number>,
+      "position": <1-based position>,
+      "reasoning": "<1-2 sentence explanation of why this track belongs here>"
+    }
+  ],
+  "overallRationale": "<2-3 sentence summary of the sequencing philosophy>",
+  "energyArc": "<description of the energy flow from opener to closer>"
+}`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are an expert album sequencing specialist. Return only valid JSON, no markdown fences." },
+            { role: "user", content: prompt },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "playlist_order",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  suggestedOrder: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        trackId: { type: "number" },
+                        position: { type: "number" },
+                        reasoning: { type: "string" },
+                      },
+                      required: ["trackId", "position", "reasoning"],
+                      additionalProperties: false,
+                    },
+                  },
+                  overallRationale: { type: "string" },
+                  energyArc: { type: "string" },
+                },
+                required: ["suggestedOrder", "overallRationale", "energyArc"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const content = response.choices?.[0]?.message?.content;
+        if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate playlist suggestion" });
+
+        const parsed = JSON.parse(content as string);
+        // Enrich with track titles
+        const enriched = parsed.suggestedOrder.map((item: any) => {
+          const track = trackData.find(t => t.id === item.trackId);
+          return {
+            ...item,
+            title: track?.title || "Unknown",
+            tempo: track?.tempo,
+            key: track?.key,
+            energy: track?.energy,
+          };
+        });
+
+        return {
+          suggestedOrder: enriched,
+          overallRationale: parsed.overallRationale,
+          energyArc: parsed.energyArc,
+          strategy: input.strategy,
+          trackCount: projectTracks.length,
+        };
+      }),
+
+    applyOrder: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        orderedTrackIds: z.array(z.number()).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        return db.reorderTracks(input.projectId, input.orderedTrackIds);
+      }),
+  }),
+
   // ── Track Reorder ──
   reorder: router({
     update: protectedProcedure
@@ -2491,6 +2710,87 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       }))
       .query(async ({ ctx, input }) => {
         return db.getDigestData(ctx.user.id, input.daysBack);
+      }),
+  }),
+
+  // ── Sentiment Heatmap ──
+  sentimentHeatmap: router({
+    generate: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        const trackReviews = await db.getReviewsByTrack(input.trackId);
+        if (trackReviews.length === 0) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No reviews found for this track" });
+
+        // Gather all review text
+        const reviewTexts = trackReviews.map((r, i) => `--- Review Version ${i + 1} ---\n${r.reviewMarkdown}`).join("\n\n");
+
+        // Use LLM to extract sentiment per section
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are a music review analyst. Given one or more reviews of a track, extract sentiment data for each musical section (intro, verse, pre-chorus, chorus, bridge, outro, etc.). For each section, provide a sentiment score from -1.0 (very negative) to +1.0 (very positive), a brief summary of feedback, and key keywords. Also note which aspects are mentioned most positively and negatively across all reviews.`
+            },
+            {
+              role: "user",
+              content: `Analyze the sentiment across these reviews for the track "${track.originalFilename}":\n\n${reviewTexts}`
+            }
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "sentiment_heatmap",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  sections: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string", description: "Section name (e.g., Intro, Verse 1, Chorus)" },
+                        sentiment: { type: "number", description: "Sentiment score from -1.0 to 1.0" },
+                        summary: { type: "string", description: "Brief summary of feedback for this section" },
+                        keywords: { type: "array", items: { type: "string" }, description: "Key feedback keywords" },
+                        mentionCount: { type: "integer", description: "How many reviews mention this section" }
+                      },
+                      required: ["name", "sentiment", "summary", "keywords", "mentionCount"],
+                      additionalProperties: false
+                    }
+                  },
+                  strongestPositive: {
+                    type: "object",
+                    properties: {
+                      section: { type: "string" },
+                      aspect: { type: "string" }
+                    },
+                    required: ["section", "aspect"],
+                    additionalProperties: false
+                  },
+                  strongestNegative: {
+                    type: "object",
+                    properties: {
+                      section: { type: "string" },
+                      aspect: { type: "string" }
+                    },
+                    required: ["section", "aspect"],
+                    additionalProperties: false
+                  },
+                  overallTrend: { type: "string", description: "Brief description of sentiment trend across sections" }
+                },
+                required: ["sections", "strongestPositive", "strongestNegative", "overallTrend"],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        const content = response.choices?.[0]?.message?.content;
+        if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate sentiment analysis" });
+        return JSON.parse(content as string);
       }),
   }),
 });

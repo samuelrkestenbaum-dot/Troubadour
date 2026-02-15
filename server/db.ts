@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1052,6 +1052,18 @@ export async function isUserCollaborator(userId: number, projectId: number): Pro
   return result.length > 0;
 }
 
+export async function getCollaboratorRole(userId: number, projectId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select({ role: projectCollaborators.role }).from(projectCollaborators)
+    .where(and(
+      eq(projectCollaborators.projectId, projectId),
+      eq(projectCollaborators.invitedUserId, userId),
+      eq(projectCollaborators.status, "accepted")
+    )).limit(1);
+  return result.length > 0 ? result[0].role : null;
+}
+
 export async function getSharedProjectIds(userId: number): Promise<number[]> {
   const db = await getDb();
   if (!db) return [];
@@ -1849,4 +1861,60 @@ export async function getDigestData(userId: number, daysBack: number = 7) {
       lowestScore: scoreCount > 0 ? { score: lowestScore, track: lowestTrack } : null,
     },
   };
+}
+
+// ── Review Comments ───────────────────────────────────────────────────
+export async function getReviewComments(reviewId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const results = await db.select({
+    id: reviewComments.id,
+    reviewId: reviewComments.reviewId,
+    userId: reviewComments.userId,
+    userName: users.name,
+    content: reviewComments.content,
+    parentId: reviewComments.parentId,
+    createdAt: reviewComments.createdAt,
+    updatedAt: reviewComments.updatedAt,
+  })
+    .from(reviewComments)
+    .innerJoin(users, eq(reviewComments.userId, users.id))
+    .where(eq(reviewComments.reviewId, reviewId))
+    .orderBy(asc(reviewComments.createdAt));
+  return results;
+}
+
+export async function createReviewComment(data: {
+  reviewId: number;
+  userId: number;
+  content: string;
+  parentId?: number | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(reviewComments).values({
+    reviewId: data.reviewId,
+    userId: data.userId,
+    content: data.content,
+    parentId: data.parentId || null,
+  });
+  return { id: result.insertId };
+}
+
+export async function deleteReviewComment(commentId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(reviewComments).where(
+    and(eq(reviewComments.id, commentId), eq(reviewComments.userId, userId))
+  );
+  return { success: true };
+}
+
+export async function updateReviewComment(commentId: number, userId: number, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(reviewComments).set({ content }).where(
+    and(eq(reviewComments.id, commentId), eq(reviewComments.userId, userId))
+  );
+  return { success: true };
 }

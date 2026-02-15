@@ -1041,3 +1041,33 @@
 ### Testing
 - [x] 20 new tests for batch re-review, score trend chart, and export history
 - [x] All 412 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
+
+## Round 50 - Smart Playlist Ordering, Collaboration Sharing, Sentiment Heatmap (Claude 4.5)
+
+### Feature 1: Smart Playlist Ordering
+- [x] Backend: playlist.suggestOrder LLM-powered procedure with structured JSON schema
+- [x] Uses tempo, energy, key, and mood data from Gemini analysis for transitions
+- [x] Considers energy arc (opening, building, climax, cooldown, closer)
+- [x] Frontend: PlaylistSuggestion component on ProjectView with visual reorder preview
+- [x] Shows reasoning for each track placement with flow score and transition notes
+- [x] playlist.applyOrder procedure to accept and persist the suggested track order
+
+### Feature 2: Collaboration Sharing
+- [x] Enhanced existing collaboration with commenter role (viewer + commenter)
+- [x] Added reviewComments table with parentId for threaded replies
+- [x] Backend: comment.create/list/delete procedures with auth and role checks
+- [x] Frontend: ReviewComments component with threaded replies on ReviewView
+- [x] Frontend: Role selector (viewer/commenter) in CollaborationPanel invite dialog
+- [x] Role badges and access level descriptions in invite flow
+- [x] Read-only access for viewers, comment access for commenters
+
+### Feature 3: Review Sentiment Heatmap
+- [x] Backend: sentimentHeatmap.generate LLM-powered procedure with structured JSON schema
+- [x] Uses Claude to analyze review and map feedback to song sections with sentiment scores (-1.0 to +1.0)
+- [x] Frontend: SentimentHeatmap component with color-coded sentiment bars per section
+- [x] Color coding: emerald (positive), sky (neutral), amber/orange/red (negative) with 7 levels
+- [x] Expandable section details with keywords, summaries, and overall trend
+
+### Testing
+- [x] 25 new tests for playlist ordering, collaboration comments, and sentiment heatmap
+- [x] All 437 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
