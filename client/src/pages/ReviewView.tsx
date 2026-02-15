@@ -13,14 +13,26 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { RadarChart } from "@/components/RadarChart";
 import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
-  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check, Lock
+  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check, Lock, RefreshCw
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { formatDistanceToNow } from "date-fns";
 import { Streamdown } from "streamdown";
 import { trackExportUsed, trackShareLinkCreated, trackFeatureGated } from "@/lib/analytics";
 import { scoreColor } from "@/lib/scoreColor";
 import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
+import { CollapsibleReview } from "@/components/CollapsibleReview";
 
 const scoreLabels: Record<string, string> = {
   production: "Production Quality",
@@ -357,6 +369,27 @@ export default function ReviewView({ id }: { id: number }) {
     toast.success("Review copied to clipboard");
   };
 
+  const reReviewMut = trpc.job.reReview.useMutation({
+    onSuccess: () => {
+      toast.success("Re-review queued", {
+        description: "A fresh review is being generated with the latest format. Check back shortly.",
+      });
+    },
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN" || err.message?.includes("limit")) {
+        toast("Usage limit reached", {
+          description: err.message,
+          action: {
+            label: "View Plans",
+            onClick: () => setLocation("/pricing"),
+          },
+        });
+      } else {
+        toast.error(err.message || "Failed to queue re-review");
+      }
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-4xl">
@@ -460,6 +493,34 @@ export default function ReviewView({ id }: { id: number }) {
             )}
             {shareUrl ? "Link Copied" : "Share"}
           </Button>
+          {review.trackId && review.reviewType === "track" && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={reReviewMut.isPending}>
+                  {reReviewMut.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Re-review
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Re-review this track?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will generate a fresh review using the latest critique format with categorized sections and actionable suggestions. The new review will be saved as the next version in your review history — your current review won't be lost.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => reReviewMut.mutate({ trackId: review.trackId! })}>
+                    Generate New Review
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
@@ -572,9 +633,7 @@ export default function ReviewView({ id }: { id: number }) {
       {/* Full Review */}
       <Card>
         <CardContent className="py-6">
-          <div className="prose prose-sm prose-invert max-w-none">
-            <Streamdown>{stripDuplicateSections(review.reviewMarkdown)}</Streamdown>
-          </div>
+          <CollapsibleReview markdown={stripDuplicateSections(review.reviewMarkdown)} />
         </CardContent>
       </Card>
 

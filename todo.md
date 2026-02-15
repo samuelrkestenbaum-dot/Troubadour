@@ -957,3 +957,29 @@
 - [x] Rewrote comparison review prompt with "What to Do for V3" actionable section
 - [x] Updated CSS prose styles: uppercase ### headers with primary color, custom circle bullet points
 - [x] 18 new tests for prompt structure, format rules, and CSS styling (352 total passing)
+
+## Round 47 - Template SystemPrompt Wiring, Re-Review, Collapsible Sections (Claude 4.5)
+
+### Feature 1: Wire Custom Template systemPrompt into Claude Critique
+- [x] Pass user's custom template systemPrompt to Claude when generating reviews
+- [x] Update generateTrackReview to accept templateSystemPrompt field (priority: custom > role > default)
+- [x] Update job processor to fetch template by templateId and pass systemPrompt through pipeline
+- [x] Fallback to default prompt when no custom template or no systemPrompt
+
+### Feature 2: Re-Review with New Format Button
+- [x] Add "Re-review" button on ReviewView for existing track reviews (with RefreshCw icon)
+- [x] Backend: job.reReview procedure creates review job with optional templateId/reviewLength
+- [x] Frontend: AlertDialog confirmation before re-reviewing with explanation
+- [x] New review stored as next version in review history (uses smart re-review context)
+
+### Feature 3: Collapsible Review Sections
+- [x] Parse review markdown into sections by ## and ### headers (parseReviewSections)
+- [x] Created CollapsibleSection component with ChevronDown/ChevronRight toggle
+- [x] Each section collapsible with uppercase header visible, content toggleable
+- [x] "Expand All" / "Collapse All" button with ChevronsUpDown icon
+- [x] Default: all sections expanded, with aria-expanded accessibility
+- [x] Fallback to plain Streamdown rendering when no sections found
+
+### Testing
+- [x] 18 new tests for systemPrompt wiring, re-review procedure, and collapsible sections
+- [x] All 370 tests passing, zero TypeScript errors

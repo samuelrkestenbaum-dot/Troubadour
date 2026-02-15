@@ -368,10 +368,25 @@ async function processReviewJob(jobId: number, job: any) {
 
   const reviewFocus = (project.reviewFocus as any) || "full";
 
-  // Extract template focus areas and review length from job metadata
-  const jobMetadata = job.metadata as { templateId?: number; focusAreas?: string[]; reviewLength?: string } | null;
+  // Extract template focus areas, review length, and custom system prompt from job metadata
+  const jobMetadata = job.metadata as { templateId?: number; focusAreas?: string[]; reviewLength?: string; systemPrompt?: string } | null;
   const templateFocusAreas = jobMetadata?.focusAreas;
   const reviewLength = (jobMetadata?.reviewLength as "brief" | "standard" | "detailed") || "standard";
+  let templateSystemPrompt: string | undefined;
+
+  // Fetch custom template systemPrompt if a templateId was provided
+  if (jobMetadata?.templateId) {
+    const template = await db.getReviewTemplateById(jobMetadata.templateId);
+    if (template?.systemPrompt) {
+      templateSystemPrompt = template.systemPrompt;
+      console.log(`[JobQueue] Using custom template persona: "${template.name}"`);
+    }
+  }
+  // Also accept systemPrompt directly from metadata (for inline overrides)
+  if (!templateSystemPrompt && jobMetadata?.systemPrompt) {
+    templateSystemPrompt = jobMetadata.systemPrompt;
+  }
+
   if (reviewLength !== "standard") {
     console.log(`[JobQueue] Using review length: ${reviewLength}`);
   }
@@ -429,6 +444,7 @@ async function processReviewJob(jobId: number, job: any) {
     reviewLength,
     previousReview: previousReviewContext,
     templateFocusAreas,
+    templateSystemPrompt,
   });
 
   await db.updateJob(jobId, { progress: 80, progressMessage: "Saving review..." });

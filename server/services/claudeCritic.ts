@@ -425,6 +425,8 @@ export interface TrackReviewInput {
   reviewLength?: ReviewLength;
   /** Custom template focus areas from user-created templates */
   templateFocusAreas?: string[];
+  /** Custom system prompt from user-created template persona */
+  templateSystemPrompt?: string;
   /** Previous review context for smart re-review */
   previousReview?: {
     reviewMarkdown: string;
@@ -445,8 +447,8 @@ export async function generateTrackReview(input: TrackReviewInput): Promise<Trac
   const focus = getFocusConfig(input.reviewFocus || "full");
   const length = input.reviewLength || "standard";
   const config = REVIEW_LENGTH_CONFIG[length];
-  // Use role-specific override if available, otherwise use length-aware system prompt
-  const systemPrompt = focus.claudeSystemOverride || getTrackCriticSystem(length);
+  // Priority: custom template systemPrompt > role-specific override > default length-aware prompt
+  const systemPrompt = input.templateSystemPrompt || focus.claudeSystemOverride || getTrackCriticSystem(length);
   const userMessage = buildTrackReviewPrompt(input);
   const reviewMarkdown = await callClaude(systemPrompt, [
     { role: "user", content: userMessage },

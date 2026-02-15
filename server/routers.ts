@@ -436,6 +436,53 @@ export const appRouter = router({
         return { jobId: job.id };
       }),
 
+    reReview: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        templateId: z.number().optional(),
+        reviewLength: z.enum(["brief", "standard", "detailed"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        await assertUsageAllowed(ctx.user.id);
+        await assertMonthlyReviewAllowed(ctx.user.id);
+        // Require existing analysis
+        const features = await db.getAudioFeaturesByTrack(input.trackId);
+        if (!features?.geminiAnalysisJson) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Track must be analyzed first." });
+        }
+        const activeJob = await db.getActiveJobForTrack(input.trackId);
+        if (activeJob) {
+          throw new TRPCError({ code: "CONFLICT", message: "Track is already being processed" });
+        }
+        // Build metadata with template info
+        let templateFocusAreas: string[] | undefined;
+        if (input.templateId) {
+          const template = await db.getReviewTemplateById(input.templateId);
+          if (!template || template.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+          }
+          templateFocusAreas = template.focusAreas as string[];
+        }
+        const jobMetadataObj: Record<string, any> = {};
+        if (input.templateId) { jobMetadataObj.templateId = input.templateId; }
+        if (templateFocusAreas) { jobMetadataObj.focusAreas = templateFocusAreas; }
+        if (input.reviewLength) { jobMetadataObj.reviewLength = input.reviewLength; }
+        const jobMetadata = Object.keys(jobMetadataObj).length > 0 ? jobMetadataObj : undefined;
+        const job = await db.createJob({
+          projectId: track.projectId,
+          trackId: track.id,
+          userId: ctx.user.id,
+          type: "review",
+          metadata: jobMetadata,
+        });
+        enqueueJob(job.id);
+        return { jobId: job.id };
+      }),
+
     albumReview: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
