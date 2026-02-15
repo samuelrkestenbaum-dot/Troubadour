@@ -239,11 +239,14 @@ function ConversationPanel({ reviewId, userTier }: { reviewId: number; userTier:
 /** Strip Quick Take, Scores table, and opening paragraph from the full review markdown */
 function stripDuplicateSections(markdown: string): string {
   let cleaned = markdown;
+  // Find first heading (## or ###)
   const firstHeading = cleaned.search(/^#{2,3}\s/m);
   if (firstHeading > 50) {
     cleaned = cleaned.substring(firstHeading);
   }
+  // Strip Quick Take section (already shown separately above)
   cleaned = cleaned.replace(/#{2,3}\s*\*?\*?Quick Take\*?\*?\s*\n[\s\S]*?(?=\n#{2,3}\s|$)/i, '');
+  // Strip Scores section (already shown as radar chart + bars above)
   cleaned = cleaned.replace(/#{2,3}\s*\*?\*?Scores\*?\*?\s*\n[\s\S]*?(?=\n#{2,3}\s(?!.*Score)|$)/i, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
   return cleaned;

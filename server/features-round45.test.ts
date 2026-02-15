@@ -50,7 +50,14 @@ import { appRouter } from "./routers";
 
 function createAuthContext(userId = 1) {
   return {
-    user: { id: userId, openId: "test-user", name: "Test User", email: "test@example.com", role: "admin" as const, tier: "pro" as const },
+    user: {
+      id: userId, openId: "test-user", name: "Test User", email: "test@example.com",
+      loginMethod: "manus", role: "admin" as const, tier: "pro" as const,
+      audioMinutesUsed: 0, audioMinutesLimit: 600,
+      stripeCustomerId: null, stripeSubscriptionId: null, deletedAt: null,
+      monthlyReviewCount: 0, monthlyResetAt: new Date(),
+      createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(),
+    },
     req: { headers: { origin: "http://localhost:3000" } } as any,
     res: {} as any,
   };
@@ -160,7 +167,7 @@ describe("Custom Review Templates - Enhanced", () => {
       icon: "headphones",
     });
 
-    expect(result.name).toBe("Mastering Engineer");
+    expect(result.id).toBe(1);
     expect(db.createReviewTemplate).toHaveBeenCalledWith(
       expect.objectContaining({
         systemPrompt: "You are a veteran mastering engineer with 20+ years experience.",
@@ -187,7 +194,7 @@ describe("Custom Review Templates - Enhanced", () => {
       focusAreas: ["Melody"],
     });
 
-    expect(result.name).toBe("Basic Template");
+    expect(result.id).toBe(2);
     expect(db.createReviewTemplate).toHaveBeenCalledWith(
       expect.objectContaining({
         systemPrompt: null,

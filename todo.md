@@ -943,3 +943,17 @@
 ### Testing
 - [x] 14 new tests for PDF export, custom templates with systemPrompt/icon, DropZone, and integration
 - [x] All 334 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
+
+## Round 46 - Review Output Restructure (Claude 4.5)
+
+### Categorized Review Output
+- [x] Rewrite all Claude critique prompts (brief/standard/detailed) with ### headers and bullet points
+- [x] Shift from observation-only to co-producer/coach role with actionable suggestions
+- [x] Each section has clear ### header with concise bullet points (1-2 sentences each)
+- [x] Added "What's Working", "What's Missing", "How to Bring It Together" sections to all prompts
+- [x] Rewrote all 5 role-specific prompts (songwriter/producer/arranger/artist/A&R) with bullet format
+- [x] Each role has unique actionable section (e.g., "How to Make This Song Better", "How to Get This Mix Right")
+- [x] Rewrote album review prompt with "How to Make This Album Better" (5-7 concrete suggestions)
+- [x] Rewrote comparison review prompt with "What to Do for V3" actionable section
+- [x] Updated CSS prose styles: uppercase ### headers with primary color, custom circle bullet points
+- [x] 18 new tests for prompt structure, format rules, and CSS styling (352 total passing)
