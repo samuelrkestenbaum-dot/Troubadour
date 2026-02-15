@@ -516,7 +516,7 @@ export const appRouter = router({
       }),
 
     analyzeAndReview: protectedProcedure
-      .input(z.object({ trackId: z.number(), templateId: z.number().optional() }))
+      .input(z.object({ trackId: z.number(), templateId: z.number().optional(), reviewLength: z.enum(["brief", "standard", "detailed"]).optional() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
         if (!track || track.userId !== ctx.user.id) {
@@ -537,7 +537,10 @@ export const appRouter = router({
           }
           templateFocusAreas = template.focusAreas as string[];
         }
-        const jobMetadata = templateFocusAreas ? { templateId: input.templateId, focusAreas: templateFocusAreas } : undefined;
+        const jobMetadataObj: Record<string, any> = {};
+        if (templateFocusAreas) { jobMetadataObj.templateId = input.templateId; jobMetadataObj.focusAreas = templateFocusAreas; }
+        if (input.reviewLength) { jobMetadataObj.reviewLength = input.reviewLength; }
+        const jobMetadata = Object.keys(jobMetadataObj).length > 0 ? jobMetadataObj : undefined;
         // Create analyze job first
         const analyzeJob = await db.createJob({
           projectId: track.projectId,
@@ -561,7 +564,7 @@ export const appRouter = router({
       }),
 
     batchReviewAll: protectedProcedure
-      .input(z.object({ projectId: z.number(), templateId: z.number().optional() }))
+      .input(z.object({ projectId: z.number(), templateId: z.number().optional(), reviewLength: z.enum(["brief", "standard", "detailed"]).optional() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
         if (!project || project.userId !== ctx.user.id) {
@@ -571,14 +574,17 @@ export const appRouter = router({
         assertFeatureAllowed(user?.tier || "free", "batch_review");
         await assertMonthlyReviewAllowed(ctx.user.id);
         // If templateId provided, validate it belongs to user
-        let jobMetadata: Record<string, any> | undefined;
+        const batchMetadata: Record<string, any> = {};
         if (input.templateId) {
           const template = await db.getReviewTemplateById(input.templateId);
           if (!template || template.userId !== ctx.user.id) {
             throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
           }
-          jobMetadata = { templateId: input.templateId, focusAreas: template.focusAreas as string[] };
+          batchMetadata.templateId = input.templateId;
+          batchMetadata.focusAreas = template.focusAreas as string[];
         }
+        if (input.reviewLength) { batchMetadata.reviewLength = input.reviewLength; }
+        const jobMetadata = Object.keys(batchMetadata).length > 0 ? batchMetadata : undefined;
         const tracks = await db.getTracksByProject(input.projectId);
         const unreviewedTracks = tracks.filter(t => t.status !== "reviewed" && t.status !== "reviewing" && t.status !== "analyzing");
         if (unreviewedTracks.length === 0) {

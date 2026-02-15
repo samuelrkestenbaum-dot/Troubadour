@@ -21,6 +21,7 @@ import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
 import { CollaborationPanel } from "@/components/CollaborationPanel";
 import { TemplateSelector } from "@/components/TemplateSelector";
+import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -47,6 +48,7 @@ export default function ProjectView({ id }: { id: number }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [reviewLength, setReviewLength] = useState<ReviewLength>("standard");
 
   useEffect(() => {
     setContext({ projectId: id, trackId: null });
@@ -499,8 +501,9 @@ export default function ProjectView({ id }: { id: number }) {
           className="flex-1 max-w-xs"
         />
         <TemplateSelector value={selectedTemplateId} onChange={setSelectedTemplateId} />
+        <ReviewLengthSelector value={reviewLength} onChange={setReviewLength} />
         <Button
-          onClick={() => batchReviewAll.mutate({ projectId: id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
+          onClick={() => batchReviewAll.mutate({ projectId: id, reviewLength, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
           disabled={batchReviewAll.isPending || allReviewed}
         >
           <Zap className="h-4 w-4 mr-2" />
@@ -581,7 +584,7 @@ export default function ProjectView({ id }: { id: number }) {
                           <>
                             <Button
                               size="sm"
-                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
+                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, reviewLength, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
                               disabled={analyzeAndReview.isPending}
                             >
                               <Zap className="h-3.5 w-3.5 mr-1.5" />
@@ -610,14 +613,25 @@ export default function ProjectView({ id }: { id: number }) {
                           </Button>
                         )}
                         {track.status === "reviewed" && trackReviews.length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setLocation(`/reviews/${trackReviews[0].id}`)}
-                          >
-                            <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-                            View Review
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setLocation(`/reviews/${trackReviews[0].id}`)}
+                            >
+                              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+                              View Review
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, reviewLength, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
+                              disabled={analyzeAndReview.isPending}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                              New Review
+                            </Button>
+                          </>
                         )}
                         {track.parentTrackId && track.status === "reviewed" && (
                           <Button

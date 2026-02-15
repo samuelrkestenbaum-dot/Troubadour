@@ -27,6 +27,7 @@ import { StructureAnalysisView } from "@/components/StructureAnalysisView";
 import { MoodEnergyChart } from "@/components/MoodEnergyChart";
 import { WaveformAnnotations } from "@/components/WaveformAnnotations";
 import { DAWExportButton } from "@/components/DAWExportButton";
+import { ReviewComparisonView } from "@/components/ReviewComparisonView";
 import { RevisionTimeline } from "@/components/RevisionTimeline";
 
 // ── Mix Report Tab Wrapper ──
@@ -800,6 +801,7 @@ export default function TrackView({ id }: { id: number }) {
           <TabsTrigger value="structure">Structure</TabsTrigger>
           <TabsTrigger value="mood">Mood/Energy</TabsTrigger>
           <TabsTrigger value="annotations">Notes</TabsTrigger>
+          {reviews.length >= 2 && <TabsTrigger value="compare">Compare</TabsTrigger>}
         </TabsList>
 
         {/* Analysis Tab */}
@@ -1104,6 +1106,12 @@ export default function TrackView({ id }: { id: number }) {
         <TabsContent value="annotations">
           <WaveformAnnotations trackId={id} />
         </TabsContent>
+
+        {reviews.length >= 2 && (
+          <TabsContent value="compare">
+            <ReviewComparisonView trackId={id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -183,9 +183,51 @@ function summarizeAudioAnalysis(analysis: GeminiAudioAnalysis): string {
   return lines.join("\n");
 }
 
+// ── Review Length Configuration ──
+
+export type ReviewLength = "brief" | "standard" | "detailed";
+
+const REVIEW_LENGTH_CONFIG: Record<ReviewLength, { wordRange: string; maxTokens: number; sections: string; }> = {
+  brief: {
+    wordRange: "400-600",
+    maxTokens: 1200,
+    sections: `Output format (Markdown):
+1. **Quick Take** (3-4 punchy bullets — the TL;DR)
+2. **Scores** (table as shown above — compact)
+3. **Core Analysis** (2-3 paragraphs, 2 sentences each. Hit the key points only.)
+4. **Top Changes** (The 3 highest-leverage changes. 3 bullet points.)`,
+  },
+  standard: {
+    wordRange: "800-1200",
+    maxTokens: 2000,
+    sections: `Output format (Markdown):
+1. **Quick Take** (3-4 punchy bullets — the TL;DR a busy artist reads first)
+2. **Scores** (table as shown above — compact, no padding)
+3. **Core Analysis** (Merge section-by-section, hook/melody, production, songwriting. Reference timestamps, energy curve, mix, frequency, dynamics, structure, emotional arc. 4-5 paragraphs, 2-3 sentences each.)
+4. **Originality & Influence** (What it sounds like, what makes it unique. 2-3 sentences max.)
+5. **Highest Leverage Changes** (The 3-5 changes that would improve the track most. 3-4 bullet points.)
+6. **Next Steps & Trajectory** (Concrete steps for the next version. 3-4 bullet points.)`,
+  },
+  detailed: {
+    wordRange: "1500-2000",
+    maxTokens: 3000,
+    sections: `Output format (Markdown):
+1. **Quick Take** (4-5 punchy bullets — the TL;DR a busy artist reads first)
+2. **Scores** (table as shown above — compact, no padding)
+3. **Core Analysis** (Section-by-section breakdown with timestamps. 5-6 paragraphs, 3 sentences each.)
+4. **Production Analysis** (Mix quality, frequency balance, dynamics, spatial characteristics. 2-3 paragraphs.)
+5. **Arrangement Deep-Dive** (Structure effectiveness, transitions, density, layering. 2-3 paragraphs.)
+6. **Originality & Influence** (What it sounds like, what makes it unique. 1 paragraph.)
+7. **Highest Leverage Changes** (The 5-7 changes that would improve the track most. Bullet points.)
+8. **Next Steps & Trajectory** (Concrete steps for the next version. 4-5 bullet points.)`,
+  },
+};
+
 // ── Critic Persona System Prompt ──
 
-const TRACK_CRITIC_SYSTEM = `You are Troubadour — a sharp, experienced music critic and producer's confidant. Decades in studios, tens of thousands of tracks. You know what separates good from great. Honest, direct, knowledgeable, occasionally witty. Think Rick Rubin's ear, Quincy Jones' musicality, Anthony Fantano's candor. You commit to your take. Be direct. No filler. Every sentence must earn its place.
+function getTrackCriticSystem(length: ReviewLength = "standard"): string {
+  const config = REVIEW_LENGTH_CONFIG[length];
+  return `You are Troubadour — a sharp, experienced music critic and producer's confidant. Decades in studios, tens of thousands of tracks. You know what separates good from great. Honest, direct, knowledgeable, occasionally witty. Think Rick Rubin's ear, Quincy Jones' musicality, Anthony Fantano's candor. You commit to your take. Be direct. No filler. Every sentence must earn its place.
 
 Rules:
 - Reference specific timestamps, sections, and musical elements from analysis data.
@@ -194,7 +236,7 @@ Rules:
 - Be specific: "kick at 1:23 is muddy around 200Hz" not "drums could be better."
 - Acknowledge what works before critiquing.
 - End with actionable next steps, not vague encouragement.
-- Keep the review between 800-1200 words.
+- Keep the review between ${config.wordRange} words.
 - DO NOT repeat sections. Write each section exactly once.
 
 For the Scores table, use this EXACT format:
@@ -212,15 +254,13 @@ For the Scores table, use this EXACT format:
 | Commercial Potential | 7 | Brief reason |
 | Overall | 7 | Brief reason |
 
-Output format (Markdown):
-1. **Quick Take** (3-4 punchy bullets — the TL;DR a busy artist reads first)
-2. **Scores** (table as shown above — compact, no padding)
-3. **Core Analysis** (Merge section-by-section, hook/melody, production, songwriting. Reference timestamps, energy curve, mix, frequency, dynamics, structure, emotional arc. 4-5 paragraphs, 2-3 sentences each.)
-4. **Originality & Influence** (What it sounds like, what makes it unique. 2-3 sentences max.)
-5. **Highest Leverage Changes** (The 3-5 changes that would improve the track most. 3-4 bullet points.)
-6. **Next Steps & Trajectory** (Concrete steps for the next version. 3-4 bullet points.)
+${config.sections}
 
 Be direct. Be helpful. Be the critic every artist needs but rarely gets.`;
+}
+
+// Keep backward-compatible constant for role-specific overrides that don't use it
+const TRACK_CRITIC_SYSTEM = getTrackCriticSystem("standard");
 
 const ALBUM_CRITIC_SYSTEM = `You are a senior A&R executive and album producer with decades of experience shaping records. You understand album craft — sequencing, arc, cohesion, and the art of the full-length project.
 
@@ -274,6 +314,8 @@ export interface TrackReviewInput {
   referenceArtists?: string;
   artistNotes?: string;
   reviewFocus?: ReviewFocusRole;
+  /** Review length: brief, standard, or detailed */
+  reviewLength?: ReviewLength;
   /** Custom template focus areas from user-created templates */
   templateFocusAreas?: string[];
   /** Previous review context for smart re-review */
@@ -294,11 +336,14 @@ export interface TrackReviewOutput {
 
 export async function generateTrackReview(input: TrackReviewInput): Promise<TrackReviewOutput> {
   const focus = getFocusConfig(input.reviewFocus || "full");
-  const systemPrompt = focus.claudeSystemOverride || TRACK_CRITIC_SYSTEM;
+  const length = input.reviewLength || "standard";
+  const config = REVIEW_LENGTH_CONFIG[length];
+  // Use role-specific override if available, otherwise use length-aware system prompt
+  const systemPrompt = focus.claudeSystemOverride || getTrackCriticSystem(length);
   const userMessage = buildTrackReviewPrompt(input);
   const reviewMarkdown = await callClaude(systemPrompt, [
     { role: "user", content: userMessage },
-  ], 4096);
+  ], config.maxTokens);
 
   const quickTake = extractQuickTake(reviewMarkdown);
   const scores = await extractScoresStructured(reviewMarkdown);
@@ -372,7 +417,8 @@ function buildTrackReviewPrompt(input: TrackReviewInput): string {
     prompt += `5. Be honest about whether the track has actually improved — don't inflate scores just because it's a re-review\n`;
   }
 
-  prompt += `\n\nNow write your full review. Be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. Remember: keep it between 800-1200 words, write each section exactly once, and use the exact table format specified for scores.`;
+  const lengthConfig = REVIEW_LENGTH_CONFIG[input.reviewLength || "standard"];
+  prompt += `\n\nNow write your full review. Be specific, reference timestamps and sections from the audio analysis, and provide actionable feedback. Remember: keep it between ${lengthConfig.wordRange} words, write each section exactly once, and use the exact table format specified for scores.`;
 
   return prompt;
 }

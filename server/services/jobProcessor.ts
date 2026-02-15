@@ -368,9 +368,13 @@ async function processReviewJob(jobId: number, job: any) {
 
   const reviewFocus = (project.reviewFocus as any) || "full";
 
-  // Extract template focus areas from job metadata (if user selected a template)
-  const jobMetadata = job.metadata as { templateId?: number; focusAreas?: string[] } | null;
+  // Extract template focus areas and review length from job metadata
+  const jobMetadata = job.metadata as { templateId?: number; focusAreas?: string[]; reviewLength?: string } | null;
   const templateFocusAreas = jobMetadata?.focusAreas;
+  const reviewLength = (jobMetadata?.reviewLength as "brief" | "standard" | "detailed") || "standard";
+  if (reviewLength !== "standard") {
+    console.log(`[JobQueue] Using review length: ${reviewLength}`);
+  }
   if (templateFocusAreas?.length) {
     console.log(`[JobQueue] Using template focus areas: ${templateFocusAreas.join(", ")}`);
   }
@@ -412,7 +416,7 @@ async function processReviewJob(jobId: number, job: any) {
     ? `${detectedGenre.primary}${detectedGenre.secondary?.length ? ` / ${detectedGenre.secondary.join(", ")}` : ""}${detectedGenre.influences?.length ? ` (influences: ${detectedGenre.influences.join(", ")})` : ""}`
     : project.genre || undefined;
 
-  // Step: Claude generates the review (guided by reviewFocus, template focus areas, detected genre, and previous review)
+  // Step: Claude generates the review (guided by reviewFocus, review length, template focus areas, detected genre, and previous review)
   const reviewResult = await generateTrackReview({
     trackTitle: track.originalFilename.replace(/\.[^.]+$/, ""),
     projectTitle: project.title,
@@ -422,6 +426,7 @@ async function processReviewJob(jobId: number, job: any) {
     genre: genreContext,
     referenceArtists: project.referenceArtists || undefined,
     reviewFocus,
+    reviewLength,
     previousReview: previousReviewContext,
     templateFocusAreas,
   });
