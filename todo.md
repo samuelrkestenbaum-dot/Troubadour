@@ -914,3 +914,32 @@
 ### Testing
 - [x] 14 new tests for track reordering, digest generation, onboarding tour, and component existence
 - [x] All 320 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
+
+## Round 45 - PDF Export, Custom Templates & Drag-Drop Upload (Claude 4.5)
+
+### Feature 1: PDF Export for Mix Reports
+- [x] Backend: mixReport.exportHtml procedure — generates styled HTML for print-to-PDF
+- [x] HTML includes frequency analysis, dynamics, loudness, stereo image, DAW suggestions, full report
+- [x] Include track name, scores, sections, recommendations in styled layout
+- [x] Frontend: "Export PDF" button on MixReportView tab (ExportPdfButton component)
+- [x] Opens HTML in new window with auto-print dialog for Save as PDF
+
+### Feature 2: Custom Review Templates
+- [x] Backend: reviewTemplates table enhanced with systemPrompt (text) and icon (varchar) columns
+- [x] Backend: template.create/update procedures accept systemPrompt and icon fields
+- [x] Frontend: Enhanced template editor with persona prompt textarea, icon picker (18 icons), example prompts
+- [x] Frontend: Template editor form with name, description, focus areas, system prompt, icon picker
+- [x] Frontend: Edit/Delete buttons on user-created templates with icon display
+- [x] TemplateSelector shows icons and default star badge for custom templates
+- [x] TemplatesGallery shows icons for user templates
+
+### Feature 3: Drag-and-Drop File Upload
+- [x] Frontend: DropZone component already existed with full drag-over visual feedback (verified)
+- [x] Support multiple file drop for batch upload (already implemented)
+- [x] File validation (type, size) before upload (already implemented)
+- [x] Compact mode for inline usage + full mode for dedicated upload areas
+- [x] Integrated into ProjectView upload flow (already wired)
+
+### Testing
+- [x] 14 new tests for PDF export, custom templates with systemPrompt/icon, DropZone, and integration
+- [x] All 334 tests passing, zero TypeScript errors (npx tsc --noEmit clean)

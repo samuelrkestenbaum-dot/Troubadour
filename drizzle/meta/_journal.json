@@ -169,6 +169,13 @@
       "when": 1771172209945,
       "tag": "0023_easy_ultimates",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1771179296975,
+      "tag": "0024_outgoing_wonder_man",
+      "breakpoints": true
     }
   ]
 }

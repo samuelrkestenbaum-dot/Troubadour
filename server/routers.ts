@@ -1560,6 +1560,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         name: z.string().min(1).max(255),
         description: z.string().optional(),
         focusAreas: z.array(z.string()).min(1),
+        systemPrompt: z.string().max(5000).optional(),
+        icon: z.string().max(50).optional(),
         isDefault: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1571,6 +1573,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           name: input.name,
           description: input.description || null,
           focusAreas: input.focusAreas,
+          systemPrompt: input.systemPrompt || null,
+          icon: input.icon || null,
           isDefault: input.isDefault || false,
         });
         if (input.isDefault) {
@@ -1585,6 +1589,8 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         name: z.string().min(1).max(255).optional(),
         description: z.string().optional(),
         focusAreas: z.array(z.string()).min(1).optional(),
+        systemPrompt: z.string().max(5000).optional().nullable(),
+        icon: z.string().max(50).optional().nullable(),
         isDefault: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1802,6 +1808,138 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           dawSuggestions: report.dawSuggestions,
         });
         return { id, ...report };
+      }),
+
+    exportHtml: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const report = await db.getMixReportByTrack(input.trackId);
+        if (!report) throw new TRPCError({ code: "NOT_FOUND", message: "No mix report found. Generate one first." });
+        const track = await db.getTrackById(input.trackId);
+        const trackName = track?.originalFilename || "Track";
+
+        // Build HTML for PDF-style export
+        const freq = report.frequencyAnalysis as any;
+        const dynamics = report.dynamicsAnalysis as any;
+        const stereo = report.stereoAnalysis as any;
+        const loudness = report.loudnessData as any;
+        const suggestions = report.dawSuggestions as any[];
+
+        let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Mix Report - ${trackName}</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; color: #1a1a2e; background: #fff; }
+  h1 { font-size: 24px; border-bottom: 3px solid #e74c6f; padding-bottom: 12px; margin-bottom: 24px; }
+  h2 { font-size: 18px; color: #e74c6f; margin-top: 28px; margin-bottom: 12px; }
+  h3 { font-size: 14px; color: #666; margin-top: 16px; }
+  .meta { color: #666; font-size: 13px; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+  th { background: #f8f9fa; font-weight: 600; color: #333; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .badge-excellent { background: #d4edda; color: #155724; }
+  .badge-good { background: #d1ecf1; color: #0c5460; }
+  .badge-adequate { background: #fff3cd; color: #856404; }
+  .badge-weak { background: #f8d7da; color: #721c24; }
+  .badge-high { background: #f8d7da; color: #721c24; }
+  .badge-medium { background: #fff3cd; color: #856404; }
+  .badge-low { background: #d1ecf1; color: #0c5460; }
+  .lufs-box { display: flex; gap: 32px; align-items: center; padding: 16px; background: #f8f9fa; border-radius: 8px; margin: 12px 0; }
+  .lufs-value { text-align: center; }
+  .lufs-value .num { font-size: 28px; font-weight: 700; font-family: monospace; }
+  .lufs-value .label { font-size: 11px; color: #666; }
+  .suggestion { padding: 10px 14px; margin: 6px 0; background: #f8f9fa; border-left: 3px solid #e74c6f; border-radius: 0 6px 6px 0; }
+  .suggestion .element { font-weight: 600; }
+  .suggestion .issue { color: #666; font-size: 12px; }
+  .report-md { line-height: 1.7; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #eee; color: #999; font-size: 11px; text-align: center; }
+  @media print { body { padding: 20px; } }
+</style></head><body>`;
+
+        html += `<h1>Mix Feedback Report</h1>`;
+        html += `<div class="meta"><strong>${trackName}</strong> &mdash; Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>`;
+
+        // Frequency Analysis
+        if (freq) {
+          html += `<h2>Frequency Analysis</h2><table><tr><th>Band</th><th>Rating</th><th>Notes</th></tr>`;
+          const bands = [
+            { label: "Low End (20–250Hz)", ...(freq.lowEnd || {}) },
+            { label: "Mid Range (250Hz–4kHz)", ...(freq.midRange || {}) },
+            { label: "High End (4kHz–20kHz)", ...(freq.highEnd || {}) },
+          ];
+          for (const b of bands) {
+            html += `<tr><td>${b.label}</td><td><span class="badge badge-${b.rating || 'adequate'}">${b.rating || 'N/A'}</span></td><td>${b.notes || ''}</td></tr>`;
+          }
+          html += `</table>`;
+          if (freq.overallBalance) html += `<p><strong>Overall Balance:</strong> ${freq.overallBalance}</p>`;
+        }
+
+        // Dynamics
+        if (dynamics) {
+          html += `<h2>Dynamics</h2><table><tr><th>Aspect</th><th>Assessment</th></tr>`;
+          if (dynamics.dynamicRange) html += `<tr><td>Dynamic Range</td><td>${dynamics.dynamicRange}</td></tr>`;
+          if (dynamics.compression) html += `<tr><td>Compression</td><td>${dynamics.compression}</td></tr>`;
+          if (dynamics.transients) html += `<tr><td>Transients</td><td>${dynamics.transients}</td></tr>`;
+          if (dynamics.loudness) html += `<tr><td>Loudness</td><td>${dynamics.loudness}</td></tr>`;
+          html += `</table>`;
+        }
+
+        // Loudness
+        if (loudness && typeof loudness.estimatedLUFS === 'number') {
+          html += `<h2>Loudness Target</h2>`;
+          html += `<div class="lufs-box">`;
+          html += `<div class="lufs-value"><div class="num">${loudness.estimatedLUFS}</div><div class="label">Estimated LUFS</div></div>`;
+          if (typeof loudness.targetLUFS === 'number') {
+            const diff = loudness.estimatedLUFS - loudness.targetLUFS;
+            html += `<div class="lufs-value"><div class="num" style="color:${Math.abs(diff) <= 1 ? '#28a745' : Math.abs(diff) <= 3 ? '#ffc107' : '#dc3545'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}</div><div class="label">vs Target</div></div>`;
+            html += `<div class="lufs-value"><div class="num">${loudness.targetLUFS}</div><div class="label">Target LUFS</div></div>`;
+          }
+          html += `</div>`;
+          if (loudness.recommendation) html += `<p>${loudness.recommendation}</p>`;
+        }
+
+        // Stereo
+        if (stereo) {
+          html += `<h2>Stereo Image</h2><table><tr><th>Aspect</th><th>Assessment</th></tr>`;
+          if (stereo.width) html += `<tr><td>Width</td><td>${stereo.width}</td></tr>`;
+          if (stereo.balance) html += `<tr><td>Balance</td><td>${stereo.balance}</td></tr>`;
+          if (stereo.monoCompatibility) html += `<tr><td>Mono Compatibility</td><td>${stereo.monoCompatibility}</td></tr>`;
+          if (stereo.panningNotes) html += `<tr><td>Panning</td><td>${stereo.panningNotes}</td></tr>`;
+          html += `</table>`;
+        }
+
+        // DAW Suggestions
+        if (suggestions && suggestions.length > 0) {
+          html += `<h2>DAW Action Items (${suggestions.length})</h2>`;
+          for (const s of suggestions) {
+            html += `<div class="suggestion">`;
+            html += `<span class="badge badge-${s.priority || 'medium'}">${s.priority || 'medium'}</span> `;
+            if (s.timestamp) html += `<span style="font-family:monospace;color:#666;font-size:12px">${s.timestamp}</span> `;
+            if (s.element) html += `<span class="element">${s.element}</span>`;
+            if (s.issue) html += `<div class="issue">${s.issue}</div>`;
+            if (s.suggestion) html += `<div>${s.suggestion}</div>`;
+            html += `</div>`;
+          }
+        }
+
+        // Full markdown report
+        if (report.reportMarkdown) {
+          html += `<h2>Full Report</h2><div class="report-md">`;
+          // Simple markdown to HTML conversion for the report
+          const md = (report.reportMarkdown as string)
+            .replace(/### (.+)/g, '<h3>$1</h3>')
+            .replace(/## (.+)/g, '<h2 style="font-size:16px">$1</h2>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/^- (.+)/gm, '<li>$1</li>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+          html += `<p>${md}</p></div>`;
+        }
+
+        html += `<div class="footer">Generated by Troubadour &mdash; AI-Powered Music Review Platform</div>`;
+        html += `</body></html>`;
+
+        return { html, trackName };
       }),
   }),
 

@@ -1,8 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Volume2, Radio, Gauge, ArrowUpDown, Download } from "lucide-react";
+import { Loader2, Volume2, Radio, Gauge, ArrowUpDown, Download, FileDown } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface FreqBand {
   rating: string;
@@ -117,10 +120,12 @@ export function MixReportView({
   data,
   isGenerating,
   onGenerate,
+  trackId,
 }: {
   data: MixReportData | null;
   isGenerating: boolean;
   onGenerate: () => void;
+  trackId?: number;
 }) {
   if (!data) {
     return (
@@ -273,12 +278,50 @@ export function MixReportView({
         </Card>
       )}
 
-      {/* Regenerate button */}
-      <div className="flex justify-center pt-2">
+      {/* Action buttons */}
+      <div className="flex justify-center gap-3 pt-2">
         <Button variant="outline" size="sm" onClick={onGenerate} disabled={isGenerating} className="gap-2">
           {isGenerating ? <><Loader2 className="h-4 w-4 animate-spin" /> Regenerating…</> : "Regenerate Mix Report"}
         </Button>
+        {trackId && <ExportPdfButton trackId={trackId} />}
       </div>
     </div>
+  );
+}
+
+function ExportPdfButton({ trackId }: { trackId: number }) {
+  const [exporting, setExporting] = useState(false);
+  const utils = trpc.useUtils();
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const result = await utils.mixReport.exportHtml.fetch({ trackId });
+      // Open HTML in new window for print/save as PDF
+      const blob = new Blob([result.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      if (win) {
+        win.onload = () => {
+          setTimeout(() => {
+            win.print();
+          }, 500);
+        };
+      }
+      toast.success("Mix report opened for printing", {
+        description: "Use 'Save as PDF' in the print dialog to export",
+      });
+    } catch (err: any) {
+      toast.error("Export failed", { description: err.message || "Could not generate export" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting} className="gap-2">
+      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+      Export PDF
+    </Button>
   );
 }

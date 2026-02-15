@@ -6,7 +6,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText } from "lucide-react";
+import { FileText, Star } from "lucide-react";
+import { getIconComponent } from "@/pages/Templates";
 
 interface TemplateSelectorProps {
   value: number | null;
@@ -26,17 +27,24 @@ export function TemplateSelector({ value, onChange, className }: TemplateSelecto
       value={value?.toString() ?? "default"}
       onValueChange={(v) => onChange(v === "default" ? null : Number(v))}
     >
-      <SelectTrigger className={`w-[180px] h-9 text-sm ${className ?? ""}`}>
+      <SelectTrigger className={`w-[200px] h-9 text-sm ${className ?? ""}`}>
         <FileText className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />
         <SelectValue placeholder="Review Template" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="default">Default Review</SelectItem>
-        {templates.map((t) => (
-          <SelectItem key={t.id} value={t.id.toString()}>
-            {t.name}
-          </SelectItem>
-        ))}
+        {templates.map((t) => {
+          const Icon = getIconComponent(t.icon);
+          return (
+            <SelectItem key={t.id} value={t.id.toString()}>
+              <span className="flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                {t.name}
+                {t.isDefault && <Star className="h-3 w-3 text-amber-400 shrink-0" />}
+              </span>
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   );

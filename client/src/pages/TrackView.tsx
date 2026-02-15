@@ -51,7 +51,7 @@ function MixReportTab({ trackId }: { trackId: number }) {
     loudnessData: existingReport.loudnessData as any,
     dawSuggestions: existingReport.dawSuggestions as any,
   } : null);
-  return <MixReportView data={report} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} />;
+  return <MixReportView data={report} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} trackId={trackId} />;
 }
 
 // ── Structure Analysis Tab Wrapper ──

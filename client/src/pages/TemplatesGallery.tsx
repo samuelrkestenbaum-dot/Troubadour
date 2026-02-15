@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { getIconComponent } from "./Templates";
 
 // ── Built-in Reviewer Personas ──
 const BUILT_IN_PERSONAS = [
@@ -251,10 +252,15 @@ export default function TemplatesGallery() {
           </div>
         ) : userTemplates && userTemplates.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {userTemplates.map((template) => (
+            {userTemplates.map((template) => {
+              const IconComp = getIconComponent(template.icon);
+              return (
               <Card key={template.id} className={`hover:border-primary/30 transition-colors ${template.isDefault ? "border-amber-500/30" : ""}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                      <IconComp className="h-4 w-4 text-primary" />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-sm">{template.name}</h3>
@@ -284,7 +290,8 @@ export default function TemplatesGallery() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <Card className="border-dashed">

@@ -294,6 +294,8 @@ export const reviewTemplates = mysqlTable("reviewTemplates", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   focusAreas: json("focusAreas").$type<string[]>().notNull(),
+  systemPrompt: text("systemPrompt"),
+  icon: varchar("icon", { length: 50 }),
   isDefault: boolean("isDefault").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
