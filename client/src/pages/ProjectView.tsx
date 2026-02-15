@@ -24,6 +24,7 @@ import { TemplateSelector } from "@/components/TemplateSelector";
 import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
 import { ProjectInsightsCard } from "@/components/ProjectInsightsCard";
 import { ScoreMatrix } from "@/components/ScoreMatrix";
+import { SentimentTimeline } from "@/components/SentimentTimeline";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -729,6 +730,7 @@ export default function ProjectView({ id }: { id: number }) {
           <Separator />
           <ProjectInsightsCard projectId={id} reviewedTrackCount={tracks.filter(t => t.status === "reviewed").length} />
           <ScoreMatrix projectId={id} />
+          <SentimentTimeline projectId={id} />
         </>
       )}
 

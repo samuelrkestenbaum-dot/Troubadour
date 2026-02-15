@@ -22,6 +22,7 @@ import QuickReview from "./pages/QuickReview";
 import Templates from "./pages/Templates";
 import AcceptInvite from "./pages/AcceptInvite";
 import GenreBenchmarks from "./pages/GenreBenchmarks";
+import { CommandPalette } from "./components/CommandPalette";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -106,6 +107,7 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster position="top-right" richColors />
+          <CommandPalette />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

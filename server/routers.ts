@@ -1331,6 +1331,67 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       ]);
       return { stats, scoreDistribution, recentActivity, averageScores, topTracks };
     }),
+    trends: protectedProcedure
+      .input(z.object({ weeks: z.number().min(4).max(52).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "analytics");
+        return db.getWeeklyScoreTrends(ctx.user.id, input?.weeks ?? 12);
+      }),
+    heatmap: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      assertFeatureAllowed(user?.tier || "free", "analytics");
+      return db.getActivityHeatmap(ctx.user.id);
+    }),
+    improvement: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      assertFeatureAllowed(user?.tier || "free", "analytics");
+      return db.getImprovementRate(ctx.user.id);
+    }),
+  }),
+
+  sentiment: router({
+    timeline: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        if (project.userId !== ctx.user.id) {
+          // Check if collaborator
+          const isCollab = await db.isUserCollaborator(ctx.user.id, input.projectId);
+          if (!isCollab) throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const rawTimeline = await db.getProjectSentimentTimeline(input.projectId);
+        // Compute sentiment from scores and review text
+        return rawTimeline.map(r => {
+          const scores = r.scoresJson as Record<string, number> | null;
+          const overall = scores?.overall ?? scores?.Overall ?? 0;
+          // Derive sentiment from score + text analysis
+          let sentiment: "positive" | "mixed" | "critical" = "mixed";
+          const positiveWords = ["excellent", "outstanding", "strong", "impressive", "great", "brilliant", "solid", "polished", "well-crafted", "compelling"];
+          const negativeWords = ["weak", "lacking", "muddy", "cluttered", "repetitive", "flat", "thin", "underdeveloped", "generic", "needs work"];
+          const text = (r.quickTake || "").toLowerCase() + " " + (r.reviewMarkdown || "").toLowerCase().slice(0, 500);
+          const posCount = positiveWords.filter(w => text.includes(w)).length;
+          const negCount = negativeWords.filter(w => text.includes(w)).length;
+          if (overall >= 7.5 || posCount > negCount + 1) sentiment = "positive";
+          else if (overall <= 4.5 || negCount > posCount + 1) sentiment = "critical";
+          // Extract key phrases
+          const keyPhrases: string[] = [];
+          for (const w of positiveWords) { if (text.includes(w)) keyPhrases.push(w); }
+          for (const w of negativeWords) { if (text.includes(w)) keyPhrases.push(w); }
+          return {
+            reviewId: r.id,
+            trackId: r.trackId,
+            trackName: r.trackName,
+            quickTake: r.quickTake,
+            overall,
+            sentiment,
+            keyPhrases: keyPhrases.slice(0, 5),
+            createdAt: r.createdAt,
+            reviewVersion: r.reviewVersion,
+          };
+        });
+      }),
   }),
 
   usage: router({

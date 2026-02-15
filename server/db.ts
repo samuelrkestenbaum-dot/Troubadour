@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, count, avg, isNull, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight } from "../drizzle/schema";
@@ -1355,4 +1355,161 @@ export async function getProjectCsvData(projectId: number) {
   }
 
   return { project, rows };
+}
+
+
+// ── Round 41: Analytics Trends ──
+export async function getWeeklyScoreTrends(userId: number, weeks = 12) {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - weeks * 7);
+
+  const allReviews = await db.select({
+    scoresJson: reviews.scoresJson,
+    createdAt: reviews.createdAt,
+  }).from(reviews).where(
+    and(eq(reviews.userId, userId), eq(reviews.reviewType, "track"), gte(reviews.createdAt, cutoff))
+  );
+
+  // Group by ISO week
+  const weekBuckets = new Map<string, { scores: number[]; count: number }>();
+  for (const r of allReviews) {
+    const scores = r.scoresJson as Record<string, number> | null;
+    const overall = scores?.overall ?? scores?.Overall;
+    if (overall === undefined || overall === null) continue;
+    const d = new Date(r.createdAt);
+    // Get Monday of the week
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    const weekKey = monday.toISOString().split("T")[0];
+    if (!weekBuckets.has(weekKey)) weekBuckets.set(weekKey, { scores: [], count: 0 });
+    const bucket = weekBuckets.get(weekKey)!;
+    bucket.scores.push(overall);
+    bucket.count++;
+  }
+
+  return Array.from(weekBuckets.entries())
+    .map(([week, { scores, count }]) => ({
+      week,
+      avgScore: Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10,
+      reviewCount: count,
+      minScore: Math.min(...scores),
+      maxScore: Math.max(...scores),
+    }))
+    .sort((a, b) => a.week.localeCompare(b.week));
+}
+
+export async function getActivityHeatmap(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90); // last 90 days
+
+  const allReviews = await db.select({
+    createdAt: reviews.createdAt,
+  }).from(reviews).where(
+    and(eq(reviews.userId, userId), gte(reviews.createdAt, cutoff))
+  );
+
+  // Build 7×24 grid (day-of-week × hour)
+  const grid: Record<string, number> = {};
+  for (let d = 0; d < 7; d++) {
+    for (let h = 0; h < 24; h++) {
+      grid[`${d}-${h}`] = 0;
+    }
+  }
+
+  for (const r of allReviews) {
+    const date = new Date(r.createdAt);
+    const day = date.getDay(); // 0=Sun
+    const hour = date.getHours();
+    grid[`${day}-${hour}`]++;
+  }
+
+  return Object.entries(grid).map(([key, count]) => {
+    const [day, hour] = key.split("-").map(Number);
+    return { day, hour, count };
+  });
+}
+
+export async function getImprovementRate(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Get tracks that have multiple review versions
+  const allReviews = await db.select({
+    trackId: reviews.trackId,
+    scoresJson: reviews.scoresJson,
+    reviewVersion: reviews.reviewVersion,
+    createdAt: reviews.createdAt,
+  }).from(reviews).where(
+    and(eq(reviews.userId, userId), eq(reviews.reviewType, "track"))
+  ).orderBy(asc(reviews.createdAt));
+
+  // Group by track
+  const trackReviews = new Map<number, { overall: number; version: number }[]>();
+  for (const r of allReviews) {
+    if (!r.trackId) continue;
+    const scores = r.scoresJson as Record<string, number> | null;
+    const overall = scores?.overall ?? scores?.Overall;
+    if (overall === undefined) continue;
+    if (!trackReviews.has(r.trackId)) trackReviews.set(r.trackId, []);
+    trackReviews.get(r.trackId)!.push({ overall, version: r.reviewVersion ?? 1 });
+  }
+
+  let improved = 0;
+  let declined = 0;
+  let unchanged = 0;
+  for (const [, versions] of Array.from(trackReviews)) {
+    if (versions.length < 2) continue;
+    const first = versions[0].overall;
+    const last = versions[versions.length - 1].overall;
+    if (last > first) improved++;
+    else if (last < first) declined++;
+    else unchanged++;
+  }
+
+  const total = improved + declined + unchanged;
+  return {
+    improved,
+    declined,
+    unchanged,
+    total,
+    improvementRate: total > 0 ? Math.round((improved / total) * 100) : 0,
+  };
+}
+
+// ── Round 41: Sentiment Timeline ──
+export async function getProjectSentimentTimeline(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const projectReviews = await db.select({
+    id: reviews.id,
+    trackId: reviews.trackId,
+    quickTake: reviews.quickTake,
+    scoresJson: reviews.scoresJson,
+    reviewMarkdown: reviews.reviewMarkdown,
+    createdAt: reviews.createdAt,
+    reviewVersion: reviews.reviewVersion,
+  }).from(reviews)
+    .innerJoin(tracks, eq(reviews.trackId, tracks.id))
+    .where(
+      and(eq(tracks.projectId, projectId), eq(reviews.reviewType, "track"))
+    )
+    .orderBy(asc(reviews.createdAt));
+
+  // Enrich with track names
+  const enriched = [];
+  for (const r of projectReviews) {
+    const track = r.trackId ? await db.select({ filename: tracks.originalFilename }).from(tracks).where(eq(tracks.id, r.trackId)).limit(1) : [];
+    enriched.push({
+      ...r,
+      trackName: track[0]?.filename ?? "Unknown",
+    });
+  }
+  return enriched;
 }

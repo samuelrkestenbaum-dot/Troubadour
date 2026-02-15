@@ -4,11 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import {
-  BarChart3, Music, FileText, FolderOpen, TrendingUp, Star, Trophy, Clock, Lock, ArrowUpRight
+  BarChart3, Music, FileText, FolderOpen, TrendingUp, Star, Trophy, Clock, Lock, ArrowUpRight, ArrowUp, ArrowDown, Minus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { scoreColor } from "@/lib/scoreColor";
+import { ScoreTrendChart } from "@/components/ScoreTrendChart";
+import { ActivityHeatmap } from "@/components/ActivityHeatmap";
 
 const scoreBg = (score: number) => {
   if (score >= 8) return "bg-emerald-400/10";
@@ -114,11 +116,54 @@ function AverageScoresChart({ averages }: { averages: Record<string, number> }) 
   );
 }
 
+function ImprovementCard({ data }: { data: { improved: number; declined: number; unchanged: number; total: number; improvementRate: number } | null | undefined }) {
+  if (!data || data.total === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          Improvement Rate
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Tracks with multiple reviews</p>
+      </CardHeader>
+      <CardContent>
+        <div className="text-center mb-4">
+          <span className={`text-4xl font-bold ${data.improvementRate >= 50 ? "text-emerald-400" : data.improvementRate >= 25 ? "text-amber-400" : "text-rose-400"}`}>
+            {data.improvementRate}%
+          </span>
+          <p className="text-xs text-muted-foreground mt-1">of re-reviewed tracks improved</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-2 rounded-lg bg-emerald-400/10">
+            <ArrowUp className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-1" />
+            <span className="text-lg font-bold text-emerald-400">{data.improved}</span>
+            <p className="text-[10px] text-muted-foreground">Improved</p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-muted/20">
+            <Minus className="h-3.5 w-3.5 text-muted-foreground mx-auto mb-1" />
+            <span className="text-lg font-bold">{data.unchanged}</span>
+            <p className="text-[10px] text-muted-foreground">Same</p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-rose-400/10">
+            <ArrowDown className="h-3.5 w-3.5 text-rose-400 mx-auto mb-1" />
+            <span className="text-lg font-bold text-rose-400">{data.declined}</span>
+            <p className="text-[10px] text-muted-foreground">Declined</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Analytics() {
   const [, setLocation] = useLocation();
   const { data, isLoading, error } = trpc.analytics.dashboard.useQuery(undefined, {
     retry: false,
   });
+  const { data: trends } = trpc.analytics.trends.useQuery(undefined, { retry: false });
+  const { data: heatmap } = trpc.analytics.heatmap.useQuery(undefined, { retry: false });
+  const { data: improvement } = trpc.analytics.improvement.useQuery(undefined, { retry: false });
 
   if (isLoading) {
     return (
@@ -231,6 +276,18 @@ export default function Analytics() {
           </Card>
         )}
       </div>
+
+      {/* Score Trends + Activity Heatmap */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {trends && trends.length > 0 && (
+          <ScoreTrendChart data={trends} />
+        )}
+        {improvement && <ImprovementCard data={improvement} />}
+      </div>
+
+      {heatmap && heatmap.length > 0 && (
+        <ActivityHeatmap data={heatmap} />
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Top Tracks */}

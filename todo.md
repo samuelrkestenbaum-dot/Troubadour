@@ -791,3 +791,35 @@
 ### Testing
 - [x] 19 new tests for insights, matrix, and CSV export
 - [x] All 242 tests passing, zero TypeScript errors
+
+## Round 41 - Dashboard Analytics Overhaul, Sentiment Timeline & Keyboard Shortcuts (Claude 4.5 + Gravito)
+
+### Feature 1: Dashboard Analytics Overhaul
+- [x] Backend: analytics.trends procedure — weekly score averages over configurable time range
+- [x] Backend: analytics.heatmap procedure — review activity by day-of-week × hour
+- [x] Backend: analytics.improvement procedure — track improvement rate across re-reviews
+- [x] Frontend: ScoreTrendChart component with SVG line chart (score evolution over weeks)
+- [x] Frontend: ActivityHeatmap grid (7 days × 24 hours, color intensity = activity count)
+- [x] Frontend: ImprovementCard with improved/same/declined breakdown
+- [x] Frontend: Enhanced Analytics page integrating all new components
+
+### Feature 2: Review Sentiment Timeline
+- [x] Backend: sentiment.timeline procedure — extract sentiment/tone from review text across a project
+- [x] Backend: Parse review sections for positive/negative/neutral sentiment markers + key phrases
+- [x] Frontend: SentimentTimeline component on ProjectView (shows emotional arc across tracks)
+- [x] Frontend: Color-coded sentiment indicators (emerald=positive, amber=mixed, rose=critical)
+- [x] Frontend: Key phrases display showing words that drove the sentiment
+
+### Feature 3: Keyboard Shortcuts & Power User Features
+- [x] Global keyboard shortcut system (Cmd/Ctrl+K for command palette)
+- [x] Command palette: search projects, navigate to pages, trigger actions
+- [x] Keyboard navigation: arrow keys, Enter to select, Escape to close
+- [x] Frontend: CommandPalette component with category grouping and fuzzy search
+
+### Governance (Gravito)
+- [x] gravito.reviewArtifact on Round 41 features — shipping decision: SHIP (0.95 confidence)
+- [x] All claims classified as descriptive_capability with 100% adjusted scores
+
+### Testing
+- [x] 27 new tests for analytics trends, sentiment, command palette, heatmap, improvement rate
+- [x] All 269 tests passing, zero TypeScript errors
