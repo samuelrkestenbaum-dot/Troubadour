@@ -24,6 +24,8 @@ import AcceptInvite from "./pages/AcceptInvite";
 import GenreBenchmarks from "./pages/GenreBenchmarks";
 import TemplatesGallery from "./pages/TemplatesGallery";
 import { CommandPalette } from "./components/CommandPalette";
+import Digest from "./pages/Digest";
+import { OnboardingTour } from "./components/OnboardingTour";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -78,6 +80,7 @@ function DashboardRoutes() {
         <Route path="/templates/gallery" component={TemplatesGallery} />
         <Route path="/benchmarks" component={GenreBenchmarks} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/digest" component={Digest} />
         <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
@@ -110,6 +113,7 @@ function App() {
         <TooltipProvider>
           <Toaster position="top-right" richColors />
           <CommandPalette />
+          <OnboardingTour />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

@@ -277,6 +277,35 @@ export const appRouter = router({
         const childVersions = await db.getTrackVersions(parentId);
         return [parentTrack, ...childVersions];
       }),
+
+    addTag: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        tag: z.string().min(1).max(50),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const existing = await db.getTrackTags(input.trackId);
+        if (!existing.includes(input.tag)) {
+          existing.push(input.tag);
+          await db.updateTrackTags(input.trackId, existing);
+        }
+        return { success: true, tags: existing };
+      }),
+
+    deleteTrack: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.id);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        await db.deleteTrack(input.id);
+        return { success: true };
+      }),
   }),
 
   tags: router({
@@ -304,24 +333,6 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    addTag: protectedProcedure
-      .input(z.object({
-        trackId: z.number(),
-        tag: z.string().min(1).max(50),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const track = await db.getTrackById(input.trackId);
-        if (!track || track.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        const existing = await db.getTrackTags(input.trackId);
-        if (!existing.includes(input.tag)) {
-          existing.push(input.tag);
-          await db.updateTrackTags(input.trackId, existing);
-        }
-        return { success: true, tags: existing };
-      }),
-
     removeTag: protectedProcedure
       .input(z.object({
         trackId: z.number(),
@@ -336,16 +347,6 @@ export const appRouter = router({
         const updated = existing.filter(t => t !== input.tag);
         await db.updateTrackTags(input.trackId, updated);
          return { success: true, tags: updated };
-      }),
-    delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        const track = await db.getTrackById(input.id);
-        if (!track || track.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        await db.deleteTrack(input.id);
-        return { success: true };
       }),
   }),
   lyrics: router({
@@ -2078,7 +2079,31 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       .query(async ({ ctx, input }) => {
         return db.globalSearch(ctx.user.id, input.query, input.filter, input.limit);
       }),
+   }),
+  // ── Track Reorder ──
+  reorder: router({
+    update: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        orderedTrackIds: z.array(z.number()).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        return db.reorderTracks(input.projectId, input.orderedTrackIds);
+      }),
+  }),
+  // ── Review Digest ──
+  digest: router({
+    get: protectedProcedure
+      .input(z.object({
+        daysBack: z.number().min(1).max(90).default(7),
+      }))
+      .query(async ({ ctx, input }) => {
+        return db.getDigestData(ctx.user.id, input.daysBack);
+      }),
   }),
 });
-
 export type AppRouter = typeof appRouter;

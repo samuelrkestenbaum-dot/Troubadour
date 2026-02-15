@@ -15,7 +15,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
-  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown, Table2
+  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown, Table2, GripVertical, ArrowUp, ArrowDown
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
@@ -26,6 +26,7 @@ import { ProjectInsightsCard } from "@/components/ProjectInsightsCard";
 import { ScoreMatrix } from "@/components/ScoreMatrix";
 import { SentimentTimeline } from "@/components/SentimentTimeline";
 import { BatchActionsToolbar } from "@/components/BatchActionsToolbar";
+import { DraggableTrackList } from "@/components/DraggableTrackList";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -54,6 +55,7 @@ export default function ProjectView({ id }: { id: number }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [reviewLength, setReviewLength] = useState<ReviewLength>("standard");
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
+  const [reorderMode, setReorderMode] = useState(false);
 
   useEffect(() => {
     setContext({ projectId: id, trackId: null });
@@ -180,6 +182,24 @@ export default function ProjectView({ id }: { id: number }) {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const reorderTracks = trpc.reorder.update.useMutation({
+    onSuccess: () => {
+      utils.project.get.invalidate({ id });
+      toast.success("Track order saved");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleMoveTrack = (trackId: number, direction: "up" | "down") => {
+    const currentIndex = tracks.findIndex(t => t.id === trackId);
+    if (currentIndex < 0) return;
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= tracks.length) return;
+    const newOrder = [...tracks.map(t => t.id)];
+    [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+    reorderTracks.mutate({ projectId: id, orderedTrackIds: newOrder });
+  };
 
   const handleFileUpload = useCallback(async (files: FileList | File[] | null, parentTrackId?: number) => {
     if (!files || (files instanceof FileList && !files.length) || (Array.isArray(files) && !files.length)) return;
@@ -556,19 +576,32 @@ export default function ProjectView({ id }: { id: number }) {
           <h2 className="text-lg font-semibold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
             Tracks ({tracks.length})
           </h2>
-          {tracks.length > 1 && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                if (selectedTrackIds.size === tracks.length) setSelectedTrackIds(new Set());
-                else setSelectedTrackIds(new Set(tracks.map(t => t.id)));
-              }}
-              className="text-xs"
-            >
-              {selectedTrackIds.size === tracks.length ? "Deselect All" : "Select All"}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {tracks.length > 1 && (
+              <Button
+                size="sm"
+                variant={reorderMode ? "default" : "ghost"}
+                onClick={() => setReorderMode(!reorderMode)}
+                className="text-xs"
+              >
+                <GripVertical className="h-3.5 w-3.5 mr-1" />
+                {reorderMode ? "Done" : "Reorder"}
+              </Button>
+            )}
+            {tracks.length > 1 && !reorderMode && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (selectedTrackIds.size === tracks.length) setSelectedTrackIds(new Set());
+                  else setSelectedTrackIds(new Set(tracks.map(t => t.id)));
+                }}
+                className="text-xs"
+              >
+                {selectedTrackIds.size === tracks.length ? "Deselect All" : "Select All"}
+              </Button>
+            )}
+          </div>
         </div>
         <BatchActionsToolbar
           selectedIds={selectedTrackIds}
@@ -593,18 +626,40 @@ export default function ProjectView({ id }: { id: number }) {
                 <Card key={track.id} className="hover:border-primary/30 transition-colors">
                   <CardContent className="py-3 px-4">
                     <div className="flex items-center gap-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedTrackIds.has(track.id)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          const next = new Set(selectedTrackIds);
-                          if (next.has(track.id)) next.delete(track.id);
-                          else next.add(track.id);
-                          setSelectedTrackIds(next);
-                        }}
-                        className="shrink-0 h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                      />
+                      {reorderMode ? (
+                        <div className="flex flex-col items-center gap-0.5 shrink-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMoveTrack(track.id, "up"); }}
+                            disabled={idx === 0 || reorderTracks.isPending}
+                            className="p-0.5 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="text-xs font-mono text-muted-foreground w-5 text-center">{idx + 1}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMoveTrack(track.id, "down"); }}
+                            disabled={idx === tracks.length - 1 || reorderTracks.isPending}
+                            className="p-0.5 rounded hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={selectedTrackIds.has(track.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            const next = new Set(selectedTrackIds);
+                            if (next.has(track.id)) next.delete(track.id);
+                            else next.add(track.id);
+                            setSelectedTrackIds(next);
+                          }}
+                          className="shrink-0 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                        />
+                      )}
                       <button
                         className="shrink-0 p-1 -m-1 rounded hover:bg-accent transition-colors"
                         onClick={(e) => { e.stopPropagation(); toggleFavorite.mutate({ trackId: track.id }); }}

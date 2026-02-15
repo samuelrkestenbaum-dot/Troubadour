@@ -1238,7 +1238,7 @@ describe("tags.get", () => {
   });
 });
 
-describe("tags.addTag", () => {
+describe("track.addTag", () => {
   it("adds a tag to a track", async () => {
     const db = await import("./db");
     const ctx = createAuthContext();
@@ -1247,7 +1247,7 @@ describe("tags.addTag", () => {
     (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
     (db.getTrackTags as any).mockResolvedValueOnce(["Demo"]);
 
-    const result = await caller.tags.addTag({ trackId: 1, tag: "Single Candidate" });
+    const result = await caller.track.addTag({ trackId: 1, tag: "Single Candidate" });
     expect(result.success).toBe(true);
     expect(result.tags).toContain("Demo");
     expect(result.tags).toContain("Single Candidate");
@@ -1261,7 +1261,7 @@ describe("tags.addTag", () => {
     (db.getTrackById as any).mockResolvedValueOnce({ id: 1, userId: 1, projectId: 1 });
     (db.getTrackTags as any).mockResolvedValueOnce(["Demo"]);
 
-    const result = await caller.tags.addTag({ trackId: 1, tag: "Demo" });
+    const result = await caller.track.addTag({ trackId: 1, tag: "Demo" });
     expect(result.success).toBe(true);
   });
 });

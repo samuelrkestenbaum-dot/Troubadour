@@ -47,14 +47,14 @@ export function TrackTags({ trackId, compact = false }: { trackId: number; compa
 
   const { data: tags = [], isLoading } = trpc.tags.get.useQuery({ trackId });
 
-  const addTag = trpc.tags.addTag.useMutation({
+  const addTag = trpc.track.addTag.useMutation({
     onSuccess: () => {
       utils.tags.get.invalidate({ trackId });
       utils.track.get.invalidate({ id: trackId });
       setInputValue("");
       setShowSuggestions(false);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err: { message: string }) => toast.error(err.message),
   });
 
   const removeTag = trpc.tags.removeTag.useMutation({

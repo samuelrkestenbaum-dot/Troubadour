@@ -1765,3 +1765,88 @@ export async function globalSearch(userId: number, query: string, filter: string
   results.sort((a, b) => b.createdAt - a.createdAt);
   return results.slice(0, limit);
 }
+
+// ── Track Reordering ──────────────────────────────────────────────────
+export async function reorderTracks(projectId: number, orderedIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const promises = orderedIds.map((trackId, index) =>
+    db.update(tracks).set({ trackOrder: index }).where(
+      and(eq(tracks.id, trackId), eq(tracks.projectId, projectId))
+    )
+  );
+  await Promise.all(promises);
+  return { success: true };
+}
+
+// ── Review Digest ─────────────────────────────────────────────────────
+export async function getDigestData(userId: number, daysBack: number = 7) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+
+  const recentReviews = await db.select({
+    id: reviews.id,
+    trackId: reviews.trackId,
+    trackFilename: tracks.originalFilename,
+    projectTitle: projects.title,
+    projectId: projects.id,
+    scoresJson: reviews.scoresJson,
+    quickTake: reviews.quickTake,
+    createdAt: reviews.createdAt,
+  })
+    .from(reviews)
+    .innerJoin(tracks, eq(reviews.trackId, tracks.id))
+    .innerJoin(projects, eq(tracks.projectId, projects.id))
+    .where(and(
+      eq(projects.userId, userId),
+      gte(reviews.createdAt, since)
+    ))
+    .orderBy(desc(reviews.createdAt))
+    .limit(50);
+
+  const recentProjects = await db.select({
+    id: projects.id,
+    title: projects.title,
+    status: projects.status,
+    createdAt: projects.createdAt,
+  })
+    .from(projects)
+    .where(and(eq(projects.userId, userId), gte(projects.createdAt, since)))
+    .orderBy(desc(projects.createdAt))
+    .limit(20);
+
+  // Compute summary stats
+  let totalScore = 0;
+  let scoreCount = 0;
+  let highestScore = 0;
+  let lowestScore = 10;
+  let highestTrack = "";
+  let lowestTrack = "";
+
+  for (const r of recentReviews) {
+    try {
+      const scores = typeof r.scoresJson === "string" ? JSON.parse(r.scoresJson) : r.scoresJson;
+      const overall = scores?.overall ?? scores?.overallScore;
+      if (typeof overall === "number") {
+        totalScore += overall;
+        scoreCount++;
+        if (overall > highestScore) { highestScore = overall; highestTrack = r.trackFilename; }
+        if (overall < lowestScore) { lowestScore = overall; lowestTrack = r.trackFilename; }
+      }
+    } catch {}
+  }
+
+  return {
+    period: { daysBack, since: since.toISOString() },
+    reviews: recentReviews,
+    newProjects: recentProjects,
+    stats: {
+      totalReviews: recentReviews.length,
+      totalNewProjects: recentProjects.length,
+      averageScore: scoreCount > 0 ? Math.round((totalScore / scoreCount) * 10) / 10 : null,
+      highestScore: scoreCount > 0 ? { score: highestScore, track: highestTrack } : null,
+      lowestScore: scoreCount > 0 ? { score: lowestScore, track: lowestTrack } : null,
+    },
+  };
+}

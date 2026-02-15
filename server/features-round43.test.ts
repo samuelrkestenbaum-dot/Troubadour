@@ -116,16 +116,16 @@ describe("Round 43 Features", () => {
       expect(deselectAll.size).toBe(0);
     });
 
-    it("should have track.delete procedure in tags router", async () => {
-      // Verify the delete procedure exists on the tags router
+    it("should have track.deleteTrack procedure", async () => {
+      // Verify the deleteTrack procedure exists on the track router
       await expect(
-        caller.tags.delete({ id: 99999 })
+        caller.track.deleteTrack({ id: 99999 })
       ).rejects.toThrow();
     });
 
-    it("should have tags.addTag procedure", async () => {
+    it("should have track.addTag procedure", async () => {
       await expect(
-        caller.tags.addTag({ trackId: 99999, tag: "test" })
+        caller.track.addTag({ trackId: 99999, tag: "test" })
       ).rejects.toThrow();
     });
   });

@@ -884,3 +884,33 @@
 ### Testing
 - [x] 17 new tests for templates gallery, batch actions, and global search
 - [x] All 306 tests passing, zero TypeScript errors
+
+## Round 44 - Track Reordering, Review Digest & Onboarding Tour (Claude 4.5)
+
+### Feature 1: Track Reordering
+- [x] trackOrder column already exists in tracks table (no migration needed)
+- [x] Backend: reorder.update procedure (accepts projectId + orderedTrackIds array)
+- [x] Backend: reorderTracks db helper updates trackOrder for all tracks in one batch
+- [x] Frontend: Reorder toggle button in ProjectView tracks header
+- [x] Frontend: Up/down arrow buttons with track number when reorder mode active
+- [x] Frontend: Persist new order on click via reorder.update mutation with toast feedback
+- [x] Frontend: DraggableTrackList component created (available for future drag-and-drop enhancement)
+
+### Feature 2: Review Digest Summary Page
+- [x] Backend: digest.get procedure — aggregate review activity over configurable time range (1-90 days)
+- [x] Backend: getDigestData db helper — recent reviews, new projects, stats (total reviews, avg score, top track)
+- [x] Frontend: /digest page with period selector (7/14/30/90 days), stats cards, review list, and project list
+- [x] Frontend: Score badges, time-ago formatting, and empty state handling
+- [x] Frontend: Digest nav item added to DashboardLayout sidebar with Calendar icon
+
+### Feature 3: Interactive Onboarding Tour
+- [x] Built guided tour overlay system with step-by-step tooltips and spotlight effect
+- [x] 6 tour steps: Welcome → Dashboard → Create Project → Upload Tracks → AI Reviews → Explore Features
+- [x] Track tour completion in localStorage (troubadour-tour-complete, show once per user)
+- [x] useTourComplete hook for checking/resetting tour state
+- [x] Spotlight effect with dark overlay highlighting target elements
+- [x] OnboardingTour component wired into App.tsx root
+
+### Testing
+- [x] 14 new tests for track reordering, digest generation, onboarding tour, and component existence
+- [x] All 320 tests passing, zero TypeScript errors (npx tsc --noEmit clean)

@@ -52,13 +52,13 @@ export function BatchActionsToolbar({
     },
   });
 
-  const addTag = trpc.tags.addTag.useMutation({
+  const addTag = trpc.track.addTag.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id: projectId });
     },
   });
 
-  const deleteTrack = trpc.tags.delete.useMutation({
+  const deleteTrack = trpc.track.deleteTrack.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id: projectId });
     },
