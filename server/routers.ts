@@ -691,6 +691,58 @@ export const appRouter = router({
         return { queued: queuedJobs.length, batchId, jobs: queuedJobs };
       }),
 
+    batchReReview: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        templateId: z.number().optional(),
+        reviewLength: z.enum(["brief", "standard", "detailed"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "batch_review");
+        // Build metadata
+        const batchMetadata: Record<string, any> = {};
+        if (input.templateId) {
+          const template = await db.getReviewTemplateById(input.templateId);
+          if (!template || template.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+          }
+          batchMetadata.templateId = input.templateId;
+          batchMetadata.focusAreas = template.focusAreas as string[];
+        }
+        if (input.reviewLength) { batchMetadata.reviewLength = input.reviewLength; }
+        const jobMetadata = Object.keys(batchMetadata).length > 0 ? batchMetadata : undefined;
+        const tracks = await db.getTracksByProject(input.projectId);
+        const reviewedTracks = tracks.filter(t => t.status === "reviewed");
+        if (reviewedTracks.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No reviewed tracks to re-review" });
+        }
+        const batchId = `rereview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        let queued = 0;
+        for (const track of reviewedTracks) {
+          const activeJob = await db.getActiveJobForTrack(track.id);
+          if (activeJob) continue;
+          // Check that analysis exists
+          const features = await db.getAudioFeaturesByTrack(track.id);
+          if (!features?.geminiAnalysisJson) continue;
+          const job = await db.createJob({
+            projectId: track.projectId,
+            trackId: track.id,
+            userId: ctx.user.id,
+            type: "review",
+            batchId,
+            metadata: jobMetadata,
+          });
+          enqueueJob(job.id);
+          queued++;
+        }
+        return { queued, batchId };
+      }),
+
     listByProject: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
@@ -1061,6 +1113,112 @@ export const appRouter = router({
         </body></html>`;
 
         return { htmlContent };
+      }),
+
+    exportHistory: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const allReviews = await db.getReviewsByTrack(input.trackId);
+        const trackReviews = allReviews
+          .filter(r => r.reviewType === "track")
+          .sort((a, b) => (a.reviewVersion ?? 1) - (b.reviewVersion ?? 1));
+        if (trackReviews.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "No reviews found for this track" });
+        }
+        const markdownToHtml = (md: string) => md
+          .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+          .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+          .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+          .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+          .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+          .replace(/^- (.*$)/gim, '<li>$1</li>')
+          .replace(/\n\n/gim, '</p><p>')
+          .replace(/\n/gim, '<br>');
+        let versionsHtml = '';
+        for (const review of trackReviews) {
+          const scores = review.scoresJson as Record<string, number> | undefined;
+          let scoresHtml = '';
+          if (scores && Object.keys(scores).length > 0) {
+            scoresHtml = `<div class="scores">${Object.entries(scores).map(([k, v]) =>
+              `<div class="score-item"><span class="score-label">${k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span><span class="score-value">${v}/10</span></div>`
+            ).join('')}</div>`;
+          }
+          const reviewHtml = markdownToHtml(review.reviewMarkdown);
+          const date = new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          versionsHtml += `
+            <div class="version-section">
+              <div class="version-header">
+                <span class="version-badge">Version ${review.reviewVersion ?? 1}</span>
+                <span class="version-date">${date}</span>
+                ${review.isLatest ? '<span class="latest-badge">Latest</span>' : ''}
+              </div>
+              ${review.quickTake ? `<div class="quick-take">"${review.quickTake}"</div>` : ''}
+              ${scoresHtml}
+              <div class="review-content"><p>${reviewHtml}</p></div>
+            </div>
+            <hr class="version-divider">`;
+        }
+        // Score comparison summary
+        let comparisonHtml = '';
+        if (trackReviews.length >= 2) {
+          const first = trackReviews[0].scoresJson as Record<string, number> | undefined;
+          const last = trackReviews[trackReviews.length - 1].scoresJson as Record<string, number> | undefined;
+          if (first && last) {
+            const dims = Object.keys(last);
+            comparisonHtml = `<div class="comparison"><h2>Score Evolution</h2><div class="scores">${dims.map(k => {
+              const delta = (last[k] ?? 0) - (first[k] ?? 0);
+              const arrow = delta > 0 ? '\u2191' : delta < 0 ? '\u2193' : '\u2192';
+              const color = delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#888';
+              return `<div class="score-item"><span class="score-label">${k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span><span class="score-value" style="color:${color}">${first[k] ?? '-'} ${arrow} ${last[k] ?? '-'}</span></div>`;
+            }).join('')}</div></div>`;
+          }
+        }
+        const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${track.originalFilename} - Review History</title><style>
+          body{font-family:system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a2e;max-width:800px;margin:0 auto;padding:40px 20px}
+          h1{font-size:2em;margin-bottom:0.3em;color:#0f0f23} h2{font-size:1.4em;margin-top:1.5em;color:#1a1a2e;border-bottom:2px solid #e8e8f0;padding-bottom:0.3em}
+          h3{font-size:1.15em;margin-top:1.2em;color:#2a2a4a} .header{border-bottom:2px solid #c8102e;padding-bottom:16px;margin-bottom:24px}
+          .quick-take{font-style:italic;color:#555;padding:12px 16px;background:#f8f8fc;border-left:4px solid #c8102e;margin:16px 0}
+          .scores{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 24px;padding:16px;background:#f8f8fc;border-radius:8px;margin:12px 0}
+          .score-item{display:flex;justify-content:space-between;padding:4px 0} .score-label{font-weight:600;color:#555} .score-value{font-weight:700;color:#c8102e}
+          blockquote{border-left:4px solid #ddd;padding-left:12px;color:#666;margin:12px 0} li{margin:4px 0}
+          .version-section{margin:24px 0} .version-divider{border:none;border-top:2px solid #e8e8f0;margin:32px 0}
+          .version-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+          .version-badge{background:#c8102e;color:white;padding:4px 12px;border-radius:20px;font-size:0.85em;font-weight:700}
+          .version-date{color:#888;font-size:0.9em} .latest-badge{background:#22c55e;color:white;padding:2px 8px;border-radius:12px;font-size:0.75em;font-weight:600}
+          .comparison{margin-top:32px;padding-top:24px;border-top:3px solid #c8102e}
+          @media print{body{padding:20px} .version-section{page-break-inside:avoid}}
+        </style></head><body>
+          <div class="header">
+            <h1>${track.originalFilename}</h1>
+            <p style="color:#888">${trackReviews.length} review version${trackReviews.length !== 1 ? 's' : ''} &middot; ${track.detectedGenre || 'Unknown genre'} &middot; ${new Date().toLocaleDateString()}</p>
+          </div>
+          ${comparisonHtml}
+          ${versionsHtml}
+          <footer style="margin-top:40px;padding-top:16px;border-top:1px solid #e8e8f0;color:#999;font-size:0.85em;text-align:center">Generated by Troubadour AI</footer>
+        </body></html>`;
+        // Also generate markdown version
+        let markdown = `# ${track.originalFilename} - Review History\n\n`;
+        markdown += `> ${trackReviews.length} review version${trackReviews.length !== 1 ? 's' : ''} | ${track.detectedGenre || 'Unknown genre'} | ${new Date().toLocaleDateString()}\n\n---\n\n`;
+        for (const review of trackReviews) {
+          const scores = review.scoresJson as Record<string, number> | undefined;
+          const date = new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          markdown += `## Version ${review.reviewVersion ?? 1} — ${date}${review.isLatest ? ' (Latest)' : ''}\n\n`;
+          if (review.quickTake) markdown += `> ${review.quickTake}\n\n`;
+          if (scores) {
+            markdown += `| Dimension | Score |\n|-----------|-------|\n`;
+            for (const [k, v] of Object.entries(scores)) {
+              markdown += `| ${k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} | ${v}/10 |\n`;
+            }
+            markdown += `\n`;
+          }
+          markdown += review.reviewMarkdown + `\n\n---\n\n`;
+        }
+        return { htmlContent, markdown, trackName: track.originalFilename, versionCount: trackReviews.length };
       }),
   }),
 

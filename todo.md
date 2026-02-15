@@ -1013,3 +1013,31 @@
 ### Testing
 - [x] 22 new tests for template picker, diff view score deltas, keyboard navigation, and section parsing
 - [x] All 392 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
+
+## Round 49 - Batch Re-Review, Score Trend Chart, Export Review History (Claude 4.5)
+
+### Feature 1: Batch Re-Review
+- [x] Backend: job.batchReReview procedure queues re-reviews for all reviewed tracks in a project
+- [x] Accepts optional templateId and reviewLength for the batch
+- [x] Frontend: "Re-Review All" button on ProjectView with AlertDialog + template/depth picker
+- [x] Skips tracks with active jobs, unique batchId with rereview_ prefix
+- [x] Confirmation dialog with count of eligible tracks before batch operation
+
+### Feature 2: Score Trend Chart
+- [x] Frontend: VersionScoreTrend SVG line chart component with smooth curves
+- [x] Visualize overall score + all dimensions across review versions with color-coded lines
+- [x] Dimension toggle checkboxes to show/hide specific score lines
+- [x] Overall score delta badge (green up/red down arrow + value)
+- [x] Integrated into TrackView reviews tab above review list
+- [x] Handles single-version tracks (shows single point with message)
+
+### Feature 3: Export Review History
+- [x] Backend: review.exportHistory procedure generates styled HTML + Markdown for all versions
+- [x] Score Evolution summary with colored arrows comparing first vs latest version
+- [x] Version badges, latest badge, timestamps, quick takes, and full reviews
+- [x] Frontend: "Export History (PDF)" and "Markdown" buttons on TrackView (shown when 2+ versions)
+- [x] PDF opens print dialog in new window, Markdown downloads as .md file with track name
+
+### Testing
+- [x] 20 new tests for batch re-review, score trend chart, and export history
+- [x] All 412 tests passing, zero TypeScript errors (npx tsc --noEmit clean)

@@ -130,6 +130,16 @@ export default function ProjectView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const batchReReview = trpc.job.batchReReview.useMutation({
+    onSuccess: (result) => {
+      utils.project.get.invalidate({ id });
+      toast.success(`Re-review queued for ${result.queued} track${result.queued !== 1 ? "s" : ""}`, {
+        description: "Fresh critiques using the latest review format",
+      });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const deleteProject = trpc.project.delete.useMutation({
     onSuccess: () => {
       toast.success("Project deleted");
@@ -560,6 +570,36 @@ export default function ProjectView({ id }: { id: number }) {
           <Zap className="h-4 w-4 mr-2" />
           {batchReviewAll.isPending ? "Queuing..." : allReviewed ? "All Reviewed" : "Review All Tracks"}
         </Button>
+        {allReviewed && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={batchReReview.isPending}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                {batchReReview.isPending ? "Queuing..." : "Re-Review All"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Re-Review All Tracks</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will generate fresh reviews for all {tracks.filter(t => t.status === "reviewed").length} reviewed tracks using the latest critique format and your selected template/depth settings. Previous reviews are preserved in version history.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => batchReReview.mutate({
+                    projectId: id,
+                    reviewLength,
+                    ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
+                  })}
+                >
+                  Re-Review All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         {project.type === "album" && allReviewed && (
           <Button variant="secondary" onClick={() => albumReview.mutate({ projectId: id })} disabled={albumReview.isPending}>
             <BookOpen className="h-4 w-4 mr-2" />

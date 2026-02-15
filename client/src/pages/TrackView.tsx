@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Headphones, FileText, Loader2, Music, BarChart3,
   AlertCircle, GitCompare, Upload, Mic, Save, Target, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap
+  ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap, History, Download
 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { TrackTags } from "@/components/TrackTags";
@@ -30,6 +30,7 @@ import { DAWExportButton } from "@/components/DAWExportButton";
 import { ReviewComparisonView } from "@/components/ReviewComparisonView";
 import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 import { RevisionTimeline } from "@/components/RevisionTimeline";
+import { VersionScoreTrend } from "@/components/ScoreTrendChart";
 
 // ── Mix Report Tab Wrapper ──
 function MixReportTab({ trackId }: { trackId: number }) {
@@ -488,6 +489,61 @@ function ProgressTracker({ trackId }: { trackId: number }) {
   );
 }
 
+// ── Export History Button ──
+function ExportHistoryButton({ trackId }: { trackId: number }) {
+  const exportHistory = trpc.review.exportHistory.useMutation({
+    onSuccess: (result) => {
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(result.htmlContent);
+        win.document.close();
+        setTimeout(() => win.print(), 500);
+      }
+      toast.success(`Review history exported (${result.versionCount} versions)`);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const exportMarkdown = trpc.review.exportHistory.useMutation({
+    onSuccess: (result) => {
+      const blob = new Blob([result.markdown], { type: "text/markdown;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${result.trackName.replace(/\.[^/.]+$/, "")}-review-history.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Markdown downloaded");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  return (
+    <div className="flex items-center gap-2 justify-end">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => exportHistory.mutate({ trackId })}
+        disabled={exportHistory.isPending}
+        className="gap-1.5"
+      >
+        {exportHistory.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <History className="h-3.5 w-3.5" />}
+        Export History (PDF)
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => exportMarkdown.mutate({ trackId })}
+        disabled={exportMarkdown.isPending}
+        className="gap-1.5"
+      >
+        {exportMarkdown.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+        Markdown
+      </Button>
+    </div>
+  );
+}
+
 // ── Main TrackView ──
 
 export default function TrackView({ id }: { id: number }) {
@@ -939,6 +995,13 @@ export default function TrackView({ id }: { id: number }) {
 
         {/* Reviews Tab */}
         <TabsContent value="reviews" className="space-y-4">
+          {/* Score Trend Chart — shows score changes across review versions */}
+          {reviews.filter((r: any) => r.reviewType === "track").length >= 1 && (
+            <VersionScoreTrend trackId={track.id} />
+          )}
+          {reviews.length > 0 && reviews.filter((r: any) => r.reviewType === "track").length >= 2 && (
+            <ExportHistoryButton trackId={track.id} />
+          )}
           {reviews.length > 0 && (
             <div className="flex items-center justify-end gap-2">
               <Button
