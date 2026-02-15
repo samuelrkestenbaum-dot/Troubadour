@@ -335,10 +335,19 @@ export const appRouter = router({
         const existing = await db.getTrackTags(input.trackId);
         const updated = existing.filter(t => t !== input.tag);
         await db.updateTrackTags(input.trackId, updated);
-        return { success: true, tags: updated };
+         return { success: true, tags: updated };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.id);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        await db.deleteTrack(input.id);
+        return { success: true };
       }),
   }),
-
   lyrics: router({
     save: protectedProcedure
       .input(z.object({
@@ -2051,11 +2060,23 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         if (!quality) throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
         return quality;
       }),
-
     trackReviews: protectedProcedure
       .input(z.object({ trackId: z.number() }))
       .query(async ({ input }) => {
         return db.getTrackReviewsWithQuality(input.trackId);
+      }),
+  }),
+
+  // ── Global Search ──
+  search: router({
+    global: protectedProcedure
+      .input(z.object({
+        query: z.string().min(1).max(200),
+        filter: z.enum(["all", "projects", "tracks", "reviews"]).default("all"),
+        limit: z.number().min(1).max(50).default(20),
+      }))
+      .query(async ({ ctx, input }) => {
+        return db.globalSearch(ctx.user.id, input.query, input.filter, input.limit);
       }),
   }),
 });

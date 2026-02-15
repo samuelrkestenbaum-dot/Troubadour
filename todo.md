@@ -852,3 +852,35 @@
 ### Testing
 - [x] 20 new tests for changelog, notifications, and quality indicators
 - [x] All 289 tests passing, zero TypeScript errors
+
+## Round 43 - Templates Gallery, Batch Actions & Global Search (Claude 4.5)
+
+### Feature 1: Review Templates Gallery
+- [x] Build TemplatesGallery page showing 6 built-in reviewer personas (Producer, A&R, Songwriter, Mix Engineer, First-Time Listener, Music Journalist)
+- [x] Each persona card: emoji icon, name, description, focus areas, sample review snippet
+- [x] "Use This Persona" CTA that navigates to project creation with template pre-selected
+- [x] Preview modal showing full sample review for each persona
+- [x] Route: /templates/gallery in App.tsx, "Browse Gallery" button on Templates page
+
+### Feature 2: Batch Actions Toolbar
+- [x] Multi-select mode on ProjectView track list (checkbox per track)
+- [x] Floating action bar when tracks selected: Review Selected, Tag Selected, Delete Selected
+- [x] Select All / Deselect All toggle in tracks header
+- [x] Batch review: queue analyzeAndReview for all selected tracks with review length + template
+- [x] Batch tag: dialog to apply a tag to all selected tracks at once
+- [x] Batch delete: confirm dialog, then delete selected tracks via tags.delete procedure
+- [x] Selection count badge on floating bar
+- [x] Added track delete procedure to tags router
+
+### Feature 3: Global Search with Filters
+- [x] Backend: search.global procedure — full-text search across projects, tracks, and reviews
+- [x] Search by project title, track filename, review markdown content
+- [x] Filter results by type (all/projects/tracks/reviews) with limit parameter
+- [x] Frontend: GlobalSearch component in DashboardLayout header with dropdown results
+- [x] Filter tabs (All/Projects/Tracks/Reviews) with type icons and result counts
+- [x] 300ms debounced search with click-outside-to-close and Escape key support
+- [x] Results show type icon, title, subtitle, score badge, and navigation links
+
+### Testing
+- [x] 17 new tests for templates gallery, batch actions, and global search
+- [x] All 306 tests passing, zero TypeScript errors

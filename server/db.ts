@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification } from "../drizzle/schema";
@@ -158,6 +158,13 @@ export async function deleteProject(id: number) {
   if (!db) return;
   // FK ON DELETE CASCADE handles all child rows (tracks, reviews, jobs, etc.)
   await db.delete(projects).where(eq(projects.id, id));
+}
+
+export async function deleteTrack(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  // FK ON DELETE CASCADE handles child rows (reviews, lyrics, audioFeatures, jobs, annotations, etc.)
+  await db.delete(tracks).where(eq(tracks.id, id));
 }
 
 export async function updateProject(id: number, data: Partial<InsertProject>) {
@@ -1659,4 +1666,102 @@ export async function getTrackReviewsWithQuality(trackId: number) {
       createdAt: r.createdAt,
     };
   });
+}
+
+// ── Global Search ──
+export async function globalSearch(userId: number, query: string, filter: string, limit: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const q = `%${query.toLowerCase()}%`;
+  const results: Array<{
+    type: "project" | "track" | "review";
+    id: number;
+    title: string;
+    subtitle: string;
+    url: string;
+    score?: number;
+    status?: string;
+    createdAt: number;
+  }> = [];
+
+  // Search projects
+  if (filter === "all" || filter === "projects") {
+    const projectResults = await db.select()
+      .from(projects)
+      .where(and(
+        eq(projects.userId, userId),
+        or(
+          sql`LOWER(${projects.title}) LIKE ${q}`,
+          sql`LOWER(${projects.referenceArtists}) LIKE ${q}`,
+          sql`LOWER(${projects.genre}) LIKE ${q}`,
+        )
+      ))
+      .limit(limit);
+    for (const p of projectResults) {
+      results.push({
+        type: "project",
+        id: p.id,
+        title: p.title,
+        subtitle: [p.referenceArtists, p.genre].filter(Boolean).join(" · "),
+        url: `/projects/${p.id}`,
+        status: p.status ?? undefined,
+        createdAt: p.createdAt ? new Date(p.createdAt).getTime() : Date.now(),
+      });
+    }
+  }
+
+  // Search tracks
+  if (filter === "all" || filter === "tracks") {
+    const trackResults = await db.select()
+      .from(tracks)
+      .where(and(
+        eq(tracks.userId, userId),
+        or(
+          sql`LOWER(${tracks.originalFilename}) LIKE ${q}`,
+          sql`LOWER(${tracks.detectedGenre}) LIKE ${q}`,
+        )
+      ))
+      .limit(limit);
+    for (const t of trackResults) {
+      results.push({
+        type: "track",
+        id: t.id,
+        title: t.originalFilename,
+        subtitle: [t.detectedGenre, t.status].filter(Boolean).join(" · "),
+        url: `/tracks/${t.id}`,
+        status: t.status ?? undefined,
+        createdAt: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
+      });
+    }
+  }
+
+  // Search reviews
+  if (filter === "all" || filter === "reviews") {
+    const reviewResults = await db.select()
+      .from(reviews)
+      .innerJoin(tracks, eq(reviews.trackId, tracks.id))
+      .where(and(
+        eq(tracks.userId, userId),
+        or(
+          sql`LOWER(${reviews.quickTake}) LIKE ${q}`,
+          sql`LOWER(${reviews.reviewMarkdown}) LIKE ${q}`,
+        )
+      ))
+      .limit(limit);
+    for (const r of reviewResults) {
+      const quickTake = r.reviews.quickTake || "";
+      results.push({
+        type: "review",
+        id: r.reviews.id,
+        title: r.tracks.originalFilename,
+        subtitle: quickTake.length > 80 ? quickTake.slice(0, 80) + "..." : quickTake,
+        url: `/reviews/${r.reviews.id}`,
+        score: (r.reviews.scoresJson as any)?.overall ?? undefined,
+        createdAt: r.reviews.createdAt ? new Date(r.reviews.createdAt).getTime() : Date.now(),
+      });
+    }
+  }
+
+  results.sort((a, b) => b.createdAt - a.createdAt);
+  return results.slice(0, limit);
 }

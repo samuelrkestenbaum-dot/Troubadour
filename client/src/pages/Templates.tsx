@@ -148,10 +148,15 @@ export default function Templates() {
             <p className="text-sm text-muted-foreground">Customize what the AI focuses on during reviews</p>
           </div>
         </div>
-        <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
-          <Plus className="h-4 w-4 mr-1" />
-          New Template
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate("/templates/gallery")}>
+            Browse Gallery
+          </Button>
+          <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
+            <Plus className="h-4 w-4 mr-1" />
+            New Template
+          </Button>
+        </div>
       </div>
 
       {/* Create form */}

@@ -25,6 +25,7 @@ import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLeng
 import { ProjectInsightsCard } from "@/components/ProjectInsightsCard";
 import { ScoreMatrix } from "@/components/ScoreMatrix";
 import { SentimentTimeline } from "@/components/SentimentTimeline";
+import { BatchActionsToolbar } from "@/components/BatchActionsToolbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -52,6 +53,7 @@ export default function ProjectView({ id }: { id: number }) {
   const dragCounter = useRef(0);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [reviewLength, setReviewLength] = useState<ReviewLength>("standard");
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setContext({ projectId: id, trackId: null });
@@ -550,9 +552,32 @@ export default function ProjectView({ id }: { id: number }) {
 
       {/* Tracks List */}
       <div>
-        <h2 className="text-lg font-semibold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
-          Tracks ({tracks.length})
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+            Tracks ({tracks.length})
+          </h2>
+          {tracks.length > 1 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (selectedTrackIds.size === tracks.length) setSelectedTrackIds(new Set());
+                else setSelectedTrackIds(new Set(tracks.map(t => t.id)));
+              }}
+              className="text-xs"
+            >
+              {selectedTrackIds.size === tracks.length ? "Deselect All" : "Select All"}
+            </Button>
+          )}
+        </div>
+        <BatchActionsToolbar
+          selectedIds={selectedTrackIds}
+          tracks={tracks}
+          projectId={id}
+          reviewLength={reviewLength}
+          templateId={selectedTemplateId ?? undefined}
+          onClearSelection={() => setSelectedTrackIds(new Set())}
+        />
         {tracks.length === 0 ? (
           <DropZone
             onFiles={(files) => handleFileUpload(files as any)}
@@ -568,6 +593,18 @@ export default function ProjectView({ id }: { id: number }) {
                 <Card key={track.id} className="hover:border-primary/30 transition-colors">
                   <CardContent className="py-3 px-4">
                     <div className="flex items-center gap-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedTrackIds.has(track.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const next = new Set(selectedTrackIds);
+                          if (next.has(track.id)) next.delete(track.id);
+                          else next.add(track.id);
+                          setSelectedTrackIds(next);
+                        }}
+                        className="shrink-0 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                      />
                       <button
                         className="shrink-0 p-1 -m-1 rounded hover:bg-accent transition-colors"
                         onClick={(e) => { e.stopPropagation(); toggleFavorite.mutate({ trackId: track.id }); }}

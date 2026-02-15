@@ -30,6 +30,7 @@ import { ChatProvider } from "@/contexts/ChatContext";
 import { ChatSidebar, ChatToggleButton } from "./ChatSidebar";
 import { NotificationBell } from "./NotificationBell";
 import { WhatsNewModal, useHasNewChangelog } from "./WhatsNew";
+import { GlobalSearch } from "./GlobalSearch";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -311,6 +312,11 @@ function DashboardLayoutContent({
                 )}
               </button>
             </div>
+          </div>
+        )}
+        {!isMobile && (
+          <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur px-4 py-2">
+            <GlobalSearch />
           </div>
         )}
         <main className="flex-1 p-4">{children}</main>
