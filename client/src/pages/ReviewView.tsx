@@ -33,6 +33,10 @@ import { trackExportUsed, trackShareLinkCreated, trackFeatureGated } from "@/lib
 import { scoreColor } from "@/lib/scoreColor";
 import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 import { CollapsibleReview } from "@/components/CollapsibleReview";
+import { TemplateSelector } from "@/components/TemplateSelector";
+import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
+import { ReviewDiffView } from "@/components/ReviewDiffView";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const scoreLabels: Record<string, string> = {
   production: "Production Quality",
@@ -369,6 +373,11 @@ export default function ReviewView({ id }: { id: number }) {
     toast.success("Review copied to clipboard");
   };
 
+  const [reReviewTemplateId, setReReviewTemplateId] = useState<number | null>(null);
+  const [reReviewLength, setReReviewLength] = useState<ReviewLength>("standard");
+  const [showDiff, setShowDiff] = useState(false);
+  const [diffReviewId, setDiffReviewId] = useState<number | null>(null);
+
   const reReviewMut = trpc.job.reReview.useMutation({
     onSuccess: () => {
       toast.success("Re-review queued", {
@@ -505,16 +514,38 @@ export default function ReviewView({ id }: { id: number }) {
                   Re-review
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="sm:max-w-md">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Re-review this track?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will generate a fresh review using the latest critique format with categorized sections and actionable suggestions. The new review will be saved as the next version in your review history — your current review won't be lost.
+                    Generate a fresh review using the latest critique format. Pick a template and review depth below. Your current review won't be lost.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Review Template</label>
+                    <TemplateSelector
+                      value={reReviewTemplateId}
+                      onChange={setReReviewTemplateId}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">Choose a persona to shape the AI's critique style.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Review Depth</label>
+                    <ReviewLengthSelector
+                      value={reReviewLength}
+                      onChange={setReReviewLength}
+                    />
+                  </div>
+                </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => reReviewMut.mutate({ trackId: review.trackId! })}>
+                  <AlertDialogAction onClick={() => reReviewMut.mutate({
+                    trackId: review.trackId!,
+                    ...(reReviewTemplateId ? { templateId: reReviewTemplateId } : {}),
+                    reviewLength: reReviewLength,
+                  })}>
                     Generate New Review
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -628,6 +659,27 @@ export default function ReviewView({ id }: { id: number }) {
         </Card>
       )}
 
+      {/* Review Version History */}
+      {review.trackId && review.reviewType === "track" && (
+        <ReviewVersionHistory
+          trackId={review.trackId}
+          currentReviewId={review.id}
+          onCompare={(otherId) => {
+            setDiffReviewId(otherId);
+            setShowDiff(true);
+          }}
+        />
+      )}
+
+      {/* Diff View */}
+      {showDiff && diffReviewId && (
+        <ReviewDiffView
+          reviewIdA={diffReviewId}
+          reviewIdB={review.id}
+          onClose={() => { setShowDiff(false); setDiffReviewId(null); }}
+        />
+      )}
+
       <Separator />
 
       {/* Full Review */}
@@ -642,5 +694,86 @@ export default function ReviewView({ id }: { id: number }) {
         <ConversationPanel reviewId={review.id} userTier={userTier} />
       )}
     </div>
+  );
+}
+
+function ReviewVersionHistory({ trackId, currentReviewId, onCompare }: {
+  trackId: number;
+  currentReviewId: number;
+  onCompare: (reviewId: number) => void;
+}) {
+  const { data: reviews } = trpc.review.listByTrack.useQuery({ trackId });
+  const [, navigate] = useLocation();
+
+  // Only show if there are multiple reviews
+  const trackReviews = reviews?.filter(r => r.reviewType === "track") ?? [];
+  if (trackReviews.length <= 1) return null;
+
+  return (
+    <Card className="border-border/40">
+      <CardHeader className="pb-2 py-3">
+        <CardTitle className="text-sm uppercase tracking-wider text-primary flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+          <GitCompare className="h-4 w-4" />
+          Review History ({trackReviews.length} versions)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <div className="space-y-1.5">
+          {trackReviews.map((r) => {
+            const isCurrent = r.id === currentReviewId;
+            const scores = r.scoresJson as Record<string, number> | null;
+            const overall = scores?.overall;
+            return (
+              <div
+                key={r.id}
+                className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${
+                  isCurrent ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/20"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Badge variant={isCurrent ? "default" : "outline"} className="text-xs">
+                    v{r.reviewVersion ?? 1}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}
+                  </span>
+                  {overall !== undefined && (
+                    <span className={`text-sm font-bold tabular-nums ${scoreColor(overall)}`}>
+                      {overall}/10
+                    </span>
+                  )}
+                  {isCurrent && (
+                    <span className="text-xs text-primary font-medium">Current</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isCurrent && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => onCompare(r.id)}
+                      >
+                        <GitCompare className="h-3 w-3 mr-1" />
+                        Compare
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => navigate(`/reviews/${r.id}`)}
+                      >
+                        View
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

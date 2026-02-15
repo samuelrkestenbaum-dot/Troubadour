@@ -790,6 +790,51 @@ export const appRouter = router({
         };
       }),
 
+    reviewDiff: protectedProcedure
+      .input(z.object({ reviewIdA: z.number(), reviewIdB: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const reviewA = await db.getReviewById(input.reviewIdA);
+        const reviewB = await db.getReviewById(input.reviewIdB);
+        if (!reviewA || reviewA.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review A not found" });
+        }
+        if (!reviewB || reviewB.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Review B not found" });
+        }
+        const scoresA = (reviewA.scoresJson as Record<string, number>) || {};
+        const scoresB = (reviewB.scoresJson as Record<string, number>) || {};
+        const allKeys = Array.from(new Set([...Object.keys(scoresA), ...Object.keys(scoresB)]));
+        const scoreDeltas: Record<string, { old: number | null; new_: number | null; delta: number }> = {};
+        for (const key of allKeys) {
+          const oldVal = scoresA[key] ?? null;
+          const newVal = scoresB[key] ?? null;
+          scoreDeltas[key] = {
+            old: oldVal,
+            new_: newVal,
+            delta: (newVal ?? 0) - (oldVal ?? 0),
+          };
+        }
+        return {
+          reviewA: {
+            id: reviewA.id,
+            reviewVersion: reviewA.reviewVersion,
+            reviewMarkdown: reviewA.reviewMarkdown,
+            quickTake: reviewA.quickTake,
+            scores: scoresA,
+            createdAt: reviewA.createdAt,
+          },
+          reviewB: {
+            id: reviewB.id,
+            reviewVersion: reviewB.reviewVersion,
+            reviewMarkdown: reviewB.reviewMarkdown,
+            quickTake: reviewB.quickTake,
+            scores: scoresB,
+            createdAt: reviewB.createdAt,
+          },
+          scoreDeltas,
+        };
+      }),
+
     exportMarkdown: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {

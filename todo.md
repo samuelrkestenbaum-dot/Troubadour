@@ -983,3 +983,33 @@
 ### Testing
 - [x] 18 new tests for systemPrompt wiring, re-review procedure, and collapsible sections
 - [x] All 370 tests passing, zero TypeScript errors
+
+## Round 48 - Template Picker on Re-Review, Review Diff View, Keyboard Shortcuts (Claude 4.5)
+
+### Feature 1: Template Picker on Re-Review
+- [x] Add TemplateSelector and ReviewLengthSelector to re-review AlertDialog
+- [x] Fetch user's custom templates for the picker via trpc.template.list
+- [x] Pass selected templateId and reviewLength to the job.reReview mutation
+- [x] Show template name/icon in the picker for easy identification
+
+### Feature 2: Review Diff View
+- [x] Backend: review.reviewDiff procedure accepts two review IDs, computes score deltas
+- [x] Frontend: ReviewDiffView component with side-by-side full review comparison
+- [x] DeltaBadge component highlights score changes (green up/red down/neutral)
+- [x] Overall score hero with v1 vs v2 comparison, dimension rows sorted by abs delta
+- [x] Quick Take comparison side-by-side with version badges and timestamps
+- [x] ReviewVersionHistory component shows all track review versions with Compare/View buttons
+
+### Feature 3: Keyboard Shortcuts for Review Navigation
+- [x] J/K keys to jump between collapsible sections with smooth scrolling
+- [x] E to expand all sections, C to collapse all
+- [x] Enter/Space to toggle focused section open/closed
+- [x] Escape to deactivate keyboard mode
+- [x] Visual indicator: focused section gets primary border ring + highlight
+- [x] Section counter badge (e.g., "Section 2/5") when keyboard active
+- [x] Keyboard icon button with tooltip showing all shortcuts
+- [x] Ignores keyboard shortcuts when typing in input/textarea fields
+
+### Testing
+- [x] 22 new tests for template picker, diff view score deltas, keyboard navigation, and section parsing
+- [x] All 392 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
