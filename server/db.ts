@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1917,4 +1917,53 @@ export async function updateReviewComment(commentId: number, userId: number, con
     and(eq(reviewComments.id, commentId), eq(reviewComments.userId, userId))
   );
   return { success: true };
+}
+
+// ── Artwork Concepts ──
+
+export async function createArtworkConcept(data: InsertArtworkConcept) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(artworkConcepts).values(data).$returningId();
+  return result;
+}
+
+export async function getArtworkConceptsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(artworkConcepts).where(eq(artworkConcepts.projectId, projectId)).orderBy(desc(artworkConcepts.createdAt));
+}
+
+export async function updateArtworkConcept(id: number, data: Partial<{ imageUrl: string; status: "generating" | "complete" | "error"; moodDescription: string; colorPalette: string[]; visualStyle: string }>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(artworkConcepts).set(data).where(eq(artworkConcepts.id, id));
+}
+
+export async function deleteArtworkConcept(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(artworkConcepts).where(eq(artworkConcepts.id, id));
+}
+
+// ── Mastering Checklists ──
+
+export async function createMasteringChecklist(data: InsertMasteringChecklist) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(masteringChecklists).values(data).$returningId();
+  return result;
+}
+
+export async function getMasteringChecklistByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(masteringChecklists).where(eq(masteringChecklists.trackId, trackId)).orderBy(desc(masteringChecklists.createdAt)).limit(1);
+  return rows[0] || null;
+}
+
+export async function updateMasteringChecklist(id: number, data: Partial<{ itemsJson: any; overallReadiness: number }>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(masteringChecklists).set(data).where(eq(masteringChecklists.id, id));
 }

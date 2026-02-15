@@ -451,3 +451,44 @@ export const notifications = mysqlTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+// ── Artwork Concepts ──
+
+export const artworkConcepts = mysqlTable("artworkConcepts", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  prompt: mediumtext("prompt").notNull(),
+  imageUrl: text("imageUrl"),
+  moodDescription: text("moodDescription"),
+  colorPalette: json("colorPalette").$type<string[]>(),
+  visualStyle: varchar("visualStyle", { length: 255 }),
+  status: mysqlEnum("artworkStatus", ["generating", "complete", "error"]).default("generating").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_artworkConcepts_projectId").on(t.projectId),
+  foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type ArtworkConcept = typeof artworkConcepts.$inferSelect;
+export type InsertArtworkConcept = typeof artworkConcepts.$inferInsert;
+
+// ── Mastering Checklists ──
+
+export const masteringChecklists = mysqlTable("masteringChecklists", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  itemsJson: json("itemsJson").$type<Array<{ id: string; category: string; issue: string; suggestion: string; priority: "high" | "medium" | "low"; completed: boolean }>>().notNull(),
+  overallReadiness: int("overallReadiness").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("idx_masteringChecklists_trackId").on(t.trackId),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type MasteringChecklist = typeof masteringChecklists.$inferSelect;
+export type InsertMasteringChecklist = typeof masteringChecklists.$inferInsert;

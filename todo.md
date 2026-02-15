@@ -1071,3 +1071,33 @@
 ### Testing
 - [x] 25 new tests for playlist ordering, collaboration comments, and sentiment heatmap
 - [x] All 437 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
+
+## Round 51 - Album Artwork Concepts, Mastering Checklist, Project Timeline (Claude 4.5)
+
+### Feature 1: Auto-Generate Album Artwork Concepts
+- [x] Backend: artwork.generate procedure using Claude to analyze genre, mood, sentiment, and track data
+- [x] Generate detailed image prompt with mood description, color palette, and visual style
+- [x] Use built-in image generation helper to create artwork concepts
+- [x] Store generated concepts in artworkConcepts table with prompt, image URL, and metadata
+- [x] Frontend: ArtworkGallery component on ProjectView with style hint input
+- [x] Display generated concepts with color palette swatches, mood, style, and delete option
+
+### Feature 2: Mastering Readiness Checklist
+- [x] Backend: mastering.generateChecklist procedure using Claude with structured JSON schema
+- [x] Generate per-track checklist items with priority (high/medium/low) and category (EQ/Dynamics/Stereo/Loudness)
+- [x] Store checklist in masteringChecklists table with itemsJson and overallReadiness score
+- [x] Frontend: MasteringChecklist component on TrackView with checkable items grouped by priority
+- [x] Visual progress bar showing completion percentage with color-coded priority sections
+- [x] Regenerate button to refresh checklist based on latest review data
+
+### Feature 3: Project Timeline View
+- [x] Frontend: ProjectTimeline component showing vertical timeline visualization
+- [x] Show track upload dates, review dates, re-review dates, and tag changes
+- [x] Color-coded events (upload=blue, review=emerald, re-review=amber, tagged=purple, ready=green)
+- [x] Summary stats bar (total tracks, reviewed, ready, days active) with progress bar
+- [x] Events grouped by date with icons and score badges
+- [x] Integrated into ProjectView insights section
+
+### Testing
+- [x] 29 new tests for artwork generation, mastering checklist, timeline component, and db helpers
+- [x] All 466 tests passing, zero TypeScript errors (npx tsc --noEmit clean)

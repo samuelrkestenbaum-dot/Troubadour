@@ -32,6 +32,7 @@ import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 import { RevisionTimeline } from "@/components/RevisionTimeline";
 import { VersionScoreTrend } from "@/components/ScoreTrendChart";
 import { SentimentHeatmap } from "@/components/SentimentHeatmap";
+import { MasteringChecklist } from "@/components/MasteringChecklist";
 
 // ── Mix Report Tab Wrapper ──
 function MixReportTab({ trackId }: { trackId: number }) {
@@ -1005,6 +1006,9 @@ export default function TrackView({ id }: { id: number }) {
           )}
           {reviews.filter((r: any) => r.reviewType === "track").length >= 1 && (
             <SentimentHeatmap trackId={track.id} />
+          )}
+          {reviews.filter((r: any) => r.reviewType === "track").length >= 1 && (
+            <MasteringChecklist trackId={track.id} />
           )}
           {reviews.length > 0 && (
             <div className="flex items-center justify-end gap-2">
