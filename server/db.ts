@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1242,4 +1242,117 @@ export async function getTrackExportData(trackId: number) {
     .where(eq(lyrics.trackId, trackId)).limit(1);
   
   return { track, features: features || null, review: latestReview || null, mixReport: mixReport || null, structure: structure || null, lyrics: lyricsRow || null };
+}
+
+
+// ── Project Insights helpers ──
+
+export async function createProjectInsight(data: InsertProjectInsight) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(projectInsights).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getLatestProjectInsight(projectId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db.select().from(projectInsights)
+    .where(eq(projectInsights.projectId, projectId))
+    .orderBy(desc(projectInsights.createdAt)).limit(1);
+  return row || null;
+}
+
+// ── Score Matrix helper (all tracks + scores in a project) ──
+
+export async function getProjectScoreMatrix(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all tracks with their latest track-type review scores
+  const allTracks = await db.select({
+    id: tracks.id,
+    filename: tracks.originalFilename,
+    detectedGenre: tracks.detectedGenre,
+    trackOrder: tracks.trackOrder,
+  }).from(tracks)
+    .where(eq(tracks.projectId, projectId))
+    .orderBy(asc(tracks.trackOrder));
+
+  const result: Array<{
+    trackId: number;
+    filename: string;
+    genre: string | null;
+    scores: Record<string, number>;
+    overall: number | null;
+  }> = [];
+
+  for (const track of allTracks) {
+    const [latestReview] = await db.select({
+      scoresJson: reviews.scoresJson,
+    }).from(reviews)
+      .where(and(
+        eq(reviews.trackId, track.id),
+        eq(reviews.isLatest, true),
+        eq(reviews.reviewType, "track"),
+      ))
+      .orderBy(desc(reviews.createdAt)).limit(1);
+
+    if (latestReview?.scoresJson) {
+      const scores = latestReview.scoresJson as Record<string, number>;
+      const overall = scores.overall ?? null;
+      result.push({
+        trackId: track.id,
+        filename: track.filename,
+        genre: track.detectedGenre,
+        scores,
+        overall,
+      });
+    }
+  }
+
+  return result;
+}
+
+// ── CSV Export helper ──
+
+export async function getProjectCsvData(projectId: number) {
+  const db = await getDb();
+  if (!db) return { project: null, rows: [] };
+
+  const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  if (!project) return { project: null, rows: [] };
+
+  const allTracks = await db.select().from(tracks)
+    .where(eq(tracks.projectId, projectId))
+    .orderBy(asc(tracks.trackOrder));
+
+  const rows: Array<{
+    trackName: string;
+    genre: string;
+    status: string;
+    quickTake: string;
+    scores: Record<string, number>;
+    reviewDate: string;
+  }> = [];
+
+  for (const track of allTracks) {
+    const [latestReview] = await db.select().from(reviews)
+      .where(and(
+        eq(reviews.trackId, track.id),
+        eq(reviews.isLatest, true),
+        eq(reviews.reviewType, "track"),
+      ))
+      .orderBy(desc(reviews.createdAt)).limit(1);
+
+    rows.push({
+      trackName: track.originalFilename,
+      genre: track.detectedGenre || "",
+      status: track.status,
+      quickTake: latestReview?.quickTake || "",
+      scores: (latestReview?.scoresJson as Record<string, number>) || {},
+      reviewDate: latestReview ? new Date(latestReview.createdAt).toISOString() : "",
+    });
+  }
+
+  return { project, rows };
 }

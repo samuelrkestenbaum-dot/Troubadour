@@ -11,7 +11,7 @@ import { enqueueJob } from "./services/jobProcessor";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { generateFollowUp, generateReferenceComparison } from "./services/claudeCritic";
 import { compareReferenceWithGemini } from "./services/geminiAudio";
-import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks } from "./services/analysisService";
+import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "./services/analysisService";
 
 // ── Usage gating helper ──
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -1819,6 +1819,120 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
             description: s.description,
           })),
           arrangement: analysis.arrangement || {},
+        };
+      }),
+  }),
+
+  // ── Project Insights (Round 40 Feature 1) ──
+  insights: router({
+    get: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        return db.getLatestProjectInsight(input.projectId);
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "analytics");
+
+        const allTracks = await db.getTracksByProject(input.projectId);
+        const allReviews = await db.getReviewsByProject(input.projectId);
+        const reviewedTracks = allTracks.filter(t => t.status === "reviewed");
+        if (reviewedTracks.length < 2) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Need at least 2 reviewed tracks to generate insights" });
+        }
+
+        const trackData = reviewedTracks.map(track => {
+          const review = allReviews.find(r => r.trackId === track.id && r.isLatest && r.reviewType === "track");
+          return {
+            filename: track.originalFilename,
+            genre: track.detectedGenre,
+            quickTake: review?.quickTake || null,
+            scores: (review?.scoresJson as Record<string, number>) || {},
+            reviewExcerpt: review?.reviewMarkdown?.slice(0, 500) || "",
+          };
+        });
+
+        const result = await generateProjectInsights(project.title, trackData);
+        const { id } = await db.createProjectInsight({
+          projectId: input.projectId,
+          userId: ctx.user.id,
+          summaryMarkdown: result.summaryMarkdown,
+          strengthsJson: result.strengths,
+          weaknessesJson: result.weaknesses,
+          recommendationsJson: result.recommendations,
+          averageScoresJson: result.averageScores,
+          trackCount: reviewedTracks.length,
+        });
+        return { id, ...result };
+      }),
+  }),
+
+  // ── Score Matrix (Round 40 Feature 2) ──
+  matrix: router({
+    get: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        return db.getProjectScoreMatrix(input.projectId);
+      }),
+  }),
+
+  // ── CSV Export (Round 40 Feature 3) ──
+  csvExport: router({
+    generate: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "export");
+
+        const { rows } = await db.getProjectCsvData(input.projectId);
+        if (rows.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No tracks to export" });
+        }
+
+        // Collect all score keys
+        const allScoreKeys = new Set<string>();
+        for (const row of rows) {
+          for (const k of Object.keys(row.scores)) allScoreKeys.add(k);
+        }
+        const scoreKeys = Array.from(allScoreKeys).sort();
+
+        // Build CSV
+        const headers = ["Track", "Genre", "Status", "Quick Take", ...scoreKeys.map(k => k.replace(/([A-Z])/g, " $1").trim()), "Review Date"];
+        const csvRows = [headers.join(",")];
+        for (const row of rows) {
+          const values = [
+            `"${row.trackName.replace(/"/g, '""')}"`,
+            `"${row.genre.replace(/"/g, '""')}"`,
+            row.status,
+            `"${row.quickTake.replace(/"/g, '""').replace(/\n/g, " ")}"`,
+            ...scoreKeys.map(k => row.scores[k]?.toString() || ""),
+            row.reviewDate ? new Date(row.reviewDate).toLocaleDateString() : "",
+          ];
+          csvRows.push(values.join(","));
+        }
+
+        return {
+          csv: csvRows.join("\n"),
+          filename: `${project.title.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}-scores.csv`,
         };
       }),
   }),

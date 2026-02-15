@@ -386,3 +386,25 @@ export const structureAnalyses = mysqlTable("structureAnalyses", {
 
 export type StructureAnalysis = typeof structureAnalyses.$inferSelect;
 export type InsertStructureAnalysis = typeof structureAnalyses.$inferInsert;
+
+// ── Project Insights (AI-generated project-level summary) ──
+
+export const projectInsights = mysqlTable("projectInsights", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  summaryMarkdown: mediumtext("summaryMarkdown").notNull(),
+  strengthsJson: json("strengthsJson").$type<string[]>(),
+  weaknessesJson: json("weaknessesJson").$type<string[]>(),
+  recommendationsJson: json("recommendationsJson").$type<string[]>(),
+  averageScoresJson: json("averageScoresJson").$type<Record<string, number>>(),
+  trackCount: int("trackCount").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_projectInsights_projectId").on(t.projectId),
+  foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type ProjectInsight = typeof projectInsights.$inferSelect;
+export type InsertProjectInsight = typeof projectInsights.$inferInsert;

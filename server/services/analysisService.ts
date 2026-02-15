@@ -426,3 +426,93 @@ export function aggregateGenreBenchmarks(
 
   return { genre, trackCount, averageScores, scoreDistribution, topStrengths, commonWeaknesses };
 }
+
+
+// ── Project Insights Summary (Feature 1 — Round 40) ──
+
+export interface ProjectInsightsData {
+  summaryMarkdown: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  averageScores: Record<string, number>;
+}
+
+export async function generateProjectInsights(
+  projectTitle: string,
+  trackData: Array<{
+    filename: string;
+    genre: string | null;
+    quickTake: string | null;
+    scores: Record<string, number>;
+    reviewExcerpt: string;
+  }>,
+): Promise<ProjectInsightsData> {
+  const systemPrompt = `You are a senior A&R executive and music consultant providing a high-level project assessment. You synthesize individual track reviews into actionable project-level insights. Be specific, constructive, and reference individual tracks by name when making points. Keep your analysis concise but insightful.`;
+
+  // Compute average scores across all tracks
+  const allKeys = new Set<string>();
+  for (const t of trackData) {
+    for (const k of Object.keys(t.scores)) allKeys.add(k);
+  }
+  const averageScores: Record<string, number> = {};
+  for (const key of Array.from(allKeys)) {
+    const vals = trackData.map(t => t.scores[key]).filter(v => typeof v === "number" && !isNaN(v));
+    if (vals.length > 0) {
+      averageScores[key] = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+    }
+  }
+
+  const trackSummaries = trackData.map((t, i) => {
+    const scoreStr = Object.entries(t.scores).map(([k, v]) => `${k}: ${v}/10`).join(", ");
+    return `### Track ${i + 1}: "${t.filename}"
+- **Genre:** ${t.genre || "Unknown"}
+- **Quick Take:** ${t.quickTake || "N/A"}
+- **Scores:** ${scoreStr}
+- **Review Excerpt:** ${t.reviewExcerpt.slice(0, 500)}`;
+  }).join("\n\n");
+
+  const avgStr = Object.entries(averageScores).map(([k, v]) => `${k}: ${v}/10`).join(", ");
+
+  const userPrompt = `Analyze this project and provide a concise executive summary.
+
+**Project:** "${projectTitle}"
+**Tracks:** ${trackData.length}
+**Average Scores:** ${avgStr}
+
+${trackSummaries}
+
+Respond in this exact JSON format:
+{
+  "summary": "A 2-3 paragraph markdown summary of the project's overall quality, artistic direction, and commercial potential. Reference specific tracks.",
+  "strengths": ["strength 1", "strength 2", "strength 3"],
+  "weaknesses": ["weakness 1", "weakness 2", "weakness 3"],
+  "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3"]
+}
+
+Keep strengths/weaknesses/recommendations to 3-5 items each, each one sentence. The summary should be 150-250 words.`;
+
+  const raw = await callClaude(systemPrompt, [{ role: "user", content: userPrompt }], 2048);
+
+  try {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in response");
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      summaryMarkdown: parsed.summary || "No summary generated.",
+      strengths: parsed.strengths || [],
+      weaknesses: parsed.weaknesses || [],
+      recommendations: parsed.recommendations || [],
+      averageScores,
+    };
+  } catch {
+    // Fallback: use the raw text as summary
+    return {
+      summaryMarkdown: raw,
+      strengths: [],
+      weaknesses: [],
+      recommendations: [],
+      averageScores,
+    };
+  }
+}

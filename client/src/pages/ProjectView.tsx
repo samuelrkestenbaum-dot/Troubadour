@@ -15,13 +15,15 @@ import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
-  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown
+  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown, Table2
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
 import { CollaborationPanel } from "@/components/CollaborationPanel";
 import { TemplateSelector } from "@/components/TemplateSelector";
 import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
+import { ProjectInsightsCard } from "@/components/ProjectInsightsCard";
+import { ScoreMatrix } from "@/components/ScoreMatrix";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -140,6 +142,20 @@ export default function ProjectView({ id }: { id: number }) {
         setTimeout(() => win.print(), 500);
       }
       toast.success("Report generated — print dialog opened");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const csvExport = trpc.csvExport.generate.useMutation({
+    onSuccess: (result) => {
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSV exported");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -429,15 +445,27 @@ export default function ProjectView({ id }: { id: number }) {
             </Button>
           )}
           {tracks.some(t => t.status === "reviewed") && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => exportAllReviews.mutate({ projectId: id })}
-              disabled={exportAllReviews.isPending}
-            >
-              <FileDown className="h-3.5 w-3.5 mr-1.5" />
-              {exportAllReviews.isPending ? "Generating..." : "Export All"}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => csvExport.mutate({ projectId: id })}
+                disabled={csvExport.isPending}
+                title="Download scores as CSV"
+              >
+                <Table2 className="h-3.5 w-3.5 mr-1.5" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportAllReviews.mutate({ projectId: id })}
+                disabled={exportAllReviews.isPending}
+              >
+                <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                {exportAllReviews.isPending ? "Generating..." : "Export All"}
+              </Button>
+            </>
           )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -694,6 +722,15 @@ export default function ProjectView({ id }: { id: number }) {
           }
         }}
       />
+
+      {/* Project Insights & Score Matrix */}
+      {tracks.filter(t => t.status === "reviewed").length >= 2 && (
+        <>
+          <Separator />
+          <ProjectInsightsCard projectId={id} reviewedTrackCount={tracks.filter(t => t.status === "reviewed").length} />
+          <ScoreMatrix projectId={id} />
+        </>
+      )}
 
       {/* Collaboration Section */}
       <Separator />

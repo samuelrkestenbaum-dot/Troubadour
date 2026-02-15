@@ -762,3 +762,32 @@
 - [x] Review comparison view tested end-to-end with v1 (standard) vs v2 (brief) reviews
 - [x] Brief review verified at ~267 words (within 400-600 target range)
 - [x] Score comparison table shows deltas between review versions
+
+## Round 40 - Project Insights, Track Matrix & CSV Export (Claude 4.5 + Gravito)
+
+### Feature 1: Project Insights Summary
+- [x] Backend: AI-generated project-level insights (strengths, weaknesses, recommendations across all tracks)
+- [x] Backend: insights.generate procedure using Claude to analyze all reviews in a project
+- [x] Backend: Store insights in DB with caching (regenerate on demand)
+- [x] Frontend: Insights card on ProjectView showing key takeaways
+- [x] Frontend: "Generate Insights" button when 2+ tracks are reviewed
+
+### Feature 2: Track Comparison Matrix (Score Heatmap)
+- [x] Backend: matrix.get procedure returning all track scores in a project as a grid
+- [x] Frontend: Color-coded heatmap table (tracks as rows, dimensions as columns)
+- [x] Frontend: Sortable columns, highlight best/worst per dimension
+- [x] Frontend: Accessible from ProjectView as a new section below tracks
+
+### Feature 3: Review Export Improvements
+- [x] Backend: csvExport.generate procedure (all scores + metadata as CSV)
+- [x] Frontend: CSV download button on ProjectView
+- [x] Frontend: Enhanced batch export with score summary table
+
+### Governance (Gravito)
+- [x] gravito.reviewArtifact on project insights AI output template — passed (ship, 0.95 confidence)
+- [x] gravito.checkTrustSignals on new UI copy and labels — passed
+- [x] Run governance audit on new features — no block_release flags
+
+### Testing
+- [x] 19 new tests for insights, matrix, and CSV export
+- [x] All 242 tests passing, zero TypeScript errors
