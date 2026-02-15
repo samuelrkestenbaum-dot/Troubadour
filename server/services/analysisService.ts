@@ -82,14 +82,14 @@ ${existingReview ? `## Existing Review Context\n${existingReview.substring(0, 20
 
 ${analysisContext}
 
-Write a detailed 1000-2000 word mix report with these sections:
-## Overview
-## Frequency Analysis (with subsections for Low End 20-250Hz, Mid Range 250Hz-4kHz, High End 4kHz-20kHz)
-## Dynamics & Loudness
-## Stereo Image & Spatial
-## Section-by-Section Notes (reference specific timestamps)
-## Priority Action Items (numbered list of 8-12 specific DAW actions)
-## Mastering Readiness
+Write a detailed 600-1000 word mix report with these sections:
+## Overview (2-3 sentences)
+## Frequency Analysis (Low End, Mid Range, High End subsections. 2-3 sentences per sub.)
+## Dynamics & Loudness (2-3 sentences)
+## Stereo Image & Spatial (2-3 sentences)
+## Section-by-Section Notes (Reference specific timestamps. 3-4 paragraphs, 2-3 sentences each.)
+## Priority Action Items (Numbered list of 5-8 specific DAW actions.)
+## Mastering Readiness (1-2 sentences)
 
 Return ONLY the markdown text, no JSON wrapping.`;
 
@@ -131,7 +131,7 @@ Return ONLY a valid JSON object (no markdown fences, no explanation) with this e
   ]
 }
 
-Provide 8-12 dawSuggestions. Keep all string values short (under 200 chars). Return ONLY the JSON.`;
+Provide 5-8 dawSuggestions. Keep all string values short (under 150 chars). Return ONLY the JSON.`;
 
   const structuredResponse = await callClaude(systemPrompt, [{ role: "user", content: structuredPrompt }], 3000);
 
@@ -249,7 +249,7 @@ Return a JSON object:
   ]
 }
 
-Be specific. Reference the actual timestamps and sections. Provide at least 4-6 suggestions.`;
+Be specific. Reference actual timestamps and sections. Provide 3-5 suggestions. Keep all string values concise (under 150 chars).`;
 
   const response = await callClaude(systemPrompt, [{ role: "user", content: userMessage }], 4000);
   
@@ -354,7 +354,7 @@ Return a JSON object:
   ]
 }
 
-Keep notes concise and actionable. Prioritize the top 5-10 things the producer should do.`;
+Keep notes concise and actionable. Prioritize the top 5-8 things the producer should do. Max 2-3 notes per section.`;
 
   const response = await callClaude(systemPrompt, [{ role: "user", content: userMessage }], 4000);
   

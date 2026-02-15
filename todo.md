@@ -719,3 +719,15 @@
 - [x] Bug fix: MixReportView crash on null JSON fields — added defensive null checks
 - [x] Bug fix: MoodEnergyChart showing N/A — fixed data extraction path from Gemini JSON
 - [x] Bug fix: Mix report JSON parsing failure — split into two separate LLM calls (markdown + structured data)
+
+## Round 38 - Tighten Review & Breakdown Prompts (Claude 4.5)
+
+- [x] Audit current review prompt in claudeCritic.ts — reduced from 10 sections to 6, word limit 800-1200
+- [x] Audit mix report prompt in analysisService.ts — reduced from 1000-2000 to 600-1000 words, DAW actions 5-8
+- [x] Audit structure analysis prompt in analysisService.ts — suggestions reduced to 3-5, values under 150 chars
+- [x] Audit DAW export prompt in analysisService.ts — priority actions 5-8, max 2-3 notes per section
+- [x] Used Claude 4.5 to rewrite all 5 role-specific prompts (songwriter, producer, arranger, artist, A&R)
+- [x] Each role reduced from 10-12 output sections to 7-8 with explicit sentence limits per section
+- [x] Applied tightened prompts to claudeCritic.ts, reviewFocus.ts, analysisService.ts
+- [x] Updated outputSections arrays to match new section names
+- [x] All 211 tests passing, zero TypeScript errors
