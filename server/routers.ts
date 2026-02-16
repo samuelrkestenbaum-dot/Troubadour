@@ -14,6 +14,7 @@ import { compareReferenceWithGemini } from "./services/geminiAudio";
 import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "./services/analysisService";
 import { invokeLLM } from "./_core/llm";
 import { eq, and, asc, desc } from "drizzle-orm";
+import { sanitizeText, sanitizeUrl } from "./sanitize";
 
 // ── Usage gating helper ──
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -2827,6 +2828,23 @@ Return a JSON object with this exact schema:
           link: "/digest",
         });
 
+        // Send email via Postmark (if configured)
+        let emailSent = false;
+        if (user.email) {
+          try {
+            const { sendDigestEmail } = await import("./services/emailService");
+            const result = await sendDigestEmail({
+              to: user.email,
+              userName: user.name || "Artist",
+              htmlContent,
+              periodLabel,
+            });
+            emailSent = result.success;
+          } catch (e) {
+            console.warn("[Digest] Email delivery failed:", e);
+          }
+        }
+
         // Notify owner via platform notification
         try {
           const { notifyOwner } = await import("./_core/notification");
@@ -2838,7 +2856,7 @@ Return a JSON object with this exact schema:
           console.warn("[Digest] Owner notification failed:", e);
         }
 
-        return { htmlContent, stats: data.stats };
+        return { htmlContent, stats: data.stats, emailSent };
       }),
   }),
 

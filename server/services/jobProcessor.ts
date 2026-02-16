@@ -495,6 +495,26 @@ async function processReviewJob(jobId: number, job: any) {
     console.warn("[JobQueue] In-app notification failed:", e);
   }
 
+  // Send email notification for review completion
+  try {
+    const user = await db.getUserById(job.userId);
+    if (user?.email) {
+      const { sendNotificationEmail } = await import("./emailService");
+      await sendNotificationEmail({
+        to: user.email,
+        subject: `Review Ready: ${track.originalFilename}`,
+        preheader: `Your AI critique for "${track.originalFilename}" is ready — score: ${reviewResult.scores.overall || "N/A"}/10`,
+        bodyHtml: `<h2>Your Review is Ready</h2>
+          <p>The AI critique for <strong>${track.originalFilename}</strong> in project <strong>${project.title}</strong> is complete.</p>
+          <p style="font-size:2em;font-weight:700;color:#a78bfa;margin:16px 0;">${reviewResult.scores.overall || "N/A"}/10</p>
+          <p>${reviewResult.quickTake || ""}</p>
+          <p style="margin-top:24px;"><a href="/projects/${project.id}/tracks/${track.id}" class="btn">View Full Review</a></p>`,
+      });
+    }
+  } catch (e) {
+    console.warn("[JobQueue] Email notification failed:", e);
+  }
+
   // Notify collaborators on shared projects
   try {
     const baseUrl = process.env.VITE_APP_URL || process.env.VITE_FRONTEND_FORGE_API_URL?.replace("/api", "") || "";

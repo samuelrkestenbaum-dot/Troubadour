@@ -8,6 +8,10 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 import { initAnalytics } from "@/lib/analytics";
+import { initSentry } from "@/lib/sentry";
+
+// Initialize Sentry error monitoring (no-op if VITE_SENTRY_DSN not set)
+initSentry();
 
 // Initialize PostHog analytics (no-op if VITE_POSTHOG_KEY not set)
 initAnalytics();

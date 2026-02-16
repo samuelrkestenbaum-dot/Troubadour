@@ -1,0 +1,8 @@
+{
+  "query": "\nCREATE INDEX IF NOT EXISTS idx_projects_userId_deletedAt ON projects(userId, deletedAt);\nCREATE INDEX IF NOT EXISTS idx_tracks_status ON tracks(status);\nCREATE INDEX IF NOT EXISTS idx_reviews_createdAt ON reviews(createdAt);\nCREATE INDEX IF NOT EXISTS idx_notifications_createdAt ON notifications(createdAt);\nCREATE INDEX IF NOT EXISTS idx_jobs_status_trackId ON jobs(status, trackId);\nCREATE INDEX IF NOT EXISTS idx_referenceTracks_userId ON reference_tracks(userId);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute \nCREATE INDEX IF NOT EXISTS idx_projects_userId_deletedAt ON projects(userId, deletedAt);\nCREATE INDEX IF NOT EXISTS idx_tracks_status ON tracks(status);\nCREATE INDEX IF NOT EXISTS idx_reviews_createdAt ON reviews(createdAt);\nCREATE INDEX IF NOT EXISTS idx_notifications_createdAt ON notifications(createdAt);\nCREATE INDEX IF NOT EXISTS idx_jobs_status_trackId ON jobs(status, trackId);\nCREATE INDEX IF NOT EXISTS idx_referenceTracks_userId ON reference_tracks(userId);\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1072 (42000) at line 2: column does not exist: deletedAt"
+  ]
+}

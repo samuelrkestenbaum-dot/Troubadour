@@ -11,4 +11,7 @@ export const ENV = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  sentryDsn: process.env.SENTRY_DSN ?? "",
+  postmarkApiToken: process.env.POSTMARK_API_TOKEN ?? "",
+  postmarkFromEmail: process.env.POSTMARK_FROM_EMAIL ?? "noreply@troubadour.app",
 };
