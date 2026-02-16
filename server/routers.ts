@@ -1397,6 +1397,71 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         await db.updateReferenceTrackComparison(ref.id, comparisonMarkdown);
         return { comparisonResult: comparisonMarkdown };
       }),
+
+    importUrl: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        url: z.string().url(),
+        title: z.string().max(255).optional(),
+        artist: z.string().max(255).optional(),
+        notes: z.string().max(2000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "reference");
+
+        // Detect platform from URL
+        let platform = "unknown";
+        let displayName = input.title || "Reference Track";
+        const urlLower = input.url.toLowerCase();
+        if (urlLower.includes("spotify.com") || urlLower.includes("open.spotify")) {
+          platform = "spotify";
+          displayName = input.title || "Spotify Reference";
+        } else if (urlLower.includes("soundcloud.com")) {
+          platform = "soundcloud";
+          displayName = input.title || "SoundCloud Reference";
+        } else if (urlLower.includes("youtube.com") || urlLower.includes("youtu.be")) {
+          platform = "youtube";
+          displayName = input.title || "YouTube Reference";
+        } else if (urlLower.includes("apple.com/music") || urlLower.includes("music.apple.com")) {
+          platform = "apple_music";
+          displayName = input.title || "Apple Music Reference";
+        } else if (urlLower.includes("tidal.com")) {
+          platform = "tidal";
+          displayName = input.title || "Tidal Reference";
+        }
+
+        const filename = `${displayName}${input.artist ? ` - ${input.artist}` : ''}`;
+
+        // Store as a reference track with the URL as the storage URL
+        // Audio comparison won't be available for URL-only references
+        const ref = await db.createReferenceTrack({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          filename: filename,
+          originalFilename: filename,
+          storageUrl: input.url,
+          storageKey: `url-ref/${platform}/${nanoid()}`,
+          mimeType: "application/x-url",
+          fileSize: 0,
+        });
+        return { id: ref.id, platform, displayName: filename };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ referenceId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const ref = await db.getReferenceTrackById(input.referenceId);
+        if (!ref || ref.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Reference track not found" });
+        }
+        await db.deleteReferenceTrack(input.referenceId);
+        return { success: true };
+      }),
   }),
 
   scoreHistory: router({
@@ -2712,6 +2777,69 @@ Return a JSON object with this exact schema:
       .query(async ({ ctx, input }) => {
         return db.getDigestData(ctx.user.id, input.daysBack);
       }),
+
+    generateEmail: protectedProcedure
+      .input(z.object({
+        daysBack: z.number().min(1).max(90).default(7),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const data = await db.getDigestData(ctx.user.id, input.daysBack);
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const periodLabel = input.daysBack === 7 ? "This Week" : input.daysBack === 14 ? "Last 2 Weeks" : `Last ${input.daysBack} Days`;
+
+        // Build the email-style digest HTML
+        let trackRows = '';
+        if (data.reviews && data.reviews.length > 0) {
+          trackRows = data.reviews.map((r) => {
+            const scores = (typeof r.scoresJson === 'string' ? JSON.parse(r.scoresJson) : r.scoresJson) as Record<string, number> | null;
+            const score = scores?.overall ?? scores?.overallScore;
+            const scoreDisplay = typeof score === 'number' ? score : '—';
+            const scoreColor = typeof score === 'number' ? (score >= 8 ? '#22c55e' : score >= 6 ? '#3b82f6' : score >= 4 ? '#f59e0b' : '#ef4444') : '#888';
+            return `<tr><td style="padding:12px 16px;border-bottom:1px solid #1e1e35;">${r.trackFilename || 'Unknown'}</td><td style="padding:12px 16px;border-bottom:1px solid #1e1e35;color:${scoreColor};font-weight:700;text-align:center;">${scoreDisplay}/10</td><td style="padding:12px 16px;border-bottom:1px solid #1e1e35;color:#888;font-size:0.85em;">${r.quickTake || '—'}</td></tr>`;
+          }).join('');
+        }
+
+        const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Troubadour Weekly Digest</title></head><body style="margin:0;padding:0;background:#0a0a14;color:#e8e8f0;font-family:'Inter',system-ui,-apple-system,sans-serif;">
+          <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
+            <div style="text-align:center;padding:24px 0;border-bottom:2px solid #1e1e35;margin-bottom:24px;">
+              <h1 style="font-size:1.5em;font-weight:800;margin:0 0 4px;">Troubadour</h1>
+              <p style="color:#888;margin:0;font-size:0.9em;">Your ${periodLabel} Digest</p>
+            </div>
+            <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:24px;">
+              <div><div style="font-size:2em;font-weight:700;color:#c8102e;">${data.stats.totalReviews}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Reviews</div></div>
+              <div><div style="font-size:2em;font-weight:700;color:#c8102e;">${data.stats.totalNewProjects}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Projects</div></div>
+              <div><div style="font-size:2em;font-weight:700;color:#c8102e;">${data.stats.averageScore ?? '—'}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Avg Score</div></div>
+            </div>
+            ${trackRows ? `<h2 style="font-size:1.1em;font-weight:600;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid #1e1e35;">Recent Reviews</h2><table style="width:100%;border-collapse:collapse;"><thead><tr style="color:#888;font-size:0.8em;text-transform:uppercase;"><th style="text-align:left;padding:8px 16px;">Track</th><th style="text-align:center;padding:8px 16px;">Score</th><th style="text-align:left;padding:8px 16px;">Quick Take</th></tr></thead><tbody>${trackRows}</tbody></table>` : '<p style="text-align:center;color:#888;padding:24px;">No reviews this period. Upload some tracks to get started!</p>'}
+            ${data.stats.highestScore ? `<div style="margin:24px 0;padding:16px;background:#12121f;border:1px solid #1e1e35;border-radius:12px;"><h3 style="margin:0 0 8px;font-size:0.9em;color:#888;">Top Track</h3><p style="margin:0;font-weight:600;">${data.stats.highestScore.track} — <span style="color:#22c55e;">${data.stats.highestScore.score}/10</span></p></div>` : ''}
+            <div style="text-align:center;padding:24px 0;border-top:1px solid #1e1e35;margin-top:24px;color:#888;font-size:0.75em;">Generated by Troubadour AI &middot; ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          </div>
+        </body></html>`;
+
+        // Also create an in-app notification
+        await db.createNotification({
+          userId: ctx.user.id,
+          type: "digest",
+          title: `${periodLabel} Digest Ready`,
+          message: `Your ${periodLabel.toLowerCase()} digest is ready with ${data.stats.totalReviews} reviews and an average score of ${data.stats.averageScore ?? '—'}/10.`,
+          link: "/digest",
+        });
+
+        // Notify owner via platform notification
+        try {
+          const { notifyOwner } = await import("./_core/notification");
+          await notifyOwner({
+            title: `Troubadour ${periodLabel} Digest`,
+            content: `${user.name}'s digest: ${data.stats.totalReviews} reviews, avg ${data.stats.averageScore ?? '—'}/10. Top track: ${data.stats.highestScore?.track ?? 'N/A'} (${data.stats.highestScore?.score ?? '—'}/10).`,
+          });
+        } catch (e) {
+          console.warn("[Digest] Owner notification failed:", e);
+        }
+
+        return { htmlContent, stats: data.stats };
+      }),
   }),
 
   // ── Sentiment Heatmap ──
@@ -3137,6 +3265,180 @@ Return a JSON object with this exact schema:
         if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
         await db.deleteTrackNote(input.noteId);
         return { success: true };
+      }),
+  }),
+
+  // ── Portfolio Export (label-ready HTML report) ──
+  portfolio: router({
+    generate: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "export");
+
+        const data = await db.getPortfolioData(input.projectId);
+        if (!data) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const { tracks: allTracks, reviews: allReviews, audioFeatures: allFeatures, artwork, insight } = data;
+
+        // Build track cards
+        const markdownToHtml = (md: string) => md
+          .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+          .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+          .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+          .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+          .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+          .replace(/^- (.*$)/gim, '<li>$1</li>')
+          .replace(/\n\n/gim, '</p><p>')
+          .replace(/\n/gim, '<br>');
+
+        let trackCardsHtml = '';
+        for (const track of allTracks) {
+          const review = allReviews.find(r => r.trackId === track.id && r.reviewType === 'track');
+          const features = allFeatures.find(f => f.trackId === track.id);
+          if (!review) continue;
+
+          const scores = review.scoresJson as Record<string, number> | undefined;
+          let scoresHtml = '';
+          if (scores && Object.keys(scores).length > 0) {
+            scoresHtml = `<div class="scores-grid">${Object.entries(scores).map(([k, v]) => {
+              const pct = (v / 10) * 100;
+              const color = v >= 8 ? '#22c55e' : v >= 6 ? '#3b82f6' : v >= 4 ? '#f59e0b' : '#ef4444';
+              return `<div class="score-bar-item"><div class="score-bar-label">${k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</div><div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div><div class="score-bar-value">${v}/10</div></div>`;
+            }).join('')}</div>`;
+          }
+
+          const genreBadge = track.detectedGenre ? `<span class="genre-badge">${track.detectedGenre}</span>` : '';
+          const subgenreBadge = track.detectedSubgenres ? `<span class="subgenre-badge">${track.detectedSubgenres}</span>` : '';
+          const fj = features?.featuresJson as Record<string, any> | null;
+          const featureChips = fj ? `<div class="feature-chips">${fj.bpm ? `<span class="chip">BPM: ${fj.bpm}</span>` : ''}${fj.key ? `<span class="chip">Key: ${fj.key}</span>` : ''}${fj.energy != null ? `<span class="chip">Energy: ${fj.energy}/10</span>` : ''}${fj.danceability != null ? `<span class="chip">Dance: ${fj.danceability}/10</span>` : ''}</div>` : '';
+
+          trackCardsHtml += `
+            <div class="track-card">
+              <div class="track-header">
+                <div class="track-number">${track.trackOrder ?? ''}</div>
+                <div class="track-info">
+                  <h3 class="track-title">${track.originalFilename.replace(/\.[^.]+$/, '')}</h3>
+                  <div class="track-badges">${genreBadge}${subgenreBadge}</div>
+                </div>
+                ${scores?.overall !== undefined ? `<div class="overall-score" style="color:${(scores.overall ?? 0) >= 8 ? '#22c55e' : (scores.overall ?? 0) >= 6 ? '#3b82f6' : (scores.overall ?? 0) >= 4 ? '#f59e0b' : '#ef4444'}">${scores.overall}<span class="score-max">/10</span></div>` : ''}
+              </div>
+              ${featureChips}
+              ${review.quickTake ? `<div class="quick-take">&ldquo;${review.quickTake}&rdquo;</div>` : ''}
+              ${scoresHtml}
+              <div class="review-excerpt"><p>${markdownToHtml(review.reviewMarkdown.slice(0, 1500))}${review.reviewMarkdown.length > 1500 ? '...' : ''}</p></div>
+            </div>`;
+        }
+
+        // Album review section
+        const albumReview = allReviews.find(r => r.reviewType === 'album');
+        let albumHtml = '';
+        if (albumReview) {
+          albumHtml = `<div class="album-section"><h2 class="section-title">Album Review</h2>${albumReview.quickTake ? `<div class="quick-take">&ldquo;${albumReview.quickTake}&rdquo;</div>` : ''}<div class="review-content"><p>${markdownToHtml(albumReview.reviewMarkdown)}</p></div></div>`;
+        }
+
+        // Artwork gallery
+        let artworkHtml = '';
+        if (artwork.length > 0) {
+          artworkHtml = `<div class="artwork-section"><h2 class="section-title">Artwork Concepts</h2><div class="artwork-grid">${artwork.map(a => a.imageUrl ? `<div class="artwork-item"><img src="${a.imageUrl}" alt="${a.moodDescription || 'Artwork concept'}" />${a.visualStyle ? `<p class="artwork-style">${a.visualStyle}</p>` : ''}</div>` : '').join('')}</div></div>`;
+        }
+
+        // Insight summary
+        let insightHtml = '';
+        if (insight) {
+          const strengths = (insight.strengthsJson as string[] | null) || [];
+          const weaknesses = (insight.weaknessesJson as string[] | null) || [];
+          insightHtml = `<div class="insight-section"><h2 class="section-title">AI Project Summary</h2><div class="review-content"><p>${markdownToHtml(insight.summaryMarkdown)}</p></div>${strengths.length > 0 ? `<div class="strengths"><h4>Strengths</h4><ul>${strengths.map(s => `<li>${s}</li>`).join('')}</ul></div>` : ''}${weaknesses.length > 0 ? `<div class="weaknesses"><h4>Areas for Growth</h4><ul>${weaknesses.map(w => `<li>${w}</li>`).join('')}</ul></div>` : ''}</div>`;
+        }
+
+        // Stats summary
+        const reviewedTracks = allTracks.filter(t => allReviews.some(r => r.trackId === t.id && r.reviewType === 'track'));
+        const avgScore = reviewedTracks.length > 0
+          ? reviewedTracks.reduce((sum, t) => {
+              const r = allReviews.find(rv => rv.trackId === t.id && rv.reviewType === 'track');
+              const s = r?.scoresJson as Record<string, number> | undefined;
+              return sum + (s?.overall ?? 0);
+            }, 0) / reviewedTracks.length
+          : 0;
+
+        const coverUrl = project.coverImageUrl || artwork[0]?.imageUrl || '';
+
+        const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${project.title} — Portfolio</title><style>
+          :root{--bg:#0a0a14;--surface:#12121f;--border:#1e1e35;--text:#e8e8f0;--muted:#888;--accent:#c8102e;--accent-soft:rgba(200,16,46,0.15)}
+          *{margin:0;padding:0;box-sizing:border-box}
+          body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+          .container{max-width:900px;margin:0 auto;padding:40px 24px}
+          .hero{text-align:center;padding:60px 0 40px;border-bottom:2px solid var(--border);margin-bottom:40px}
+          .hero-cover{width:200px;height:200px;border-radius:12px;object-fit:cover;margin:0 auto 24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+          .hero h1{font-size:2.5em;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px}
+          .hero .subtitle{color:var(--muted);font-size:1.1em}
+          .stats-row{display:flex;justify-content:center;gap:32px;margin-top:24px}
+          .stat{text-align:center}
+          .stat-value{font-size:1.8em;font-weight:700;color:var(--accent)}
+          .stat-label{font-size:0.8em;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em}
+          .section-title{font-size:1.4em;font-weight:700;margin:40px 0 20px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+          .track-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+          .track-header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+          .track-number{width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9em;flex-shrink:0}
+          .track-info{flex:1}
+          .track-title{font-size:1.15em;font-weight:600;margin-bottom:4px}
+          .track-badges{display:flex;gap:6px;flex-wrap:wrap}
+          .genre-badge,.subgenre-badge{font-size:0.75em;padding:2px 10px;border-radius:12px;background:var(--accent-soft);color:var(--accent)}
+          .subgenre-badge{background:rgba(59,130,246,0.15);color:#3b82f6}
+          .overall-score{font-size:2em;font-weight:800;flex-shrink:0}
+          .score-max{font-size:0.4em;color:var(--muted)}
+          .feature-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+          .chip{font-size:0.75em;padding:3px 10px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--muted)}
+          .quick-take{font-style:italic;color:var(--muted);padding:12px 16px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;margin:12px 0;font-size:0.95em}
+          .scores-grid{display:grid;grid-template-columns:1fr;gap:8px;margin:16px 0}
+          .score-bar-item{display:flex;align-items:center;gap:12px}
+          .score-bar-label{width:120px;font-size:0.8em;color:var(--muted);text-align:right;flex-shrink:0}
+          .score-bar-track{flex:1;height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden}
+          .score-bar-fill{height:100%;border-radius:4px;transition:width 0.3s}
+          .score-bar-value{width:40px;font-size:0.8em;font-weight:600;flex-shrink:0}
+          .review-excerpt{margin-top:16px;font-size:0.9em;color:rgba(232,232,240,0.8)}
+          .review-excerpt p{margin-bottom:8px}
+          .review-content p{margin-bottom:8px}
+          h2,h3{margin-top:16px;margin-bottom:8px}
+          blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted);margin:12px 0}
+          li{margin:4px 0;margin-left:20px}
+          .album-section,.insight-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin:24px 0}
+          .strengths h4{color:#22c55e;margin:16px 0 8px} .weaknesses h4{color:#f59e0b;margin:16px 0 8px}
+          .artwork-section{margin:32px 0}
+          .artwork-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+          .artwork-item{border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+          .artwork-item img{width:100%;display:block}
+          .artwork-style{padding:8px 12px;font-size:0.8em;color:var(--muted);background:var(--surface)}
+          footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.8em;border-top:1px solid var(--border);margin-top:40px}
+          @media print{body{background:#fff;color:#1a1a2e} .container{padding:20px} .track-card,.album-section,.insight-section{border-color:#ddd;background:#f8f8fc} .hero{padding:30px 0 20px} :root{--bg:#fff;--surface:#f8f8fc;--border:#e0e0e0;--text:#1a1a2e;--muted:#666}}
+          @media(max-width:600px){.stats-row{flex-wrap:wrap;gap:16px} .track-header{flex-wrap:wrap} .artwork-grid{grid-template-columns:1fr}}
+        </style></head><body>
+          <div class="container">
+            <div class="hero">
+              ${coverUrl ? `<img class="hero-cover" src="${coverUrl}" alt="${project.title}" />` : ''}
+              <h1>${project.title}</h1>
+              <p class="subtitle">${project.type === 'album' ? 'Album' : 'Single'} &middot; ${allTracks.length} Track${allTracks.length !== 1 ? 's' : ''} &middot; AI-Reviewed by Troubadour</p>
+              <div class="stats-row">
+                <div class="stat"><div class="stat-value">${Math.round(avgScore * 10) / 10}</div><div class="stat-label">Avg Score</div></div>
+                <div class="stat"><div class="stat-value">${reviewedTracks.length}</div><div class="stat-label">Reviewed</div></div>
+                <div class="stat"><div class="stat-value">${allTracks.length}</div><div class="stat-label">Total Tracks</div></div>
+              </div>
+            </div>
+            ${insightHtml}
+            <h2 class="section-title">Track Reviews</h2>
+            ${trackCardsHtml}
+            ${albumHtml}
+            ${artworkHtml}
+            <footer>Generated by Troubadour AI &middot; ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</footer>
+          </div>
+        </body></html>`;
+
+        return { htmlContent };
       }),
   }),
 

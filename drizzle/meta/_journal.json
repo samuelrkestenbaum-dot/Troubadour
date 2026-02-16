@@ -197,6 +197,13 @@
       "when": 1771201609281,
       "tag": "0027_familiar_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1771207016136,
+      "tag": "0028_chunky_the_fallen",
+      "breakpoints": true
     }
   ]
 }

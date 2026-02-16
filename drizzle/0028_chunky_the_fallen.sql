@@ -1,0 +1,1 @@
+ALTER TABLE `notifications` MODIFY COLUMN `type` enum('review_complete','collaboration_invite','collaboration_accepted','system','digest','payment_failed') NOT NULL;

@@ -437,7 +437,7 @@ export type InsertProjectInsight = typeof projectInsights.$inferInsert;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["review_complete", "collaboration_invite", "collaboration_accepted", "system"]).notNull(),
+  type: mysqlEnum("type", ["review_complete", "collaboration_invite", "collaboration_accepted", "system", "digest", "payment_failed"]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   link: varchar("link", { length: 500 }),

@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Headphones, FileText, Loader2, Music, BarChart3,
   AlertCircle, GitCompare, Upload, Mic, Save, Target, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap, History, Download
+  ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap, History, Download,
+  ExternalLink, Trash2
 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { TrackTags } from "@/components/TrackTags";
@@ -117,10 +118,24 @@ function MoodEnergyTab({ trackId }: { trackId: number }) {
 
 // ── Reference Track Section ──
 
+function getPlatformIcon(url: string) {
+  const u = url.toLowerCase();
+  if (u.includes("spotify")) return { label: "Spotify", color: "text-green-400", bg: "bg-green-400/10" };
+  if (u.includes("soundcloud")) return { label: "SoundCloud", color: "text-orange-400", bg: "bg-orange-400/10" };
+  if (u.includes("youtube") || u.includes("youtu.be")) return { label: "YouTube", color: "text-red-400", bg: "bg-red-400/10" };
+  if (u.includes("apple.com/music") || u.includes("music.apple.com")) return { label: "Apple Music", color: "text-pink-400", bg: "bg-pink-400/10" };
+  if (u.includes("tidal")) return { label: "Tidal", color: "text-sky-400", bg: "bg-sky-400/10" };
+  return null;
+}
+
 function ReferenceTrackSection({ trackId }: { trackId: number }) {
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [showUrlForm, setShowUrlForm] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [urlTitle, setUrlTitle] = useState("");
+  const [urlArtist, setUrlArtist] = useState("");
 
   const { data: references, isLoading } = trpc.reference.list.useQuery({ trackId });
 
@@ -136,10 +151,30 @@ function ReferenceTrackSection({ trackId }: { trackId: number }) {
     },
   });
 
+  const importUrl = trpc.reference.importUrl.useMutation({
+    onSuccess: (result) => {
+      utils.reference.list.invalidate({ trackId });
+      toast.success(`${result.displayName} added as reference`);
+      setShowUrlForm(false);
+      setUrlInput("");
+      setUrlTitle("");
+      setUrlArtist("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const compareMut = trpc.reference.compare.useMutation({
     onSuccess: () => {
       utils.reference.list.invalidate({ trackId });
       toast.success("Comparison complete");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteMut = trpc.reference.delete.useMutation({
+    onSuccess: () => {
+      utils.reference.list.invalidate({ trackId });
+      toast.success("Reference removed");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -161,28 +196,40 @@ function ReferenceTrackSection({ trackId }: { trackId: number }) {
     });
   };
 
+  const isUrlRef = (mimeType: string) => mimeType === "application/x-url";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium">Reference Track Comparison</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Upload a reference track to compare against yours
+            Upload audio or paste a Spotify/SoundCloud/YouTube link
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || uploadRef.isPending}
-        >
-          {uploading || uploadRef.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-          ) : (
-            <Target className="h-3.5 w-3.5 mr-1.5" />
-          )}
-          Add Reference
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowUrlForm(!showUrlForm)}
+          >
+            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+            Add URL
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || uploadRef.isPending}
+          >
+            {uploading || uploadRef.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Target className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            Upload Audio
+          </Button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -195,61 +242,152 @@ function ReferenceTrackSection({ trackId }: { trackId: number }) {
         />
       </div>
 
+      {showUrlForm && (
+        <Card className="border-primary/30">
+          <CardContent className="py-4 space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Paste a link to a reference track</label>
+              <input
+                type="url"
+                placeholder="https://open.spotify.com/track/... or SoundCloud/YouTube URL"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Track Title (optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Blinding Lights"
+                  value={urlTitle}
+                  onChange={(e) => setUrlTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Artist (optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. The Weeknd"
+                  value={urlArtist}
+                  onChange={(e) => setUrlArtist(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+            </div>
+            {urlInput && getPlatformIcon(urlInput) && (
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getPlatformIcon(urlInput)!.bg} ${getPlatformIcon(urlInput)!.color}`}>
+                {getPlatformIcon(urlInput)!.label} detected
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => importUrl.mutate({ trackId, url: urlInput, title: urlTitle || undefined, artist: urlArtist || undefined })}
+                disabled={!urlInput || importUrl.isPending}
+              >
+                {importUrl.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1.5" />}
+                Add Reference
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { setShowUrlForm(false); setUrlInput(""); }}>
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading && <Skeleton className="h-24 w-full" />}
 
-      {(!references || references.length === 0) && !isLoading && (
+      {(!references || references.length === 0) && !isLoading && !showUrlForm && (
         <Card className="border-dashed">
           <CardContent className="py-10 text-center">
             <Target className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
-              No reference tracks yet. Upload a track you want to compare against.
+              No reference tracks yet. Upload audio or paste a streaming link.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {references?.map((ref) => (
-        <Card key={ref.id} className="overflow-hidden">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">{ref.filename}</span>
-              </div>
-              {!ref.comparisonResult && (
-                <Button
-                  size="sm"
-                  onClick={() => compareMut.mutate({ referenceId: ref.id })}
-                  disabled={compareMut.isPending}
-                >
-                  {compareMut.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+      {references?.map((ref) => {
+        const platform = isUrlRef(ref.mimeType) ? getPlatformIcon(ref.storageUrl) : null;
+        return (
+          <Card key={ref.id} className="overflow-hidden">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {platform ? (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${platform.bg} ${platform.color}`}>
+                      {platform.label}
+                    </span>
                   ) : (
-                    <GitCompare className="h-3.5 w-3.5 mr-1.5" />
+                    <Target className="h-4 w-4 text-primary" />
                   )}
-                  Compare
-                </Button>
-              )}
-            </div>
-
-            <AudioPlayer
-              src={ref.storageUrl}
-              title={ref.originalFilename}
-              subtitle="Reference Track"
-              compact
-              className="mb-3"
-            />
-
-            {ref.comparisonResult && (
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <div className="prose prose-sm prose-invert max-w-none">
-                  <Streamdown>{ref.comparisonResult}</Streamdown>
+                  <span className="text-sm font-medium">{ref.filename}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!ref.comparisonResult && !isUrlRef(ref.mimeType) && (
+                    <Button
+                      size="sm"
+                      onClick={() => compareMut.mutate({ referenceId: ref.id })}
+                      disabled={compareMut.isPending}
+                    >
+                      {compareMut.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <GitCompare className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Compare
+                    </Button>
+                  )}
+                  {isUrlRef(ref.mimeType) && (
+                    <Button size="sm" variant="outline" onClick={() => window.open(ref.storageUrl, "_blank")}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      Open
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteMut.mutate({ referenceId: ref.id })}
+                    disabled={deleteMut.isPending}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+
+              {!isUrlRef(ref.mimeType) && (
+                <AudioPlayer
+                  src={ref.storageUrl}
+                  title={ref.originalFilename}
+                  subtitle="Reference Track"
+                  compact
+                  className="mb-3"
+                />
+              )}
+
+              {isUrlRef(ref.mimeType) && (
+                <div className="text-xs text-muted-foreground mb-3 truncate">
+                  {ref.storageUrl}
+                </div>
+              )}
+
+              {ref.comparisonResult && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <Streamdown>{ref.comparisonResult}</Streamdown>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

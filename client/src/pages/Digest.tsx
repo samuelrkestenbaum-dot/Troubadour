@@ -6,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import {
   BarChart3, TrendingUp, TrendingDown, Calendar, Music, Star,
-  ArrowRight, FileText, Zap, Clock
+  ArrowRight, FileText, Zap, Clock, Mail, Loader2, ExternalLink
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -29,8 +30,17 @@ function scoreBg(score: number): string {
 export default function Digest() {
   const [, setLocation] = useLocation();
   const [daysBack, setDaysBack] = useState(7);
+  const [emailPreview, setEmailPreview] = useState<string | null>(null);
 
   const { data, isLoading } = trpc.digest.get.useQuery({ daysBack });
+
+  const generateEmail = trpc.digest.generateEmail.useMutation({
+    onSuccess: (result) => {
+      setEmailPreview(result.htmlContent);
+      toast.success("Digest email generated");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const periodLabel = daysBack === 7 ? "This Week" : daysBack === 14 ? "Last 2 Weeks" : "Last 30 Days";
 
@@ -68,17 +78,87 @@ export default function Digest() {
             Your music review activity summary
           </p>
         </div>
-        <Select value={String(daysBack)} onValueChange={(v) => setDaysBack(Number(v))}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">This Week</SelectItem>
-            <SelectItem value="14">Last 2 Weeks</SelectItem>
-            <SelectItem value="30">Last 30 Days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => generateEmail.mutate({ daysBack })}
+            disabled={generateEmail.isPending || isEmpty}
+            title="Generate a shareable email digest of your review activity"
+          >
+            {generateEmail.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Mail className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            Email Digest
+          </Button>
+          <Select value={String(daysBack)} onValueChange={(v) => { setDaysBack(Number(v)); setEmailPreview(null); }}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">This Week</SelectItem>
+              <SelectItem value="14">Last 2 Weeks</SelectItem>
+              <SelectItem value="30">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {emailPreview && (
+        <Card className="border-primary/30">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary" />
+                Digest Email Preview
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const win = window.open("", "_blank");
+                    if (win) { win.document.write(emailPreview); win.document.close(); }
+                  }}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Open in Tab
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(emailPreview);
+                    toast.success("HTML copied to clipboard");
+                  }}
+                >
+                  Copy HTML
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEmailPreview(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+            <CardDescription>Copy the HTML or open in a new tab to preview the email</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-lg overflow-hidden border border-border/50">
+              <iframe
+                srcDoc={emailPreview}
+                className="w-full h-[500px] bg-white"
+                title="Digest Email Preview"
+                sandbox="allow-same-origin"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isEmpty ? (
         <Card className="border-dashed">

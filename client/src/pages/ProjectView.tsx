@@ -165,6 +165,18 @@ export default function ProjectView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const portfolioExport = trpc.portfolio.generate.useMutation({
+    onSuccess: (result) => {
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(result.htmlContent);
+        win.document.close();
+      }
+      toast.success("Portfolio generated in new tab");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const csvExport = trpc.csvExport.generate.useMutation({
     onSuccess: (result) => {
       const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
@@ -501,6 +513,16 @@ export default function ProjectView({ id }: { id: number }) {
               >
                 <FileDown className="h-3.5 w-3.5 mr-1.5" />
                 {exportAllReviews.isPending ? "Generating..." : "Export All"}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => portfolioExport.mutate({ projectId: id })}
+                disabled={portfolioExport.isPending}
+                title="Generate a label-ready portfolio with all tracks, scores, artwork, and reviews"
+              >
+                <BookOpen className="h-3.5 w-3.5 mr-1.5" />
+                {portfolioExport.isPending ? "Building..." : "Portfolio"}
               </Button>
             </>
           )}

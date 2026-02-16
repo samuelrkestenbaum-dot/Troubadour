@@ -2003,3 +2003,69 @@ export async function getTrackNoteById(noteId: number) {
   const rows = await d.select().from(trackNotes).where(eq(trackNotes.id, noteId)).limit(1);
   return rows[0] || null;
 }
+
+
+// ── Round 53: Portfolio Export Data ──
+
+export async function getPortfolioData(projectId: number) {
+  const d = await getDb();
+  if (!d) throw new Error("DB unavailable");
+
+  const [project] = await d.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  if (!project) return null;
+
+  const allTracks = await d.select().from(tracks)
+    .where(eq(tracks.projectId, projectId))
+    .orderBy(asc(tracks.trackOrder));
+
+  const allReviews = await d.select().from(reviews)
+    .where(and(eq(reviews.projectId, projectId), eq(reviews.isLatest, true)))
+    .orderBy(desc(reviews.createdAt));
+
+  const allFeatures = await d.select().from(audioFeatures)
+    .where(
+      inArray(audioFeatures.trackId, allTracks.map(t => t.id).length > 0 ? allTracks.map(t => t.id) : [0])
+    );
+
+  // Get artwork concepts
+  const artwork = await d.select().from(artworkConcepts)
+    .where(and(eq(artworkConcepts.projectId, projectId), eq(artworkConcepts.status, "complete")))
+    .orderBy(desc(artworkConcepts.createdAt))
+    .limit(4);
+
+  // Get project insight
+  const [insight] = await d.select().from(projectInsights)
+    .where(eq(projectInsights.projectId, projectId))
+    .orderBy(desc(projectInsights.createdAt))
+    .limit(1);
+
+  return {
+    project,
+    tracks: allTracks,
+    reviews: allReviews,
+    audioFeatures: allFeatures,
+    artwork,
+    insight: insight || null,
+  };
+}
+
+// ── Round 53: All Users for Digest ──
+
+export async function getAllActiveUsers() {
+  const d = await getDb();
+  if (!d) return [];
+  return d.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    tier: users.tier,
+  }).from(users).where(isNull(users.deletedAt));
+}
+
+// ── Round 53: Delete Reference Track ──
+
+export async function deleteReferenceTrack(id: number) {
+  const d = await getDb();
+  if (!d) throw new Error("DB unavailable");
+  await d.delete(referenceTracks).where(eq(referenceTracks.id, id));
+}
