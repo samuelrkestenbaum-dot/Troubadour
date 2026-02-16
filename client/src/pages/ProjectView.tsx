@@ -30,6 +30,7 @@ import { DraggableTrackList } from "@/components/DraggableTrackList";
 import { PlaylistSuggestion } from "@/components/PlaylistSuggestion";
 import { ArtworkGallery } from "@/components/ArtworkGallery";
 import { ProjectTimeline } from "@/components/ProjectTimeline";
+import { ProjectCompletionScore } from "@/components/ProjectCompletionScore";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -875,6 +876,7 @@ export default function ProjectView({ id }: { id: number }) {
           <ProjectInsightsCard projectId={id} reviewedTrackCount={tracks.filter(t => t.status === "reviewed").length} />
            <ScoreMatrix projectId={id} />
            <SentimentTimeline projectId={id} />
+           <ProjectCompletionScore projectId={id} />
            <ProjectTimeline projectId={id} tracks={tracks} />
            {project.type === "album" && <ArtworkGallery projectId={id} />}
         </>

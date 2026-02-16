@@ -33,6 +33,8 @@ import { RevisionTimeline } from "@/components/RevisionTimeline";
 import { VersionScoreTrend } from "@/components/ScoreTrendChart";
 import { SentimentHeatmap } from "@/components/SentimentHeatmap";
 import { MasteringChecklist } from "@/components/MasteringChecklist";
+import { ABReviewComparison } from "@/components/ABReviewComparison";
+import { TrackNotes } from "@/components/TrackNotes";
 
 // ── Mix Report Tab Wrapper ──
 function MixReportTab({ trackId }: { trackId: number }) {
@@ -1010,6 +1012,10 @@ export default function TrackView({ id }: { id: number }) {
           {reviews.filter((r: any) => r.reviewType === "track").length >= 1 && (
             <MasteringChecklist trackId={track.id} />
           )}
+          {reviews.filter((r: any) => r.reviewType === "track").length >= 1 && (
+            <ABReviewComparison trackId={track.id} />
+          )}
+          <TrackNotes trackId={track.id} />
           {reviews.length > 0 && (
             <div className="flex items-center justify-end gap-2">
               <Button

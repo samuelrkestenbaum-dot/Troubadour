@@ -1101,3 +1101,30 @@
 ### Testing
 - [x] 29 new tests for artwork generation, mastering checklist, timeline component, and db helpers
 - [x] All 466 tests passing, zero TypeScript errors (npx tsc --noEmit clean)
+
+## Round 52 - A/B Review Comparison, Track Notes, Project Completion Score (Claude 4.5)
+
+### Feature 1: A/B Review Comparison
+- [x] Backend: abCompare.generate mutation queues two reviews with different focus perspectives
+- [x] Backend: abCompare.getResults query with polling to fetch both reviews by batchId
+- [x] Frontend: ABReviewComparison component with perspective picker (6 options: Full/Songwriter/Producer/Arranger/Artist/A&R)
+- [x] Frontend: Side-by-side ReviewPanel layout (blue A vs purple B) with score badges and expandable full reviews
+- [x] Prevents comparing same perspective, shows score comparison summary
+
+### Feature 2: Track Notes/Journal
+- [x] Database: trackNotes table with id, trackId, userId, content, pinned, createdAt, updatedAt
+- [x] Backend: trackNote CRUD procedures (create, list, update, delete) with auth
+- [x] Frontend: TrackNotes component with inline editing, pin/unpin, and delete
+- [x] NoteCard component with hover actions, time-ago display, and pinned highlight
+- [x] Empty state with guidance, always visible on TrackView (not gated behind reviews)
+
+### Feature 3: Project Completion Score
+- [x] Backend: completion.getScore query aggregating review scores, mastering readiness, and tag statuses
+- [x] Weighted formula: 40% review coverage + 30% avg review score + 20% mastering readiness + 10% ready tags
+- [x] Frontend: ProjectCompletionScore component with hero score, status label, and progress bar
+- [x] Stats grid (tracks, reviewed, avg score, ready) + per-track breakdown with score badges
+- [x] Warning for unreviewed tracks, 5 status tiers (Release Ready → Early Stage)
+
+### Testing
+- [x] 29 new tests for A/B comparison, track notes CRUD, and completion score
+- [x] All 495 tests passing, zero TypeScript errors (npx tsc --noEmit clean)

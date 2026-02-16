@@ -190,6 +190,13 @@
       "when": 1771197987282,
       "tag": "0026_lethal_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1771201609281,
+      "tag": "0027_familiar_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

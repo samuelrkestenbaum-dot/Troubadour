@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1966,4 +1966,40 @@ export async function updateMasteringChecklist(id: number, data: Partial<{ items
   const db = await getDb();
   if (!db) return;
   await db.update(masteringChecklists).set(data).where(eq(masteringChecklists.id, id));
+}
+
+// ── Track Notes ──
+
+export async function createTrackNote(data: InsertTrackNote) {
+  const d = await getDb();
+  if (!d) throw new Error("DB unavailable");
+  const result = await d.insert(trackNotes).values(data);
+  return { id: Number(result[0].insertId) };
+}
+
+export async function listTrackNotes(trackId: number, userId: number) {
+  const d = await getDb();
+  if (!d) return [];
+  return d.select().from(trackNotes)
+    .where(and(eq(trackNotes.trackId, trackId), eq(trackNotes.userId, userId)))
+    .orderBy(desc(trackNotes.pinned), desc(trackNotes.createdAt));
+}
+
+export async function updateTrackNote(noteId: number, data: Partial<Pick<InsertTrackNote, "content" | "pinned">>) {
+  const d = await getDb();
+  if (!d) throw new Error("DB unavailable");
+  await d.update(trackNotes).set(data).where(eq(trackNotes.id, noteId));
+}
+
+export async function deleteTrackNote(noteId: number) {
+  const d = await getDb();
+  if (!d) throw new Error("DB unavailable");
+  await d.delete(trackNotes).where(eq(trackNotes.id, noteId));
+}
+
+export async function getTrackNoteById(noteId: number) {
+  const d = await getDb();
+  if (!d) return null;
+  const rows = await d.select().from(trackNotes).where(eq(trackNotes.id, noteId)).limit(1);
+  return rows[0] || null;
 }

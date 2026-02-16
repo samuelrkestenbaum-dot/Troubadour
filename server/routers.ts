@@ -13,6 +13,7 @@ import { generateFollowUp, generateReferenceComparison } from "./services/claude
 import { compareReferenceWithGemini } from "./services/geminiAudio";
 import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "./services/analysisService";
 import { invokeLLM } from "./_core/llm";
+import { eq, and, asc, desc } from "drizzle-orm";
 
 // ── Usage gating helper ──
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -2987,6 +2988,264 @@ Return a JSON object with this exact schema:
 
         await db.updateMasteringChecklist(input.checklistId, { itemsJson: items, overallReadiness: completionPct });
         return { items, overallReadiness: completionPct };
+      }),
+  }),
+
+  // ── A/B Review Comparison ──
+  abCompare: router({
+    generate: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        templateAId: z.number().optional(),
+        templateBId: z.number().optional(),
+        focusA: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full"),
+        focusB: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full"),
+        reviewLength: z.enum(["brief", "standard", "detailed"]).default("standard"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const batchId = `ab_${nanoid(8)}`;
+        const metadataBase = { reviewLength: input.reviewLength };
+
+        // Queue job A
+        const metaA: Record<string, any> = { ...metadataBase, reviewFocus: input.focusA, abSide: "A", abBatchId: batchId };
+        if (input.templateAId) {
+          const tpl = await db.getReviewTemplateById(input.templateAId);
+          if (tpl) {
+            metaA.templateId = tpl.id;
+            metaA.templateFocusAreas = tpl.focusAreas;
+            metaA.templateName = tpl.name;
+          }
+        }
+        const jobA = await db.createJob({
+          projectId: track.projectId,
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          type: "review",
+          batchId,
+          metadata: metaA,
+        });
+
+        // Queue job B
+        const metaB: Record<string, any> = { ...metadataBase, reviewFocus: input.focusB, abSide: "B", abBatchId: batchId };
+        if (input.templateBId) {
+          const tpl = await db.getReviewTemplateById(input.templateBId);
+          if (tpl) {
+            metaB.templateId = tpl.id;
+            metaB.templateFocusAreas = tpl.focusAreas;
+            metaB.templateName = tpl.name;
+          }
+        }
+        const jobB = await db.createJob({
+          projectId: track.projectId,
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          type: "review",
+          batchId,
+          metadata: metaB,
+        });
+
+        return { batchId, jobAId: jobA.id, jobBId: jobB.id };
+      }),
+
+    getResults: protectedProcedure
+      .input(z.object({ batchId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const d = await db.getDb();
+        if (!d) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { jobs: jobsTable, reviews: reviewsTable } = await import("../drizzle/schema");
+
+        const abJobs = await d.select().from(jobsTable)
+          .where(and(eq(jobsTable.batchId, input.batchId), eq(jobsTable.userId, ctx.user.id)))
+          .orderBy(asc(jobsTable.createdAt));
+
+        if (abJobs.length < 2) return { status: "pending", jobs: abJobs, reviewA: null, reviewB: null };
+
+        const allDone = abJobs.every(j => j.status === "done");
+        const anyError = abJobs.some(j => j.status === "error");
+
+        let reviewA = null;
+        let reviewB = null;
+
+        if (allDone) {
+          for (const j of abJobs) {
+            const meta = j.metadata as any;
+            if (j.resultId) {
+              const revRows = await d.select().from(reviewsTable).where(eq(reviewsTable.id, j.resultId)).limit(1);
+              if (meta?.abSide === "A") reviewA = revRows[0] || null;
+              else if (meta?.abSide === "B") reviewB = revRows[0] || null;
+            }
+          }
+        }
+
+        return {
+          status: anyError ? "error" : allDone ? "complete" : "pending",
+          jobs: abJobs,
+          reviewA,
+          reviewB,
+        };
+      }),
+  }),
+
+  // ── Track Notes / Journal ──
+  trackNote: router({
+    create: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        content: z.string().min(1).max(10000),
+        pinned: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const track = await db.getTrackById(input.trackId);
+        if (!track || track.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+        return db.createTrackNote({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          content: input.content,
+          pinned: input.pinned ?? false,
+        });
+      }),
+
+    list: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.listTrackNotes(input.trackId, ctx.user.id);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        noteId: z.number(),
+        content: z.string().min(1).max(10000).optional(),
+        pinned: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const note = await db.getTrackNoteById(input.noteId);
+        if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+        const updates: Record<string, any> = {};
+        if (input.content !== undefined) updates.content = input.content;
+        if (input.pinned !== undefined) updates.pinned = input.pinned;
+        await db.updateTrackNote(input.noteId, updates);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ noteId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const note = await db.getTrackNoteById(input.noteId);
+        if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+        await db.deleteTrackNote(input.noteId);
+        return { success: true };
+      }),
+  }),
+
+  // ── Project Completion Score ──
+  completion: router({
+    getScore: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const d = await db.getDb();
+        if (!d) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const { tracks: tracksTable, reviews: reviewsTable, masteringChecklists: mcTable } = await import("../drizzle/schema");
+
+        const projectTracks = await d.select().from(tracksTable)
+          .where(eq(tracksTable.projectId, input.projectId))
+          .orderBy(asc(tracksTable.trackOrder));
+
+        if (projectTracks.length === 0) {
+          return {
+            overallScore: 0,
+            trackCount: 0,
+            reviewedCount: 0,
+            readyCount: 0,
+            averageReviewScore: 0,
+            averageMasteringReadiness: 0,
+            tracks: [],
+          };
+        }
+
+        const trackDetails = await Promise.all(projectTracks.map(async (t) => {
+          // Get latest review
+          const latestReviews = await d.select().from(reviewsTable)
+            .where(and(
+              eq(reviewsTable.trackId, t.id),
+              eq(reviewsTable.reviewType, "track"),
+              eq(reviewsTable.isLatest, true)
+            ))
+            .limit(1);
+          const latestReview = latestReviews[0] || null;
+
+          // Get mastering checklist
+          const checklists = await d.select().from(mcTable)
+            .where(eq(mcTable.trackId, t.id))
+            .orderBy(desc(mcTable.updatedAt))
+            .limit(1);
+          const checklist = checklists[0] || null;
+
+          // Parse scores
+          let reviewScore = 0;
+          if (latestReview?.scoresJson) {
+            const scores = latestReview.scoresJson as any;
+            reviewScore = scores.overall ?? 0;
+          }
+
+          // Parse tags
+          let tags: string[] = [];
+          try { tags = t.tags ? JSON.parse(t.tags) : []; } catch { tags = []; }
+          const isReady = tags.some((tag: string) => tag.toLowerCase().includes("ready") || tag.toLowerCase().includes("done") || tag.toLowerCase().includes("final"));
+
+          // Calculate track completion
+          const hasReview = !!latestReview;
+          const masteringReadiness = checklist?.overallReadiness ?? 0;
+
+          // Weighted: 40% review score, 30% mastering readiness, 20% has review, 10% tagged ready
+          const trackScore = Math.round(
+            (reviewScore / 10) * 40 +
+            (masteringReadiness / 100) * 30 +
+            (hasReview ? 20 : 0) +
+            (isReady ? 10 : 0)
+          );
+
+          return {
+            id: t.id,
+            filename: t.originalFilename,
+            trackOrder: t.trackOrder,
+            status: t.status,
+            reviewScore,
+            masteringReadiness,
+            hasReview,
+            isReady,
+            trackScore,
+            tags,
+          };
+        }));
+
+        const reviewedCount = trackDetails.filter(t => t.hasReview).length;
+        const readyCount = trackDetails.filter(t => t.isReady).length;
+        const avgReviewScore = trackDetails.filter(t => t.hasReview).length > 0
+          ? trackDetails.filter(t => t.hasReview).reduce((sum, t) => sum + t.reviewScore, 0) / trackDetails.filter(t => t.hasReview).length
+          : 0;
+        const avgMastering = trackDetails.filter(t => t.masteringReadiness > 0).length > 0
+          ? trackDetails.filter(t => t.masteringReadiness > 0).reduce((sum, t) => sum + t.masteringReadiness, 0) / trackDetails.filter(t => t.masteringReadiness > 0).length
+          : 0;
+        const overallScore = trackDetails.length > 0
+          ? Math.round(trackDetails.reduce((sum, t) => sum + t.trackScore, 0) / trackDetails.length)
+          : 0;
+
+        return {
+          overallScore,
+          trackCount: projectTracks.length,
+          reviewedCount,
+          readyCount,
+          averageReviewScore: Math.round(avgReviewScore * 10) / 10,
+          averageMasteringReadiness: Math.round(avgMastering),
+          tracks: trackDetails,
+        };
       }),
   }),
 });

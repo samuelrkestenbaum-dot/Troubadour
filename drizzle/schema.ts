@@ -492,3 +492,23 @@ export const masteringChecklists = mysqlTable("masteringChecklists", {
 
 export type MasteringChecklist = typeof masteringChecklists.$inferSelect;
 export type InsertMasteringChecklist = typeof masteringChecklists.$inferInsert;
+
+// ── Track Notes / Journal ──
+
+export const trackNotes = mysqlTable("trackNotes", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  content: mediumtext("content").notNull(),
+  pinned: boolean("pinned").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("idx_trackNotes_trackId").on(t.trackId),
+  index("idx_trackNotes_userId").on(t.userId),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type TrackNote = typeof trackNotes.$inferSelect;
+export type InsertTrackNote = typeof trackNotes.$inferInsert;
