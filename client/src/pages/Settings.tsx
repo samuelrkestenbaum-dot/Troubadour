@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -282,23 +283,12 @@ export default function Settings() {
             </div>
             <div>
               <CardTitle className="text-lg">Notifications</CardTitle>
-              <CardDescription>How you receive updates about your reviews</CardDescription>
+              <CardDescription>Choose which notifications you want to receive</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border border-border/50 bg-card/50 p-4">
-            <div className="flex items-start gap-3">
-              <Bell className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Review notifications</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  You'll receive in-app notifications when your AI reviews are complete, when batch jobs finish, and when payment events occur.
-                  Notification preferences can be managed from the Dashboard settings panel.
-                </p>
-              </div>
-            </div>
-          </div>
+          <NotificationPreferencesSection />
         </CardContent>
       </Card>
 
@@ -529,6 +519,78 @@ function DigestPreferencesSection() {
           )}
         </Button>
       </div>
+    </div>
+  );
+}
+
+
+const NOTIFICATION_TYPES = [
+  { key: "review_complete" as const, label: "Review Complete", description: "When your AI review finishes processing", icon: Music },
+  { key: "collaboration_invite" as const, label: "Collaboration Invites", description: "When someone invites you to collaborate on a project", icon: User },
+  { key: "collaboration_accepted" as const, label: "Collaboration Accepted", description: "When someone accepts your collaboration invite", icon: User },
+  { key: "digest" as const, label: "Weekly Digest", description: "Periodic summary of your review activity and scores", icon: Mail },
+  { key: "payment_failed" as const, label: "Payment Alerts", description: "Important billing and subscription notifications", icon: CreditCard },
+  { key: "system" as const, label: "System Updates", description: "Platform announcements and feature updates", icon: Bell },
+];
+
+function NotificationPreferencesSection() {
+  const { data: prefs, isLoading } = trpc.notification.getPreferences.useQuery();
+  const utils = trpc.useUtils();
+  const updatePrefs = trpc.notification.updatePreferences.useMutation({
+    onMutate: async (newPrefs) => {
+      await utils.notification.getPreferences.cancel();
+      const prev = utils.notification.getPreferences.getData();
+      utils.notification.getPreferences.setData(undefined, (old) => old ? { ...old, ...newPrefs } : old);
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) utils.notification.getPreferences.setData(undefined, context.prev);
+      toast.error("Failed to update preferences");
+    },
+    onSettled: () => utils.notification.getPreferences.invalidate(),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex items-center justify-between py-3 animate-pulse">
+            <div className="space-y-2">
+              <div className="h-4 w-32 bg-muted rounded" />
+              <div className="h-3 w-48 bg-muted/50 rounded" />
+            </div>
+            <div className="h-6 w-10 bg-muted rounded-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!prefs) return null;
+
+  return (
+    <div className="space-y-1">
+      {NOTIFICATION_TYPES.map(({ key, label, description, icon: Icon }, idx) => (
+        <div key={key}>
+          <div className="flex items-center justify-between py-3">
+            <div className="flex items-start gap-3">
+              <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+              </div>
+            </div>
+            <Switch
+              checked={prefs[key]}
+              onCheckedChange={(checked) => updatePrefs.mutate({ [key]: checked })}
+            />
+          </div>
+          {idx < NOTIFICATION_TYPES.length - 1 && <Separator className="opacity-30" />}
+        </div>
+      ))}
+      <p className="text-xs text-muted-foreground pt-2">
+        Disabling a notification type will prevent it from appearing in your notification center. Critical security alerts cannot be disabled.
+      </p>
     </div>
   );
 }

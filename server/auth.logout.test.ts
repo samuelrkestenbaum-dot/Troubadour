@@ -32,7 +32,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     updatedAt: new Date(),
     lastSignedIn: new Date(),
     digestFrequency: "weekly" as const,
-    lastDigestSentAt: null,
+    lastDigestSentAt: null, notificationPreferences: null,
   };
 
   const ctx: TrpcContext = {

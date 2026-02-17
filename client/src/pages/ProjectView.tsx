@@ -165,6 +165,14 @@ export default function ProjectView({ id }: { id: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const exportZip = trpc.review.exportZip.useMutation({
+    onSuccess: (result) => {
+      window.open(result.url, "_blank");
+      toast.success(`ZIP downloaded — ${result.trackCount} track${result.trackCount !== 1 ? "s" : ""}${result.hasAlbumReview ? " + album review" : ""}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const portfolioExport = trpc.portfolio.generate.useMutation({
     onSuccess: (result) => {
       const win = window.open("", "_blank");
@@ -513,6 +521,16 @@ export default function ProjectView({ id }: { id: number }) {
               >
                 <FileDown className="h-3.5 w-3.5 mr-1.5" />
                 {exportAllReviews.isPending ? "Generating..." : "Export All"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportZip.mutate({ projectId: id })}
+                disabled={exportZip.isPending}
+                title="Download all reviews as a ZIP of Markdown files"
+              >
+                <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                {exportZip.isPending ? "Zipping..." : "ZIP"}
               </Button>
               <Button
                 variant="default"

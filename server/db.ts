@@ -1541,11 +1541,50 @@ export async function getProjectSentimentTimeline(projectId: number) {
 
 // ── Notification Helpers ──
 
+const DEFAULT_NOTIFICATION_PREFS = {
+  review_complete: true,
+  collaboration_invite: true,
+  collaboration_accepted: true,
+  digest: true,
+  payment_failed: true,
+  system: true,
+};
+
+export type NotificationPreferences = typeof DEFAULT_NOTIFICATION_PREFS;
+
+export function getDefaultNotificationPrefs(): NotificationPreferences {
+  return { ...DEFAULT_NOTIFICATION_PREFS };
+}
+
 export async function createNotification(data: InsertNotification) {
   const db = await getDb();
   if (!db) return null;
+  // Check user notification preferences before creating
+  const user = await getUserById(data.userId);
+  if (user) {
+    const prefs = (user.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFS) as NotificationPreferences;
+    const notifType = data.type as keyof NotificationPreferences;
+    if (notifType in prefs && prefs[notifType] === false) {
+      return null; // User has disabled this notification type
+    }
+  }
   const result = await db.insert(notifications).values(data);
   return result[0].insertId;
+}
+
+export async function getNotificationPreferences(userId: number): Promise<NotificationPreferences> {
+  const user = await getUserById(userId);
+  if (!user || !user.notificationPreferences) return { ...DEFAULT_NOTIFICATION_PREFS };
+  return { ...DEFAULT_NOTIFICATION_PREFS, ...(user.notificationPreferences as Partial<NotificationPreferences>) };
+}
+
+export async function updateNotificationPreferences(userId: number, prefs: Partial<NotificationPreferences>) {
+  const db = await getDb();
+  if (!db) return;
+  const current = await getNotificationPreferences(userId);
+  const merged = { ...current, ...prefs };
+  await db.update(users).set({ notificationPreferences: merged }).where(eq(users.id, userId));
+  return merged;
 }
 
 export async function getNotifications(userId: number, limit = 50) {

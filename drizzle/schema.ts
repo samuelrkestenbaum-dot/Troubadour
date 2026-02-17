@@ -22,6 +22,14 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   digestFrequency: mysqlEnum("digestFrequency", ["weekly", "biweekly", "monthly", "disabled"]).default("weekly").notNull(),
   lastDigestSentAt: timestamp("lastDigestSentAt"),
+  notificationPreferences: json("notificationPreferences").$type<{
+    review_complete: boolean;
+    collaboration_invite: boolean;
+    collaboration_accepted: boolean;
+    digest: boolean;
+    payment_failed: boolean;
+    system: boolean;
+  }>(),
   deletedAt: timestamp("deletedAt"),
 });
 

@@ -714,6 +714,23 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       await db.markAllNotificationsRead(ctx.user.id);
       return { success: true };
     }),
+
+    getPreferences: protectedProcedure.query(async ({ ctx }) => {
+      return db.getNotificationPreferences(ctx.user.id);
+    }),
+
+    updatePreferences: protectedProcedure
+      .input(z.object({
+        review_complete: z.boolean().optional(),
+        collaboration_invite: z.boolean().optional(),
+        collaboration_accepted: z.boolean().optional(),
+        digest: z.boolean().optional(),
+        payment_failed: z.boolean().optional(),
+        system: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.updateNotificationPreferences(ctx.user.id, input);
+      }),
   }),
 
   // ── Review Quality ──

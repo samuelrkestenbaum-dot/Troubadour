@@ -1321,3 +1321,41 @@
 - [x] Tests for keyboard shortcuts dialog (groups, keys, input guard)
 - [x] Tests for global keyboard shortcuts (two-key sequences, single keys, guards)
 - [x] All 656 tests passing, zero TypeScript errors (tsc --noEmit clean)
+
+## Round 60 - Bulk Export, Score Timeline, Notification Preferences
+
+### Bulk Review Export (ZIP)
+- [x] Add exportZip procedure that generates a ZIP with each review as a Markdown file
+- [x] Upload ZIP to S3 via storagePut and return download URL
+- [x] Add ZIP export button to ProjectView alongside existing CSV export
+- [x] Include formatted headers with scores, genre, date in each Markdown file
+- [x] Include album review in ZIP when present
+
+### Review Score Timeline
+- [x] Already exists from previous rounds (ScoreLineChart + ProgressTracker in TrackView)
+- [x] scoreHistory.get procedure returns score history across review versions
+- [x] ScoreLineChart component (225 lines, SVG-based) with dimension toggles
+- [x] Delta indicators showing score changes between first and latest versions
+
+### Notification Preferences
+- [x] Add notificationPreferences JSON column to users table
+- [x] Add getNotificationPreferences and updateNotificationPreferences db helpers
+- [x] Add getPreferences and updatePreferences procedures to notification router
+- [x] Replace static Notifications section in Settings with interactive Switch toggles
+- [x] Support 6 notification types: review_complete, collaboration_invite, collaboration_accepted, digest, payment_failed, system
+- [x] Wire createNotification to check user preferences before creating (returns null if disabled)
+- [x] Optimistic updates for toggle changes with rollback on error
+- [x] Loading skeleton while preferences load
+- [x] Update all test mock user objects with notificationPreferences field
+
+### Additional Polish
+- [x] Fixed features-round58 test that broke due to new notification.getPreferences marker collision
+- [x] BatchActionsToolbar LSP errors confirmed as phantom (tsc --noEmit passes clean)
+
+### Testing
+- [x] 32 tests for Round 60 features (features-round60.test.ts)
+- [x] Tests for bulk ZIP export (procedure, S3 upload, UI button, download flow)
+- [x] Tests for notification preferences (schema, db helpers, procedures, UI, preference gating)
+- [x] Tests for score timeline (pre-existing ScoreLineChart, ProgressTracker)
+- [x] Tests for mock user object updates across all test files
+- [x] All 688 tests passing, zero TypeScript errors (tsc --noEmit clean)

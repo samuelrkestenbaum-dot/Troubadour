@@ -149,10 +149,9 @@ describe("Digest Test Button & Last Sent Timestamp", () => {
   it("should record lastDigestSentAt when generateEmail sends email", () => {
     const routers = fs.readFileSync("server/routers.ts", "utf-8");
     // The generateEmail mutation should also update lastDigestSentAt
-    const genEmailSection = routers.substring(
-      routers.indexOf("generateEmail: aiAnalysisProcedure"),
-      routers.indexOf("getPreferences: protectedProcedure")
-    );
+    const startIdx = routers.indexOf("generateEmail: aiAnalysisProcedure");
+    const endIdx = routers.indexOf("sendTest: protectedProcedure");
+    const genEmailSection = routers.substring(startIdx, endIdx > startIdx ? endIdx : startIdx + 500);
     expect(genEmailSection).toContain("updateLastDigestSentAt");
   });
 
