@@ -368,10 +368,46 @@ export default function ReviewView({ id }: { id: number }) {
     },
   });
 
+  const [copied, setCopied] = useState(false);
+
   const handleCopy = () => {
     if (!review) return;
-    navigator.clipboard.writeText(review.reviewMarkdown);
-    toast.success("Review copied to clipboard");
+    const scores = review.scoresJson as Record<string, number> | null;
+    const overallScore = scores?.overall ?? scores?.production;
+    const genre = review.genreInsight?.detectedGenre;
+    const date = new Date(review.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+    // Build a rich markdown header
+    const lines: string[] = [];
+    const typeLabel = review.reviewType === "album" ? "Album A&R Memo" : review.reviewType === "comparison" ? "Version Comparison" : "Track Review";
+    lines.push(`# ${typeLabel}`);
+    lines.push("");
+    if (overallScore) lines.push(`**Overall Score:** ${overallScore}/10`);
+    if (genre) lines.push(`**Genre:** ${genre}`);
+    lines.push(`**Date:** ${date}`);
+    lines.push(`**Model:** ${review.modelUsed}`);
+    if (scores && Object.keys(scores).length > 1) {
+      lines.push("");
+      lines.push("| Category | Score |");
+      lines.push("| --- | --- |");
+      for (const [key, val] of Object.entries(scores)) {
+        if (key === "overall") continue;
+        const label = scoreLabels[key] || key.replace(/([A-Z])/g, " $1").trim();
+        lines.push(`| ${label} | ${val}/10 |`);
+      }
+    }
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+    lines.push(review.reviewMarkdown);
+    lines.push("");
+    lines.push("---");
+    lines.push("*Reviewed by [Troubadour](https://troubadour.manus.space) — AI-powered music critique*");
+
+    navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    toast.success("Review copied as formatted Markdown");
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const [reReviewTemplateId, setReReviewTemplateId] = useState<number | null>(null);
@@ -468,8 +504,8 @@ export default function ReviewView({ id }: { id: number }) {
         </div>
         <div className="flex gap-2 sm:ml-auto">
           <Button variant="outline" size="sm" onClick={handleCopy}>
-            <Copy className="h-3.5 w-3.5 mr-1.5" />
-            Copy
+            {copied ? <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+            {copied ? "Copied!" : "Copy"}
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             {userTier !== "pro" ? (

@@ -24,6 +24,8 @@ import AcceptInvite from "./pages/AcceptInvite";
 import GenreBenchmarks from "./pages/GenreBenchmarks";
 import TemplatesGallery from "./pages/TemplatesGallery";
 import { CommandPalette } from "./components/CommandPalette";
+import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
+import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import Digest from "./pages/Digest";
 import { OnboardingTour } from "./components/OnboardingTour";
 
@@ -113,6 +115,8 @@ function App() {
         <TooltipProvider>
           <Toaster position="top-right" richColors />
           <CommandPalette />
+          <KeyboardShortcutsDialog />
+          <GlobalKeyboardShortcuts />
           <OnboardingTour />
           <Router />
         </TooltipProvider>

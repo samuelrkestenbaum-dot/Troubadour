@@ -1286,3 +1286,38 @@
 - [x] Tests for guards module (function exports, circular dep prevention)
 - [x] Tests for test digest and last-sent tracking
 - [x] All 622 tests passing, zero TypeScript errors
+
+## Round 59 - Copy as Markdown, Exponential Backoff, Keyboard Shortcuts Help
+
+### Copy Review as Markdown (Enhanced)
+- [x] Enhance existing Copy button to include formatted header with scores, genre, date, model
+- [x] Add visual feedback (animated checkmark icon swap + "Copied!" text) when copied
+- [x] Include overall score, review type, date, and scores table in copied markdown
+- [x] Add Troubadour attribution footer to copied markdown
+
+### Exponential Backoff for Job Retries
+- [x] Add getRetryDelay function with exponential backoff (base 5s, max 60s, with jitter)
+- [x] Add retryAfter column to jobs table schema
+- [x] Set retryAfter timestamp when re-queuing failed jobs
+- [x] Update claimNextQueuedJob to skip jobs whose retryAfter is in the future
+- [x] Log retry delays for observability
+
+### Keyboard Shortcuts Help Dialog
+- [x] Create KeyboardShortcutsDialog component with grouped shortcut display
+- [x] Register ? key to open/close the dialog
+- [x] Include all shortcuts: Ctrl+K, ?, G+H/D/A/S/T/B/U/P, N, C, E
+
+### Additional Polish
+- [x] Create GlobalKeyboardShortcuts component with two-key G+X sequences
+- [x] Support G+H (Home), G+D (Dashboard), G+A (Analytics), G+S (Settings), G+T (Templates), G+B (Benchmarks), G+U (Usage), G+P (Pricing)
+- [x] Support N for New Project
+- [x] Auto-clear pending prefix after 800ms timeout
+- [x] Improve copy button UX with animated checkmark feedback
+
+### Testing
+- [x] 34 tests for Round 59 features (features-round59.test.ts)
+- [x] Tests for enhanced copy markdown (header, scores table, attribution)
+- [x] Tests for exponential backoff logic (delay calculation, retryAfter, jitter)
+- [x] Tests for keyboard shortcuts dialog (groups, keys, input guard)
+- [x] Tests for global keyboard shortcuts (two-key sequences, single keys, guards)
+- [x] All 656 tests passing, zero TypeScript errors (tsc --noEmit clean)

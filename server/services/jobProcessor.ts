@@ -20,6 +20,18 @@ import type { GeminiAudioAnalysis } from "./geminiAudio";
 // Heartbeat interval for long-running jobs (every 30s)
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
+/**
+ * Calculate exponential backoff delay with jitter.
+ * Base: 5s, multiplied by 2^attempt, capped at 60s, plus random jitter up to 3s.
+ */
+function getRetryDelay(attempt: number): number {
+  const baseDelay = 5_000; // 5 seconds
+  const maxDelay = 60_000; // 60 seconds
+  const exponential = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+  const jitter = Math.random() * 3_000; // 0-3s jitter
+  return Math.round(exponential + jitter);
+}
+
 // ── Persistent Queue State ──
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
@@ -157,14 +169,17 @@ async function processNextJob() {
         ? rawMessage.substring(0, 2000) + "... (truncated)"
         : rawMessage;
 
-      // If we have retries left, re-queue instead of failing permanently
+      // If we have retries left, re-queue with exponential backoff
       const maxAttempts = claimedJob.maxAttempts || 3;
       if (claimedJob.attempts < maxAttempts) {
-        console.log(`[JobQueue] Re-queuing job ${claimedJob.id} (attempt ${claimedJob.attempts}/${maxAttempts})`);
+        const delay = getRetryDelay(claimedJob.attempts - 1);
+        const retryAfter = new Date(Date.now() + delay);
+        console.log(`[JobQueue] Re-queuing job ${claimedJob.id} (attempt ${claimedJob.attempts}/${maxAttempts}) — retry after ${Math.round(delay / 1000)}s`);
         try {
           await db.updateJob(claimedJob.id, {
             status: "queued",
-            progressMessage: `Retry ${claimedJob.attempts}/${maxAttempts}: ${errorMessage.substring(0, 200)}`,
+            progressMessage: `Retry ${claimedJob.attempts}/${maxAttempts} in ${Math.round(delay / 1000)}s: ${errorMessage.substring(0, 200)}`,
+            retryAfter,
           });
           // Reset track status for retry
           if (claimedJob.trackId) {

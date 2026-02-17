@@ -592,6 +592,11 @@ export async function claimNextQueuedJob(): Promise<any | undefined> {
       }
     }
 
+    // Skip jobs that are waiting for retry backoff
+    if (candidate.retryAfter && new Date(candidate.retryAfter) > new Date()) {
+      continue;
+    }
+
     // Check max attempts
     if (candidate.attempts >= (candidate.maxAttempts || 3)) {
       await db.update(jobs).set({

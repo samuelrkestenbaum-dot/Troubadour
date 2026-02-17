@@ -218,6 +218,13 @@
       "when": 1771345946840,
       "tag": "0030_omniscient_aaron_stack",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1771353027275,
+      "tag": "0031_rainy_loki",
+      "breakpoints": true
     }
   ]
 }

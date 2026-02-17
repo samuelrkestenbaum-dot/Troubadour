@@ -166,6 +166,7 @@ export const jobs = mysqlTable("jobs", {
   maxAttempts: int("maxAttempts").default(3).notNull(),
   attempts: int("attempts").default(0).notNull(),
   metadata: json("metadata"),
+  retryAfter: timestamp("retryAfter"),
   dependsOnJobId: int("dependsOnJobId").references((): AnyMySqlColumn => jobs.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
