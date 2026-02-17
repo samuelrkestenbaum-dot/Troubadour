@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router, aiReviewProcedure, aiAnalysisProcedure, aiChatProcedure, imageGenProcedure, exportProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
@@ -394,7 +394,7 @@ export const appRouter = router({
   }),
 
   job: router({
-    analyze: protectedProcedure
+    analyze: aiReviewProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
@@ -416,7 +416,7 @@ export const appRouter = router({
         return { jobId: job.id };
       }),
 
-    review: protectedProcedure
+    review: aiReviewProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
@@ -439,7 +439,7 @@ export const appRouter = router({
         return { jobId: job.id };
       }),
 
-    reReview: protectedProcedure
+    reReview: aiReviewProcedure
       .input(z.object({
         trackId: z.number(),
         templateId: z.number().optional(),
@@ -486,7 +486,7 @@ export const appRouter = router({
         return { jobId: job.id };
       }),
 
-    albumReview: protectedProcedure
+    albumReview: aiReviewProcedure
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -507,7 +507,7 @@ export const appRouter = router({
         return { jobId: job.id };
       }),
 
-    compare: protectedProcedure
+    compare: aiReviewProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
@@ -540,7 +540,7 @@ export const appRouter = router({
         return job;
       }),
 
-    retry: protectedProcedure
+    retry: aiReviewProcedure
       .input(z.object({ jobId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const oldJob = await db.getJobById(input.jobId);
@@ -575,7 +575,7 @@ export const appRouter = router({
         return { jobId: newJob.id };
       }),
 
-    analyzeAndReview: protectedProcedure
+    analyzeAndReview: aiReviewProcedure
       .input(z.object({ trackId: z.number(), templateId: z.number().optional(), reviewLength: z.enum(["brief", "standard", "detailed"]).optional() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
@@ -623,7 +623,7 @@ export const appRouter = router({
         return { analyzeJobId: analyzeJob.id, reviewJobId: reviewJob.id };
       }),
 
-    batchReviewAll: protectedProcedure
+    batchReviewAll: aiReviewProcedure
       .input(z.object({ projectId: z.number(), templateId: z.number().optional(), reviewLength: z.enum(["brief", "standard", "detailed"]).optional() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -694,7 +694,7 @@ export const appRouter = router({
         return { queued: queuedJobs.length, batchId, jobs: queuedJobs };
       }),
 
-    batchReReview: protectedProcedure
+    batchReReview: aiReviewProcedure
       .input(z.object({
         projectId: z.number(),
         templateId: z.number().optional(),
@@ -790,7 +790,7 @@ export const appRouter = router({
         return db.getReviewsByTrack(input.trackId);
       }),
 
-    albumReview: protectedProcedure
+    albumReview: aiReviewProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -890,7 +890,7 @@ export const appRouter = router({
         };
       }),
 
-    exportMarkdown: protectedProcedure
+    exportMarkdown: exportProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const review = await db.getReviewById(input.id);
@@ -951,7 +951,7 @@ export const appRouter = router({
         return db.getReviewHistory(input.trackId);
       }),
 
-    exportHtml: protectedProcedure
+    exportHtml: exportProcedure
       .input(z.object({ reviewId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const review = await db.getReviewById(input.reviewId);
@@ -1032,7 +1032,7 @@ export const appRouter = router({
         };
       }),
 
-    exportAllReviews: protectedProcedure
+    exportAllReviews: exportProcedure
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -1118,7 +1118,7 @@ export const appRouter = router({
         return { htmlContent };
       }),
 
-    exportHistory: protectedProcedure
+    exportHistory: exportProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
@@ -1261,7 +1261,7 @@ export const appRouter = router({
         return db.getConversationByReview(input.reviewId);
       }),
 
-    send: protectedProcedure
+    send: aiChatProcedure
       .input(z.object({
         reviewId: z.number(),
         message: z.string().min(1).max(2000),
@@ -1366,7 +1366,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return db.getReferenceTracksByTrack(input.trackId);
       }),
 
-    compare: protectedProcedure
+    compare: aiAnalysisProcedure
       .input(z.object({ referenceId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const ref = await db.getReferenceTrackById(input.referenceId);
@@ -1584,7 +1584,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return db.getChatMessagesBySession(input.sessionId);
       }),
 
-    sendMessage: protectedProcedure
+    sendMessage: aiChatProcedure
       .input(z.object({
         sessionId: z.number(),
         message: z.string().min(1).max(5000),
@@ -2169,7 +2169,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return db.getMixReportByTrack(input.trackId) ?? null;
       }),
 
-    generate: protectedProcedure
+    generate: aiAnalysisProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertFeatureAllowed(ctx.user.tier, "mixReport");
@@ -2194,7 +2194,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return { id, ...report };
       }),
 
-    exportHtml: protectedProcedure
+    exportHtml: exportProcedure
       .input(z.object({ trackId: z.number() }))
       .query(async ({ ctx, input }) => {
         const report = await db.getMixReportByTrack(input.trackId);
@@ -2335,7 +2335,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return db.getStructureAnalysis(input.trackId) ?? null;
       }),
 
-    generate: protectedProcedure
+    generate: aiAnalysisProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertFeatureAllowed(ctx.user.tier, "structureAnalysis");
@@ -2388,7 +2388,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
 
   // ── DAW Session Notes Export (Feature 6) ──
   dawExport: router({
-    generate: protectedProcedure
+    generate: aiAnalysisProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertFeatureAllowed(ctx.user.tier, "dawExport");
@@ -2445,7 +2445,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return db.getLatestProjectInsight(input.projectId);
       }),
 
-    generate: protectedProcedure
+    generate: aiAnalysisProcedure
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -2503,7 +2503,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
 
   // ── CSV Export (Round 40 Feature 3) ──
   csvExport: router({
-    generate: protectedProcedure
+    generate: exportProcedure
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);
@@ -2779,7 +2779,7 @@ Return a JSON object with this exact schema:
         return db.getDigestData(ctx.user.id, input.daysBack);
       }),
 
-    generateEmail: protectedProcedure
+    generateEmail: aiAnalysisProcedure
       .input(z.object({
         daysBack: z.number().min(1).max(90).default(7),
       }))
@@ -2862,7 +2862,7 @@ Return a JSON object with this exact schema:
 
   // ── Sentiment Heatmap ──
   sentimentHeatmap: router({
-    generate: protectedProcedure
+    generate: aiAnalysisProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const track = await db.getTrackById(input.trackId);
@@ -2943,7 +2943,7 @@ Return a JSON object with this exact schema:
 
   // ── Artwork Concepts ──
   artwork: router({
-    generate: protectedProcedure
+    generate: imageGenProcedure
       .input(z.object({ projectId: z.number(), style: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         assertFeatureAllowed(ctx.user.tier, "artwork");
@@ -3025,7 +3025,7 @@ Return a JSON object with this exact schema:
 
   // ── Mastering Readiness Checklist ──
   mastering: router({
-    generateChecklist: protectedProcedure
+    generateChecklist: aiAnalysisProcedure
       .input(z.object({ trackId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertFeatureAllowed(ctx.user.tier, "mastering_checklist");
@@ -3139,7 +3139,7 @@ Return a JSON object with this exact schema:
 
   // ── A/B Review Comparison ──
   abCompare: router({
-    generate: protectedProcedure
+    generate: aiAnalysisProcedure
       .input(z.object({
         trackId: z.number(),
         templateAId: z.number().optional(),
@@ -3288,7 +3288,7 @@ Return a JSON object with this exact schema:
 
   // ── Portfolio Export (label-ready HTML report) ──
   portfolio: router({
-    generate: protectedProcedure
+    generate: exportProcedure
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const project = await db.getProjectById(input.projectId);

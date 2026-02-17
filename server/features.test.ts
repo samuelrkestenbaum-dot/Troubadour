@@ -2,6 +2,12 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import type { User } from "../drizzle/schema";
+import { resetAllLimiters } from "./userRateLimiter";
+
+// Reset rate limiters before each test to prevent cross-test interference
+beforeEach(() => {
+  resetAllLimiters();
+});
 
 // ── Mock external dependencies ──
 
