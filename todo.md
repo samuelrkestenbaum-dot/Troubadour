@@ -1443,3 +1443,25 @@
 - [x] Tests for tag filtering (selectedTags state, chips, clear button, projectIds filtering, dependencies)
 - [x] Tests for tags.listAll projectIds (return field, Set dedup, Array conversion)
 - [x] All 743 tests passing, zero TypeScript errors (tsc --noEmit clean)
+
+## Round 63 - UI Bug Hunting & Fixing (Claude 4.5 + Gravito)
+
+### User Story Testing
+- [ ] Test landing page and onboarding tour flow
+- [ ] Test auth login/logout flow
+- [ ] Test Dashboard navigation, quick stats, activity feed
+- [ ] Test project creation and project view
+- [ ] Test track upload and track view
+- [ ] Test review request and review view
+- [ ] Test review sharing and public shared review page
+- [ ] Test Settings page (profile, digest, notifications)
+- [ ] Test Tags management page
+- [ ] Test Templates page and template selector
+- [ ] Test Analytics page
+- [ ] Test Pricing/Usage page
+- [ ] Test Benchmarks page
+- [ ] Test keyboard shortcuts (?, Ctrl+K, G+D, etc.)
+
+### Bugs Found & Fixed
+- [x] Landing page CTA buttons redirect to login even when user is already logged in (looping bug)
+- [x] "Use This" button on persona gallery redirects to dashboard with no action (looping/dead-end bug)

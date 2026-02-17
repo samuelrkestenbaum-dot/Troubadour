@@ -224,9 +224,9 @@ export default function TemplatesGallery() {
                       onClick={(e) => {
                         e.stopPropagation();
                         toast.success(`${persona.label} persona selected`, {
-                          description: "Navigate to a project to use this persona for reviews",
+                          description: "Creating a new project with this persona",
                         });
-                        navigate("/dashboard");
+                        navigate(`/projects/new?persona=${persona.id}`);
                       }}
                     >
                       Use This

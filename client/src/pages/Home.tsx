@@ -6,7 +6,7 @@ import {
   Music, Headphones, BarChart3, GitCompare, FileText, Zap, ArrowRight,
   PenLine, Sliders, Layers, Mic, Briefcase, Star, Target, TrendingUp, MessageCircle, Sparkles
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 const roles = [
   {
@@ -107,6 +107,15 @@ export default function Home() {
 
   const currentRole = roles[activeRole];
 
+  /** Navigate logged-in users to /projects/new, others to login */
+  const handleGetStarted = useCallback(() => {
+    if (user) {
+      setLocation("/projects/new");
+    } else {
+      window.location.href = getLoginUrl();
+    }
+  }, [user, setLocation]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -155,8 +164,8 @@ export default function Home() {
             Tailored feedback for songwriters, producers, arrangers, artists, and A&R — because each needs something different.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
-              Start Your First Review
+            <Button size="lg" onClick={handleGetStarted} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
+              {user ? "Create New Project" : "Start Your First Review"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -214,8 +223,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>{currentRole.headline}</h3>
                 <p className="text-muted-foreground leading-relaxed mb-6">{currentRole.description}</p>
-                <Button onClick={() => { window.location.href = getLoginUrl(); }} className="group shadow-md shadow-primary/20">
-                  Try it now
+                <Button onClick={handleGetStarted} className="group shadow-md shadow-primary/20">
+                  {user ? "Create New Project" : "Try it now"}
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                 </Button>
               </div>
@@ -276,8 +285,8 @@ export default function Home() {
                   Screen demos faster. Get an objective second opinion on commercial potential, playlist readiness, and sync opportunities. The critique you'd write — but in minutes, not hours.
                 </p>
               </div>
-              <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="bg-violet-500 hover:bg-violet-600 text-white shrink-0 shadow-lg shadow-violet-500/25">
-                Try A&R Mode
+              <Button size="lg" onClick={handleGetStarted} className="bg-violet-500 hover:bg-violet-600 text-white shrink-0 shadow-lg shadow-violet-500/25">
+                {user ? "Create New Project" : "Try A&R Mode"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -322,8 +331,8 @@ export default function Home() {
             Stop guessing. Get critique that's tailored to your role and grounded in what the engine actually heard.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 items-center">
-            <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
-              Get Started Free
+            <Button size="lg" onClick={handleGetStarted} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
+              {user ? "Create New Project" : "Get Started Free"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4">
