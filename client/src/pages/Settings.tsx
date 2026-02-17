@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
+import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2, AlertTriangle, Send, Mail, Clock } from "lucide-react";
 
 const TIER_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
@@ -438,10 +438,34 @@ function DigestPreferencesSection() {
     },
   });
 
+  const sendTestMutation = trpc.digest.sendTest.useMutation({
+    onSuccess: (data) => {
+      prefsQuery.refetch();
+      toast.success(`Test digest sent to ${data.email}`);
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err.message || "Failed to send test digest");
+    },
+  });
+
   const currentFrequency = prefsQuery.data?.frequency ?? "weekly";
+  const lastDigestSentAt = prefsQuery.data?.lastDigestSentAt;
+
+  const formatLastSent = (ts: number | null | undefined) => {
+    if (!ts) return null;
+    const date = new Date(ts);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffHours < 1) return "Less than an hour ago";
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
         Choose how often you'd like to receive a summary of your review activity, scores, and project progress.
       </p>
@@ -471,12 +495,40 @@ function DigestPreferencesSection() {
           </button>
         ))}
       </div>
+
       {currentFrequency === "disabled" && (
         <p className="text-xs text-amber-400/80 flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5" />
           You won't receive any digest emails. You can still generate digests manually from the Digest page.
         </p>
       )}
+
+      {/* Last digest sent + test button */}
+      <Separator className="opacity-50" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Clock className="h-4 w-4" />
+          <span>
+            {lastDigestSentAt
+              ? <>Last digest sent: <span className="text-foreground font-medium">{formatLastSent(lastDigestSentAt)}</span></>
+              : "No digest sent yet"
+            }
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => sendTestMutation.mutate()}
+          disabled={sendTestMutation.isPending}
+          className="shrink-0"
+        >
+          {sendTestMutation.isPending ? (
+            <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending...</>
+          ) : (
+            <><Send className="h-3.5 w-3.5 mr-1.5" /> Send Test Digest</>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

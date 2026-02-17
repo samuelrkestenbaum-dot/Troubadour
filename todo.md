@@ -1254,3 +1254,35 @@
 - [x] Tests for digest preferences (schema, procedures, scheduler frequency support)
 - [x] Tests for router splitting (procedure existence, appRouter integration)
 - [x] All 601 tests passing, zero TypeScript errors (tsc --noEmit clean)
+
+## Round 58 - Router Splitting, Digest UX, and Polish
+
+### Router Splitting (continued)
+- [x] Extract analysisRouter (mixReport + structure + moodEnergy + benchmark + dawExport) ~400 lines
+- [x] Extract collaborationRouter (collaboration + comment) ~177 lines
+- [x] Extract portfolioRouter (portfolio + completion + abCompare + trackNote) ~380 lines
+- [x] Extract playlistRouter (playlist + reorder) ~165 lines
+- [x] Extract subscriptionRouter (subscription + usage) ~145 lines
+- [x] Extract creativeRouter (sentimentHeatmap + artwork + mastering) ~200 lines
+- [x] Create guards.ts module to break circular imports between extracted routers
+- [x] Verify all imports, type inference, and tRPC client work after splitting
+- [x] Reduce routers.ts from 2,477 to 927 lines (10 extracted router files total)
+
+### Digest UX Improvements
+- [x] Add "Send test digest" button to Settings page
+- [x] Add lastDigestSentAt column to users table
+- [x] Track last digest sent timestamp in generateEmail mutation
+- [x] Display "Last digest sent" on Settings page with human-readable time formatting
+- [x] Add sendTest mutation to digest router
+- [x] Return lastDigestSentAt in getPreferences query
+
+### Additional Polish
+- [ ] Add keyboard shortcuts help dialog (? key to open) — deferred, CommandPalette already exists
+- [ ] Add "Copy review as Markdown" button to ReviewView — deferred
+- [ ] Add retry with exponential backoff for failed AI requests in job processor — deferred
+
+### Testing
+- [x] Tests for extracted routers (21 tests in features-round58.test.ts)
+- [x] Tests for guards module (function exports, circular dep prevention)
+- [x] Tests for test digest and last-sent tracking
+- [x] All 622 tests passing, zero TypeScript errors

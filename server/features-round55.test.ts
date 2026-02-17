@@ -228,7 +228,9 @@ describe("Rate Limiter Integration", () => {
     const jobContent = fs.readFileSync("server/routers/jobRouter.ts", "utf-8");
     const chatContent = fs.readFileSync("server/routers/chatRouter.ts", "utf-8");
     const reviewContent = fs.readFileSync("server/routers/reviewRouter.ts", "utf-8");
-    const allContent = mainContent + jobContent + chatContent + reviewContent;
+    const creativeContent = fs.readFileSync("server/routers/creativeRouter.ts", "utf-8");
+    const analysisContent = fs.readFileSync("server/routers/analysisRouter.ts", "utf-8");
+    const allContent = mainContent + jobContent + chatContent + reviewContent + creativeContent + analysisContent;
     // Verify AI review endpoints use aiReviewProcedure (now in extracted jobRouter)
     expect(allContent).toContain("analyze: aiReviewProcedure");
     expect(allContent).toContain("review: aiReviewProcedure");

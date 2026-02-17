@@ -3,7 +3,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure, aiReviewProcedure, exportProcedure } from "../_core/trpc";
 import * as db from "../db";
-import { assertFeatureAllowed } from "../routers";
+import { assertFeatureAllowed } from "../guards";
 
 export const reviewRouter = router({
   get: protectedProcedure

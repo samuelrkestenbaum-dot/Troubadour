@@ -3,7 +3,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure, aiReviewProcedure } from "../_core/trpc";
 import * as db from "../db";
-import { assertUsageAllowed, assertMonthlyReviewAllowed, assertFeatureAllowed } from "../routers";
+import { assertUsageAllowed, assertMonthlyReviewAllowed, assertFeatureAllowed } from "../guards";
 
 export const jobRouter = router({
   analyze: aiReviewProcedure

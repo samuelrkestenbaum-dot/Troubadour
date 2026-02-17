@@ -39,6 +39,7 @@ vi.mock("./db", () => {
       updatedAt: new Date(),
       lastSignedIn: new Date(),
     digestFrequency: "weekly" as const,
+    lastDigestSentAt: null,
     })),
     createProject: vi.fn().mockImplementation(async (data: any) => {
       const id = nextId++;
@@ -235,6 +236,7 @@ function createTestUser(): User {
     updatedAt: new Date(),
     lastSignedIn: new Date(),
     digestFrequency: "weekly" as const,
+    lastDigestSentAt: null,
   } as User;
 }
 

@@ -58,6 +58,7 @@ function createAuthContext(userId = 1) {
       monthlyReviewCount: 0, monthlyResetAt: new Date(),
       createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(),
       digestFrequency: "weekly" as const,
+    lastDigestSentAt: null,
     },
     req: { headers: { origin: "http://localhost:3000" } } as any,
     res: {} as any,

@@ -2078,3 +2078,9 @@ export async function updateUserDigestFrequency(
   if (!db) return;
   await db.update(users).set({ digestFrequency: frequency }).where(eq(users.id, userId));
 }
+
+export async function updateLastDigestSentAt(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastDigestSentAt: new Date() }).where(eq(users.id, userId));
+}

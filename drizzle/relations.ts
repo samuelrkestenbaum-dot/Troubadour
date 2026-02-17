@@ -1,5 +1,47 @@
 import { relations } from "drizzle-orm/relations";
-import { tracks, audioFeatures, chatSessions, chatMessages, users, reviews, conversationMessages, favorites, projects, jobs, lyrics, referenceTracks } from "./schema";
+import { projects, artworkConcepts, users, tracks, audioFeatures, chatSessions, chatMessages, reviews, conversationMessages, favorites, jobs, lyrics, masteringChecklists, mixReports, notifications, projectInsights, referenceTracks, reviewComments, structureAnalyses, trackNotes, waveformAnnotations } from "./schema";
+
+export const artworkConceptsRelations = relations(artworkConcepts, ({one}) => ({
+	project: one(projects, {
+		fields: [artworkConcepts.projectId],
+		references: [projects.id]
+	}),
+	user: one(users, {
+		fields: [artworkConcepts.userId],
+		references: [users.id]
+	}),
+}));
+
+export const projectsRelations = relations(projects, ({one, many}) => ({
+	artworkConcepts: many(artworkConcepts),
+	jobs: many(jobs),
+	projectInsights: many(projectInsights),
+	user: one(users, {
+		fields: [projects.userId],
+		references: [users.id]
+	}),
+	reviews: many(reviews),
+	tracks: many(tracks),
+}));
+
+export const usersRelations = relations(users, ({many}) => ({
+	artworkConcepts: many(artworkConcepts),
+	chatSessions: many(chatSessions),
+	conversationMessages: many(conversationMessages),
+	favorites: many(favorites),
+	jobs: many(jobs),
+	masteringChecklists: many(masteringChecklists),
+	mixReports: many(mixReports),
+	notifications: many(notifications),
+	projectInsights: many(projectInsights),
+	projects: many(projects),
+	referenceTracks: many(referenceTracks),
+	reviewComments: many(reviewComments),
+	reviews: many(reviews),
+	trackNotes: many(trackNotes),
+	tracks: many(tracks),
+	waveformAnnotations: many(waveformAnnotations),
+}));
 
 export const audioFeaturesRelations = relations(audioFeatures, ({one}) => ({
 	track: one(tracks, {
@@ -12,8 +54,12 @@ export const tracksRelations = relations(tracks, ({one, many}) => ({
 	audioFeatures: many(audioFeatures),
 	favorites: many(favorites),
 	lyrics: many(lyrics),
+	masteringChecklists: many(masteringChecklists),
+	mixReports: many(mixReports),
 	referenceTracks: many(referenceTracks),
 	reviews: many(reviews),
+	structureAnalyses: many(structureAnalyses),
+	trackNotes: many(trackNotes),
 	project: one(projects, {
 		fields: [tracks.projectId],
 		references: [projects.id]
@@ -30,6 +76,7 @@ export const tracksRelations = relations(tracks, ({one, many}) => ({
 	tracks: many(tracks, {
 		relationName: "tracks_parentTrackId_tracks_id"
 	}),
+	waveformAnnotations: many(waveformAnnotations),
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({one}) => ({
@@ -47,17 +94,6 @@ export const chatSessionsRelations = relations(chatSessions, ({one, many}) => ({
 	}),
 }));
 
-export const usersRelations = relations(users, ({many}) => ({
-	chatSessions: many(chatSessions),
-	conversationMessages: many(conversationMessages),
-	favorites: many(favorites),
-	jobs: many(jobs),
-	projects: many(projects),
-	referenceTracks: many(referenceTracks),
-	reviews: many(reviews),
-	tracks: many(tracks),
-}));
-
 export const conversationMessagesRelations = relations(conversationMessages, ({one}) => ({
 	review: one(reviews, {
 		fields: [conversationMessages.reviewId],
@@ -71,6 +107,7 @@ export const conversationMessagesRelations = relations(conversationMessages, ({o
 
 export const reviewsRelations = relations(reviews, ({one, many}) => ({
 	conversationMessages: many(conversationMessages),
+	reviewComments: many(reviewComments),
 	project: one(projects, {
 		fields: [reviews.projectId],
 		references: [projects.id]
@@ -115,20 +152,50 @@ export const jobsRelations = relations(jobs, ({one, many}) => ({
 	}),
 }));
 
-export const projectsRelations = relations(projects, ({one, many}) => ({
-	jobs: many(jobs),
-	user: one(users, {
-		fields: [projects.userId],
-		references: [users.id]
-	}),
-	reviews: many(reviews),
-	tracks: many(tracks),
-}));
-
 export const lyricsRelations = relations(lyrics, ({one}) => ({
 	track: one(tracks, {
 		fields: [lyrics.trackId],
 		references: [tracks.id]
+	}),
+}));
+
+export const masteringChecklistsRelations = relations(masteringChecklists, ({one}) => ({
+	track: one(tracks, {
+		fields: [masteringChecklists.trackId],
+		references: [tracks.id]
+	}),
+	user: one(users, {
+		fields: [masteringChecklists.userId],
+		references: [users.id]
+	}),
+}));
+
+export const mixReportsRelations = relations(mixReports, ({one}) => ({
+	track: one(tracks, {
+		fields: [mixReports.trackId],
+		references: [tracks.id]
+	}),
+	user: one(users, {
+		fields: [mixReports.userId],
+		references: [users.id]
+	}),
+}));
+
+export const notificationsRelations = relations(notifications, ({one}) => ({
+	user: one(users, {
+		fields: [notifications.userId],
+		references: [users.id]
+	}),
+}));
+
+export const projectInsightsRelations = relations(projectInsights, ({one}) => ({
+	project: one(projects, {
+		fields: [projectInsights.projectId],
+		references: [projects.id]
+	}),
+	user: one(users, {
+		fields: [projectInsights.userId],
+		references: [users.id]
 	}),
 }));
 
@@ -139,6 +206,46 @@ export const referenceTracksRelations = relations(referenceTracks, ({one}) => ({
 	}),
 	user: one(users, {
 		fields: [referenceTracks.userId],
+		references: [users.id]
+	}),
+}));
+
+export const reviewCommentsRelations = relations(reviewComments, ({one}) => ({
+	review: one(reviews, {
+		fields: [reviewComments.reviewId],
+		references: [reviews.id]
+	}),
+	user: one(users, {
+		fields: [reviewComments.userId],
+		references: [users.id]
+	}),
+}));
+
+export const structureAnalysesRelations = relations(structureAnalyses, ({one}) => ({
+	track: one(tracks, {
+		fields: [structureAnalyses.trackId],
+		references: [tracks.id]
+	}),
+}));
+
+export const trackNotesRelations = relations(trackNotes, ({one}) => ({
+	track: one(tracks, {
+		fields: [trackNotes.trackId],
+		references: [tracks.id]
+	}),
+	user: one(users, {
+		fields: [trackNotes.userId],
+		references: [users.id]
+	}),
+}));
+
+export const waveformAnnotationsRelations = relations(waveformAnnotations, ({one}) => ({
+	track: one(tracks, {
+		fields: [waveformAnnotations.trackId],
+		references: [tracks.id]
+	}),
+	user: one(users, {
+		fields: [waveformAnnotations.userId],
 		references: [users.id]
 	}),
 }));

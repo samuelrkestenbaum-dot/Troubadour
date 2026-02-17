@@ -21,6 +21,7 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   digestFrequency: mysqlEnum("digestFrequency", ["weekly", "biweekly", "monthly", "disabled"]).default("weekly").notNull(),
+  lastDigestSentAt: timestamp("lastDigestSentAt"),
   deletedAt: timestamp("deletedAt"),
 });
 

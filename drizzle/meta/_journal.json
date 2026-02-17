@@ -211,6 +211,13 @@
       "when": 1771341966799,
       "tag": "0029_light_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1771345946840,
+      "tag": "0030_omniscient_aaron_stack",
+      "breakpoints": true
     }
   ]
 }
