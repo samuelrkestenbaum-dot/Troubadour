@@ -15,6 +15,7 @@ import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, 
 import { invokeLLM } from "./_core/llm";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { sanitizeText, sanitizeUrl } from "./sanitize";
+import { trackRouter } from "./routers/trackRouter";
 
 // ── Usage gating helper ──
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -191,125 +192,7 @@ export const appRouter = router({
       }),
   }),
 
-  track: router({
-    upload: protectedProcedure
-      .input(z.object({
-        projectId: z.number(),
-        filename: z.string(),
-        mimeType: z.string(),
-        fileBase64: z.string(),
-        fileSize: z.number(),
-        trackOrder: z.number().optional(),
-        parentTrackId: z.number().optional(),
-        versionNumber: z.number().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const project = await db.getProjectById(input.projectId);
-        if (!project || project.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
-        }
-        // Usage gating
-        await assertUsageAllowed(ctx.user.id);
-        // File validation
-        if (!ALLOWED_AUDIO_TYPES.has(input.mimeType.toLowerCase())) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: `Unsupported audio format: ${input.mimeType}. Supported: MP3, WAV, M4A, AAC, OGG, FLAC, WebM.` });
-        }
-        if (input.fileSize > MAX_FILE_SIZE) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: `File too large (${Math.round(input.fileSize / 1024 / 1024)}MB). Maximum: 50MB.` });
-        }
-        const fileBuffer = Buffer.from(input.fileBase64, "base64");
-        const fileKey = `audio/${ctx.user.id}/${input.projectId}/${nanoid()}-${input.filename}`;
-        const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
-        let trackOrder = input.trackOrder ?? 0;
-        const existingTracks = await db.getTracksByProject(input.projectId);
-        if (trackOrder === 0) {
-          trackOrder = existingTracks.length + 1;
-        }
-        // Server-side version numbering: compute from DB, ignore client-sent value
-        let versionNumber = 1;
-        if (input.parentTrackId) {
-          const siblings = existingTracks.filter(t => t.parentTrackId === input.parentTrackId || t.id === input.parentTrackId);
-          versionNumber = siblings.length + 1;
-        }
-        const track = await db.createTrack({
-          projectId: input.projectId,
-          userId: ctx.user.id,
-          filename: fileKey.split("/").pop()!,
-          originalFilename: input.filename,
-          storageUrl: url,
-          storageKey: fileKey,
-          mimeType: input.mimeType,
-          fileSize: input.fileSize,
-          trackOrder,
-          versionNumber,
-          parentTrackId: input.parentTrackId ?? null,
-        });
-        return { trackId: track.id, storageUrl: url };
-      }),
-
-    get: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .query(async ({ ctx, input }) => {
-        const track = await db.getTrackById(input.id);
-        if (!track || track.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        const features = await db.getAudioFeaturesByTrack(track.id);
-        const reviews = await db.getReviewsByTrack(track.id);
-        const trackLyrics = await db.getLyricsByTrack(track.id);
-        const childVersions = await db.getTrackVersions(track.id);
-        const parentVersions = track.parentTrackId ? await db.getTrackVersions(track.parentTrackId) : [];
-        // Include latest job error for error surfacing in UI
-        const latestJob = await db.getLatestJobForTrack(track.id);
-        const jobError = latestJob?.status === "error" ? latestJob.errorMessage : null;
-        return { track, features, reviews, lyrics: trackLyrics, versions: [...parentVersions, ...childVersions], jobError };
-      }),
-
-    getVersions: protectedProcedure
-      .input(z.object({ trackId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        const track = await db.getTrackById(input.trackId);
-        if (!track || track.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        const parentId = track.parentTrackId || track.id;
-        const parentTrack = await db.getTrackById(parentId);
-        if (!parentTrack || parentTrack.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        const childVersions = await db.getTrackVersions(parentId);
-        return [parentTrack, ...childVersions];
-      }),
-
-    addTag: protectedProcedure
-      .input(z.object({
-        trackId: z.number(),
-        tag: z.string().min(1).max(50),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const track = await db.getTrackById(input.trackId);
-        if (!track || track.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        const existing = await db.getTrackTags(input.trackId);
-        if (!existing.includes(input.tag)) {
-          existing.push(input.tag);
-          await db.updateTrackTags(input.trackId, existing);
-        }
-        return { success: true, tags: existing };
-      }),
-
-    deleteTrack: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        const track = await db.getTrackById(input.id);
-        if (!track || track.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        }
-        await db.deleteTrack(input.id);
-        return { success: true };
-      }),
-  }),
+  track: trackRouter,
 
   tags: router({
     get: protectedProcedure

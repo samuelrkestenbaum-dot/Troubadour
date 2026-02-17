@@ -295,10 +295,31 @@ async function startServer() {
     }).catch(err => {
       logger.error("Failed to start job queue", { error: err.message });
     });
+
+    // Start the weekly digest scheduler
+    import("../services/digestScheduler").then(({ startDigestScheduler }) => {
+      startDigestScheduler();
+    }).catch(err => {
+      logger.error("Failed to start digest scheduler", { error: err.message });
+    });
   });
 
   // Register graceful shutdown handlers
   registerGracefulShutdown({ server, gracePeriodMs: 15_000 });
+
+  // Ensure digest scheduler is stopped on shutdown
+  process.once("SIGTERM", async () => {
+    try {
+      const { stopDigestScheduler } = await import("../services/digestScheduler");
+      stopDigestScheduler();
+    } catch { /* already handled by graceful shutdown */ }
+  });
+  process.once("SIGINT", async () => {
+    try {
+      const { stopDigestScheduler } = await import("../services/digestScheduler");
+      stopDigestScheduler();
+    } catch { /* already handled by graceful shutdown */ }
+  });
 }
 
 startServer().catch(console.error);

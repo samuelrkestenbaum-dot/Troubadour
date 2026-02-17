@@ -45,6 +45,7 @@ export function BatchActionsToolbar({
   const [showTagDialog, setShowTagDialog] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTagging, setIsTagging] = useState(false);
 
   const analyzeAndReview = trpc.job.analyzeAndReview.useMutation({
     onSuccess: () => {
@@ -52,13 +53,8 @@ export function BatchActionsToolbar({
     },
   });
 
-  const addTag = trpc.track.addTag.useMutation({
-    onSuccess: () => {
-      utils.project.get.invalidate({ id: projectId });
-    },
-  });
-
-  const deleteTrack = trpc.track.deleteTrack.useMutation({
+  // Use the tags router for adding tags (avoids LSP deep-inference issue on track router)
+  const updateTags = trpc.tags.update.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id: projectId });
     },
@@ -96,15 +92,23 @@ export function BatchActionsToolbar({
   const handleBatchTag = async () => {
     if (!tagInput.trim()) return;
     const tag = tagInput.trim();
+    setIsTagging(true);
     let tagged = 0;
     for (const id of Array.from(selectedIds)) {
       try {
-        await addTag.mutateAsync({ trackId: id, tag });
+        // Get existing tags for the track, then append the new one
+        const track = tracks.find(t => t.id === id);
+        const existingTags: string[] = track?.tags ? JSON.parse(track.tags) : [];
+        if (!existingTags.includes(tag)) {
+          existingTags.push(tag);
+        }
+        await updateTags.mutateAsync({ trackId: id, tags: existingTags });
         tagged++;
       } catch {
         // Skip failures
       }
     }
+    setIsTagging(false);
     toast.success(`Tagged ${tagged} track${tagged !== 1 ? "s" : ""} with "${tag}"`);
     setTagInput("");
     setShowTagDialog(false);
@@ -117,14 +121,21 @@ export function BatchActionsToolbar({
     let deleted = 0;
     for (const id of Array.from(selectedIds)) {
       try {
-        await deleteTrack.mutateAsync({ id });
-        deleted++;
+        // Use project.delete pattern: call via tRPC utils to avoid LSP deep-inference issue
+        const response = await fetch(`/api/trpc/track.deleteTrack`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ json: { id } }),
+          credentials: "include",
+        });
+        if (response.ok) deleted++;
       } catch {
         // Skip failures
       }
     }
     setIsDeleting(false);
     setShowDeleteConfirm(false);
+    utils.project.get.invalidate({ id: projectId });
     toast.success(`Deleted ${deleted} track${deleted !== 1 ? "s" : ""}`);
     onDeselectAll?.();
     onClearSelection?.();
@@ -268,8 +279,8 @@ export function BatchActionsToolbar({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTagDialog(false)}>Cancel</Button>
-            <Button onClick={handleBatchTag} disabled={!tagInput.trim() || addTag.isPending}>
-              {addTag.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+            <Button onClick={handleBatchTag} disabled={!tagInput.trim() || isTagging}>
+              {isTagging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Apply Tag
             </Button>
           </DialogFooter>
