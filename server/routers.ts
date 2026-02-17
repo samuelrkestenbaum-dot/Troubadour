@@ -195,6 +195,78 @@ export const appRouter = router({
         await db.updateTrackTags(input.trackId, updated);
          return { success: true, tags: updated };
       }),
+
+    // Batch tag management
+    listAll: protectedProcedure.query(async ({ ctx }) => {
+      const allTracks = await db.getTracksByUser(ctx.user.id);
+      const tagMap = new Map<string, { count: number; trackIds: number[] }>();
+      for (const track of allTracks) {
+        const tags = track.tags ? track.tags.split(",").filter(Boolean).map((t: string) => t.trim()) : [];
+        for (const tag of tags) {
+          const entry = tagMap.get(tag) || { count: 0, trackIds: [] };
+          entry.count++;
+          entry.trackIds.push(track.id);
+          tagMap.set(tag, entry);
+        }
+      }
+      return Array.from(tagMap.entries()).map(([name, info]) => ({
+        name,
+        count: info.count,
+        trackIds: info.trackIds,
+      })).sort((a, b) => b.count - a.count);
+    }),
+
+    rename: protectedProcedure
+      .input(z.object({ oldName: z.string().min(1), newName: z.string().min(1).max(50) }))
+      .mutation(async ({ ctx, input }) => {
+        const allTracks = await db.getTracksByUser(ctx.user.id);
+        let updated = 0;
+        for (const track of allTracks) {
+          const tags = track.tags ? track.tags.split(",").filter(Boolean).map((t: string) => t.trim()) : [];
+          if (tags.includes(input.oldName)) {
+            const newTags = tags.map(t => t === input.oldName ? input.newName : t);
+            // Deduplicate
+            const unique = Array.from(new Set(newTags));
+            await db.updateTrackTags(track.id, unique);
+            updated++;
+          }
+        }
+        return { success: true, tracksUpdated: updated };
+      }),
+
+    merge: protectedProcedure
+      .input(z.object({ sourceTags: z.array(z.string().min(1)).min(1), targetTag: z.string().min(1).max(50) }))
+      .mutation(async ({ ctx, input }) => {
+        const allTracks = await db.getTracksByUser(ctx.user.id);
+        let updated = 0;
+        for (const track of allTracks) {
+          const tags = track.tags ? track.tags.split(",").filter(Boolean).map((t: string) => t.trim()) : [];
+          const hasSource = tags.some(t => input.sourceTags.includes(t));
+          if (hasSource) {
+            const filtered = tags.filter(t => !input.sourceTags.includes(t));
+            if (!filtered.includes(input.targetTag)) filtered.push(input.targetTag);
+            await db.updateTrackTags(track.id, filtered);
+            updated++;
+          }
+        }
+        return { success: true, tracksUpdated: updated };
+      }),
+
+    deleteTag: protectedProcedure
+      .input(z.object({ tagName: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const allTracks = await db.getTracksByUser(ctx.user.id);
+        let updated = 0;
+        for (const track of allTracks) {
+          const tags = track.tags ? track.tags.split(",").filter(Boolean).map((t: string) => t.trim()) : [];
+          if (tags.includes(input.tagName)) {
+            const filtered = tags.filter(t => t !== input.tagName);
+            await db.updateTrackTags(track.id, filtered);
+            updated++;
+          }
+        }
+        return { success: true, tracksUpdated: updated };
+      }),
   }),
   lyrics: router({
     save: protectedProcedure
@@ -497,6 +569,24 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
   chat: chatRouter,
 
   analytics: router({
+    quickStats: protectedProcedure.query(async ({ ctx }) => {
+      // Lightweight stats available to all tiers (no analytics gate)
+      const stats = await db.getDashboardStats(ctx.user.id);
+      // Get average overall score
+      const averageScores = await db.getAverageScores(ctx.user.id);
+      const avgOverall = averageScores?.overall ?? averageScores?.Overall ?? null;
+      // Get most recent review date
+      const recentActivity = await db.getRecentActivity(ctx.user.id, 1);
+      const lastReviewDate = recentActivity.length > 0 ? recentActivity[0].createdAt : null;
+      // Get top genre from tracks
+      const topGenre = await db.getTopGenre(ctx.user.id);
+      return {
+        ...stats,
+        averageScore: avgOverall !== null ? Math.round(avgOverall * 10) / 10 : null,
+        lastReviewDate,
+        topGenre,
+      };
+    }),
     dashboard: protectedProcedure.query(async ({ ctx }) => {
       const user = await db.getUserById(ctx.user.id);
       assertFeatureAllowed(user?.tier || "free", "analytics");

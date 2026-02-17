@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -232,6 +232,9 @@ export default function Dashboard() {
           New Project
         </Button>
       </div>
+
+      {/* Quick Stats Widgets */}
+      <QuickStatsBar />
 
       {/* Search / Filter / Sort bar */}
       {showSearchBar && (
@@ -522,6 +525,83 @@ export default function Dashboard() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+
+function QuickStatsBar() {
+  const { data, isLoading } = trpc.analytics.quickStats.useQuery(undefined, {
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="border-border/50">
+            <CardContent className="p-4">
+              <Skeleton className="h-4 w-20 mb-2" />
+              <Skeleton className="h-7 w-12" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const stats = [
+    {
+      label: "Total Reviews",
+      value: data.totalReviews ?? 0,
+      icon: BarChart3,
+      color: "text-blue-500",
+    },
+    {
+      label: "Avg Score",
+      value: data.averageScore !== null ? data.averageScore.toFixed(1) : "—",
+      icon: TrendingUp,
+      color: "text-emerald-500",
+    },
+    {
+      label: "Top Genre",
+      value: data.topGenre ?? "—",
+      icon: Disc3,
+      color: "text-purple-500",
+      isText: true,
+    },
+    {
+      label: "Last Review",
+      value: data.lastReviewDate
+        ? formatDistanceToNow(new Date(data.lastReviewDate), { addSuffix: true })
+        : "—",
+      icon: Clock,
+      color: "text-amber-500",
+      isText: true,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {stats.map((stat) => (
+        <Card key={stat.label} className="border-border/50 hover:border-border transition-colors">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground font-medium">{stat.label}</span>
+              <stat.icon className={cn("h-4 w-4", stat.color)} />
+            </div>
+            <p className={cn(
+              "font-bold tracking-tight",
+              stat.isText ? "text-sm truncate" : "text-2xl"
+            )}>
+              {stat.value}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

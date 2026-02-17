@@ -27,6 +27,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import Digest from "./pages/Digest";
+import TagManager from "./pages/TagManager";
 import { OnboardingTour } from "./components/OnboardingTour";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
@@ -82,6 +83,7 @@ function DashboardRoutes() {
         <Route path="/templates/gallery" component={TemplatesGallery} />
         <Route path="/benchmarks" component={GenreBenchmarks} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/tags" component={TagManager} />
         <Route path="/digest" component={Digest} />
         <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />

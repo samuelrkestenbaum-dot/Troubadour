@@ -175,7 +175,10 @@ export const reviewRouter = router({
     }),
 
   generateShareLink: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({
+      id: z.number(),
+      expiresIn: z.enum(["24h", "7d", "30d", "never"]).optional().default("never"),
+    }))
     .mutation(async ({ ctx, input }) => {
       const review = await db.getReviewById(input.id);
       if (!review || review.userId !== ctx.user.id) {
@@ -184,11 +187,25 @@ export const reviewRouter = router({
       const user = await db.getUserById(ctx.user.id);
       assertFeatureAllowed(user?.tier || "free", "share");
       if (review.shareToken) {
-        return { shareToken: review.shareToken };
+        return { shareToken: review.shareToken, expiresAt: review.shareExpiresAt };
       }
       const token = nanoid(24);
-      await db.setReviewShareToken(input.id, token);
-      return { shareToken: token };
+      const expiresAt = input.expiresIn === "never" ? null
+        : input.expiresIn === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+        : input.expiresIn === "7d" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await db.setReviewShareToken(input.id, token, expiresAt);
+      return { shareToken: token, expiresAt };
+    }),
+  revokeShareLink: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const review = await db.getReviewById(input.id);
+      if (!review || review.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+      }
+      await db.revokeReviewShareToken(input.id);
+      return { success: true };
     }),
 
   history: protectedProcedure
@@ -257,6 +274,9 @@ export const reviewRouter = router({
       const review = await db.getReviewByShareToken(input.token);
       if (!review) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Review not found or link has expired" });
+      }
+      if (review.shareExpiresAt && new Date(review.shareExpiresAt) < new Date()) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This share link has expired" });
       }
       let trackName = "Unknown Track";
       let genreInsight: { detectedGenre: string | null; detectedSubgenres: string | null; detectedInfluences: string | null } | null = null;

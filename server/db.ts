@@ -230,6 +230,12 @@ export async function updateTrackGenre(id: number, detectedGenre: string, detect
   }).where(eq(tracks.id, id));
 }
 
+export async function getTracksByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tracks).where(eq(tracks.userId, userId));
+}
+
 export async function getTrackVersions(parentTrackId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -363,6 +369,26 @@ export async function getTopTracks(userId: number, limit = 5) {
     });
   }
   return enriched;
+}
+
+export async function getTopGenre(userId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const allTracks = await db.select({ genre: tracks.detectedGenre }).from(tracks)
+    .where(eq(tracks.userId, userId));
+  const genreCounts = new Map<string, number>();
+  for (const t of allTracks) {
+    if (t.genre) {
+      genreCounts.set(t.genre, (genreCounts.get(t.genre) || 0) + 1);
+    }
+  }
+  if (genreCounts.size === 0) return null;
+  let topGenre = "";
+  let maxCount = 0;
+  for (const [genre, cnt] of Array.from(genreCounts.entries())) {
+    if (cnt > maxCount) { topGenre = genre; maxCount = cnt; }
+  }
+  return topGenre;
 }
 
 // ── Track Tags helpers ──
@@ -518,10 +544,16 @@ export async function getReviewByShareToken(token: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function setReviewShareToken(reviewId: number, token: string) {
+export async function setReviewShareToken(reviewId: number, token: string, expiresAt?: Date | null) {
   const db = await getDb();
   if (!db) return;
-  await db.update(reviews).set({ shareToken: token }).where(eq(reviews.id, reviewId));
+  await db.update(reviews).set({ shareToken: token, shareExpiresAt: expiresAt ?? null }).where(eq(reviews.id, reviewId));
+}
+
+export async function revokeReviewShareToken(reviewId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reviews).set({ shareToken: null, shareExpiresAt: null }).where(eq(reviews.id, reviewId));
 }
 
 // ── Job helpers ──
