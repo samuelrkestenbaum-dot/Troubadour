@@ -28,10 +28,11 @@ function createTestContext(authenticated = true): TrpcContext {
           digestFrequency: "weekly" as const,
           lastDigestSentAt: null,
           notificationPreferences: null,
+          preferredPersona: "full" as const,
         }
       : null,
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
-    res: { clearCookie: () => {} } as TrpcContext["res"],
+    res: { clearCookie: () => {} } as unknown as TrpcContext["res"],
   };
 }
 

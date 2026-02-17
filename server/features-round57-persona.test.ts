@@ -26,6 +26,7 @@ function createAuthContext(): { ctx: TrpcContext } {
     digestFrequency: "weekly" as const,
     lastDigestSentAt: null,
     notificationPreferences: null,
+    preferredPersona: "full" as const,
   };
 
   const ctx: TrpcContext = {
@@ -36,7 +37,7 @@ function createAuthContext(): { ctx: TrpcContext } {
     } as TrpcContext["req"],
     res: {
       clearCookie: () => {},
-    } as TrpcContext["res"],
+    } as unknown as TrpcContext["res"],
   };
 
   return { ctx };

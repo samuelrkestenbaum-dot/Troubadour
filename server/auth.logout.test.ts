@@ -33,6 +33,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     lastSignedIn: new Date(),
     digestFrequency: "weekly" as const,
     lastDigestSentAt: null, notificationPreferences: null,
+    preferredPersona: "full" as const,
   };
 
   const ctx: TrpcContext = {

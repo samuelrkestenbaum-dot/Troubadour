@@ -1477,3 +1477,9 @@
 - [x] Add persona switching on existing projects via project settings panel
 - [x] Run Gravito governance audit on landing page copy and CTA messaging (PASSED 100/100, all claims verified)
 - [x] Write vitest tests for persona persistence and project settings features
+
+## Round 58 - BatchActionsToolbar Fix, Persona Onboarding & Gravito Audit (Claude 4.5 + Gravito)
+- [x] Fix BatchActionsToolbar TS errors — real issue was missing preferredPersona in 8 test files + missing User icon import in ProjectView.tsx. tsc now passes clean (0 errors)
+- [x] Add persona onboarding step for first-time users (prompt role selection during initial signup)
+- [x] Run full Gravito creative integrity audit — enforcement 100/100, 7/7 claims verified, perception: professional tone, 65 trust, 0.85 clarity. runCreativeIntegrity 503 (service down)
+- [x] Write vitest tests for new features (18 tests in features-round58-onboarding.test.ts)

@@ -23,6 +23,7 @@ function createAuthContext(overrides?: Partial<AuthenticatedUser>): TrpcContext 
     lastSignedIn: new Date(),
     digestFrequency: "weekly" as const,
     lastDigestSentAt: null, notificationPreferences: null,
+    preferredPersona: "full" as const,
     ...overrides,
   };
   return {

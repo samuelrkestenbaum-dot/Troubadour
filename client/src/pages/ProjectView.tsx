@@ -18,7 +18,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Upload, Play, FileText, Loader2, Music, BarChart3,
-  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown, Table2, GripVertical, ArrowUp, ArrowDown
+  CheckCircle2, AlertCircle, Clock, Headphones, GitCompare, Trash2, BookOpen, Zap, RotateCcw, UploadCloud, Star, FileDown, Table2, GripVertical, ArrowUp, ArrowDown, User
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
