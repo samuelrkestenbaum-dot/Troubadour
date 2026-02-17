@@ -1,12 +1,15 @@
 /**
- * Weekly Digest Scheduler
+ * Digest Scheduler
  *
  * Runs a cron-like check every hour. On Monday mornings (8:00 AM UTC),
- * it generates and sends weekly digests to all active users who had
- * activity in the past 7 days.
+ * it generates and sends digests to users based on their frequency preference:
+ * - weekly: every Monday
+ * - biweekly: every other Monday
+ * - monthly: first Monday of each month
+ * - disabled: never
  *
  * The scheduler uses a database-backed "last run" check to ensure
- * digests are only sent once per week, even if the server restarts.
+ * digests are only sent once per period, even if the server restarts.
  */
 
 import * as db from "../db";
@@ -17,14 +20,12 @@ const DIGEST_DAY = 1; // Monday (0 = Sunday, 1 = Monday)
 const DIGEST_HOUR = 8; // 8 AM UTC
 
 let digestTimer: ReturnType<typeof setInterval> | null = null;
-let isRunning = false;
 
 // Track last digest run to prevent duplicates
 let lastDigestWeek: string | null = null;
 
 function getWeekKey(): string {
   const now = new Date();
-  // ISO week key: year-weekNumber
   const startOfYear = new Date(now.getFullYear(), 0, 1);
   const weekNumber = Math.ceil(
     ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
@@ -32,15 +33,61 @@ function getWeekKey(): string {
   return `${now.getFullYear()}-W${weekNumber}`;
 }
 
+function getWeekNumber(): number {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  return Math.ceil(
+    ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
+  );
+}
+
+function isFirstMondayOfMonth(): boolean {
+  const now = new Date();
+  return now.getUTCDate() <= 7; // If Monday falls within first 7 days, it's the first Monday
+}
+
 function isDigestTime(): boolean {
   const now = new Date();
   return now.getUTCDay() === DIGEST_DAY && now.getUTCHours() === DIGEST_HOUR;
 }
 
-async function runWeeklyDigest(): Promise<void> {
+function shouldSendToUser(frequency: string): boolean {
+  switch (frequency) {
+    case "weekly":
+      return true; // Every Monday
+    case "biweekly":
+      return getWeekNumber() % 2 === 0; // Even weeks
+    case "monthly":
+      return isFirstMondayOfMonth(); // First Monday of month
+    case "disabled":
+      return false;
+    default:
+      return true; // Default to weekly
+  }
+}
+
+function getDaysBackForFrequency(frequency: string): number {
+  switch (frequency) {
+    case "weekly": return 7;
+    case "biweekly": return 14;
+    case "monthly": return 30;
+    default: return 7;
+  }
+}
+
+function getPeriodLabelForFrequency(frequency: string): string {
+  switch (frequency) {
+    case "weekly": return "This Week";
+    case "biweekly": return "Last 2 Weeks";
+    case "monthly": return "This Month";
+    default: return "This Week";
+  }
+}
+
+async function runScheduledDigest(): Promise<void> {
   const weekKey = getWeekKey();
 
-  // Skip if already sent this week
+  // Skip if already processed this week
   if (lastDigestWeek === weekKey) {
     return;
   }
@@ -50,7 +97,7 @@ async function runWeeklyDigest(): Promise<void> {
     return;
   }
 
-  logger.info("[DigestScheduler] Starting weekly digest generation", { weekKey });
+  logger.info("[DigestScheduler] Starting digest generation", { weekKey });
   lastDigestWeek = weekKey;
 
   try {
@@ -62,12 +109,24 @@ async function runWeeklyDigest(): Promise<void> {
 
     let sent = 0;
     let skipped = 0;
+    let frequencySkipped = 0;
     let failed = 0;
 
     for (const user of users) {
       try {
-        // Get digest data for this user
-        const data = await db.getDigestData(user.id, 7);
+        const frequency = (user as any).digestFrequency ?? "weekly";
+
+        // Check if this user should receive a digest based on their frequency preference
+        if (!shouldSendToUser(frequency)) {
+          frequencySkipped++;
+          continue;
+        }
+
+        const daysBack = getDaysBackForFrequency(frequency);
+        const periodLabel = getPeriodLabelForFrequency(frequency);
+
+        // Get digest data for this user's preferred period
+        const data = await db.getDigestData(user.id, daysBack);
 
         // Skip users with no activity
         if (data.stats.totalReviews === 0 && data.stats.totalNewProjects === 0) {
@@ -79,8 +138,8 @@ async function runWeeklyDigest(): Promise<void> {
         await db.createNotification({
           userId: user.id,
           type: "digest",
-          title: "Your Weekly Digest",
-          message: `This week: ${data.stats.totalReviews} reviews, avg score ${data.stats.averageScore ?? '—'}/10. ${data.stats.highestScore ? `Top track: ${data.stats.highestScore.track} (${data.stats.highestScore.score}/10)` : ''}`,
+          title: `Your ${periodLabel} Digest`,
+          message: `${periodLabel}: ${data.stats.totalReviews} reviews, avg score ${data.stats.averageScore ?? '—'}/10. ${data.stats.highestScore ? `Top track: ${data.stats.highestScore.track} (${data.stats.highestScore.score}/10)` : ''}`,
           link: "/digest",
         });
 
@@ -88,9 +147,6 @@ async function runWeeklyDigest(): Promise<void> {
         if (user.email) {
           try {
             const { sendDigestEmail } = await import("./emailService");
-            const periodLabel = "This Week";
-
-            // Generate a simple email summary (lightweight version)
             const htmlContent = generateDigestEmailHtml(user.name || "Artist", periodLabel, data);
 
             await sendDigestEmail({
@@ -100,7 +156,6 @@ async function runWeeklyDigest(): Promise<void> {
               periodLabel,
             });
           } catch (emailErr) {
-            // Email failure is non-fatal
             logger.warn("[DigestScheduler] Email failed for user", { userId: user.id, error: String(emailErr) });
           }
         }
@@ -112,22 +167,27 @@ async function runWeeklyDigest(): Promise<void> {
       }
     }
 
-    logger.info("[DigestScheduler] Weekly digest complete", { sent, skipped, failed, total: users.length });
+    logger.info("[DigestScheduler] Digest run complete", {
+      sent,
+      skipped,
+      frequencySkipped,
+      failed,
+      total: users.length,
+    });
 
     // Notify owner about the digest run
     try {
       const { notifyOwner } = await import("../_core/notification");
       await notifyOwner({
-        title: "Weekly Digest Sent",
-        content: `Digest sent to ${sent} users (${skipped} skipped, ${failed} failed) for week ${weekKey}.`,
+        title: "Digest Scheduler Complete",
+        content: `Sent to ${sent} users (${skipped} no activity, ${frequencySkipped} frequency skip, ${failed} failed) for ${weekKey}.`,
       });
     } catch {
       // Owner notification is non-fatal
     }
   } catch (err) {
     logger.error("[DigestScheduler] Fatal error during digest run", { error: String(err) });
-    // Reset the week key so it can retry next hour
-    lastDigestWeek = null;
+    lastDigestWeek = null; // Reset so it can retry next hour
   }
 }
 
@@ -153,7 +213,7 @@ function generateDigestEmailHtml(
     }).join('');
   }
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Troubadour Weekly Digest</title></head>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Troubadour ${periodLabel} Digest</title></head>
 <body style="margin:0;padding:0;background:#0a0a14;color:#e8e8f0;font-family:'Inter',system-ui,-apple-system,sans-serif;">
   <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
     <div style="text-align:center;padding:24px 0;border-bottom:2px solid #1e1e35;margin-bottom:24px;">
@@ -193,20 +253,21 @@ export function startDigestScheduler(): void {
     return;
   }
 
-  logger.info("[DigestScheduler] Starting weekly digest scheduler", {
+  logger.info("[DigestScheduler] Starting digest scheduler", {
     checkInterval: `${DIGEST_INTERVAL_MS / 60000} minutes`,
     scheduledDay: "Monday",
     scheduledHour: `${DIGEST_HOUR}:00 UTC`,
+    frequencies: "weekly, biweekly, monthly, disabled",
   });
 
   // Run an initial check on startup
-  runWeeklyDigest().catch(err => {
+  runScheduledDigest().catch(err => {
     logger.error("[DigestScheduler] Initial check failed", { error: String(err) });
   });
 
   // Then check every hour
   digestTimer = setInterval(() => {
-    runWeeklyDigest().catch(err => {
+    runScheduledDigest().catch(err => {
       logger.error("[DigestScheduler] Scheduled check failed", { error: String(err) });
     });
   }, DIGEST_INTERVAL_MS);
@@ -221,25 +282,35 @@ export function stopDigestScheduler(): void {
 }
 
 // For testing: force a digest run
-export async function forceDigestRun(): Promise<{ sent: number; skipped: number; failed: number }> {
-  lastDigestWeek = null; // Reset so it can run
+export async function forceDigestRun(): Promise<{ sent: number; skipped: number; frequencySkipped: number; failed: number }> {
+  lastDigestWeek = null;
   const users = await db.getAllActiveUsers();
-  if (!users || users.length === 0) return { sent: 0, skipped: 0, failed: 0 };
+  if (!users || users.length === 0) return { sent: 0, skipped: 0, frequencySkipped: 0, failed: 0 };
 
-  let sent = 0, skipped = 0, failed = 0;
+  let sent = 0, skipped = 0, frequencySkipped = 0, failed = 0;
 
   for (const user of users) {
     try {
-      const data = await db.getDigestData(user.id, 7);
+      const frequency = (user as any).digestFrequency ?? "weekly";
+      if (frequency === "disabled") {
+        frequencySkipped++;
+        continue;
+      }
+
+      const daysBack = getDaysBackForFrequency(frequency);
+      const data = await db.getDigestData(user.id, daysBack);
+
       if (data.stats.totalReviews === 0 && data.stats.totalNewProjects === 0) {
         skipped++;
         continue;
       }
+
+      const periodLabel = getPeriodLabelForFrequency(frequency);
       await db.createNotification({
         userId: user.id,
         type: "digest",
-        title: "Your Weekly Digest",
-        message: `This week: ${data.stats.totalReviews} reviews, avg score ${data.stats.averageScore ?? '—'}/10.`,
+        title: `Your ${periodLabel} Digest`,
+        message: `${periodLabel}: ${data.stats.totalReviews} reviews, avg score ${data.stats.averageScore ?? '—'}/10.`,
         link: "/digest",
       });
       sent++;
@@ -248,5 +319,8 @@ export async function forceDigestRun(): Promise<{ sent: number; skipped: number;
     }
   }
 
-  return { sent, skipped, failed };
+  return { sent, skipped, frequencySkipped, failed };
 }
+
+// Exported for testing
+export { shouldSendToUser, getDaysBackForFrequency, getPeriodLabelForFrequency, isFirstMondayOfMonth };

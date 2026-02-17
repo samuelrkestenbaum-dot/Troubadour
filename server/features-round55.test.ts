@@ -224,20 +224,23 @@ describe("Sentry Server Module", () => {
 describe("Rate Limiter Integration", () => {
   it("should have rate-limited procedures applied to AI endpoints in routers", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("server/routers.ts", "utf-8");
-    // Verify AI review endpoints use aiReviewProcedure
-    expect(content).toContain("analyze: aiReviewProcedure");
-    expect(content).toContain("review: aiReviewProcedure");
-    expect(content).toContain("reReview: aiReviewProcedure");
-    // Verify chat endpoints use aiChatProcedure
-    expect(content).toContain("send: aiChatProcedure");
-    expect(content).toContain("sendMessage: aiChatProcedure");
-    // Verify export endpoints use exportProcedure
-    expect(content).toContain("exportMarkdown: exportProcedure");
-    expect(content).toContain("exportHtml: exportProcedure");
+    const mainContent = fs.readFileSync("server/routers.ts", "utf-8");
+    const jobContent = fs.readFileSync("server/routers/jobRouter.ts", "utf-8");
+    const chatContent = fs.readFileSync("server/routers/chatRouter.ts", "utf-8");
+    const reviewContent = fs.readFileSync("server/routers/reviewRouter.ts", "utf-8");
+    const allContent = mainContent + jobContent + chatContent + reviewContent;
+    // Verify AI review endpoints use aiReviewProcedure (now in extracted jobRouter)
+    expect(allContent).toContain("analyze: aiReviewProcedure");
+    expect(allContent).toContain("review: aiReviewProcedure");
+    expect(allContent).toContain("reReview: aiReviewProcedure");
+    // Verify chat endpoints use aiChatProcedure (now in extracted chatRouter)
+    expect(allContent).toContain("sendMessage: aiChatProcedure");
+    // Verify export endpoints use exportProcedure (now in extracted reviewRouter)
+    expect(allContent).toContain("exportMarkdown: exportProcedure");
+    expect(allContent).toContain("exportHtml: exportProcedure");
     // Verify analysis endpoints use aiAnalysisProcedure
-    expect(content).toContain("generateChecklist: aiAnalysisProcedure");
+    expect(allContent).toContain("generateChecklist: aiAnalysisProcedure");
     // Verify standard procedures are still used for non-AI endpoints
-    expect(content).toContain("protectedProcedure");
+    expect(allContent).toContain("protectedProcedure");
   });
 });

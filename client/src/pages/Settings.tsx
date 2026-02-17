@@ -302,6 +302,24 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      {/* Digest Preferences */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Digest Preferences</CardTitle>
+              <CardDescription>Control how often you receive digest summaries</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <DigestPreferencesSection />
+        </CardContent>
+      </Card>
+
       {/* Danger Zone */}
       <Card className="border-destructive/30">
         <CardHeader>
@@ -396,6 +414,69 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+const DIGEST_OPTIONS = [
+  { value: "weekly", label: "Weekly", description: "Every Monday morning" },
+  { value: "biweekly", label: "Bi-weekly", description: "Every other Monday" },
+  { value: "monthly", label: "Monthly", description: "First Monday of each month" },
+  { value: "disabled", label: "Disabled", description: "No digest emails" },
+] as const;
+
+function DigestPreferencesSection() {
+  const prefsQuery = trpc.digest.getPreferences.useQuery();
+  const updateMutation = trpc.digest.updatePreferences.useMutation({
+    onSuccess: (data) => {
+      prefsQuery.refetch();
+      const label = DIGEST_OPTIONS.find(o => o.value === data.frequency)?.label ?? data.frequency;
+      toast.success(`Digest frequency updated to ${label}`);
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err.message || "Failed to update digest preferences");
+    },
+  });
+
+  const currentFrequency = prefsQuery.data?.frequency ?? "weekly";
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Choose how often you'd like to receive a summary of your review activity, scores, and project progress.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {DIGEST_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => {
+              if (option.value !== currentFrequency) {
+                updateMutation.mutate({ frequency: option.value });
+              }
+            }}
+            disabled={updateMutation.isPending}
+            className={`text-left p-4 rounded-lg border transition-all ${
+              currentFrequency === option.value
+                ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                : "border-border/50 hover:border-border hover:bg-muted/30"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium">{option.label}</span>
+              {currentFrequency === option.value && (
+                <Badge variant="outline" className="text-xs border-primary/50 text-primary">Active</Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{option.description}</p>
+          </button>
+        ))}
+      </div>
+      {currentFrequency === "disabled" && (
+        <p className="text-xs text-amber-400/80 flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          You won't receive any digest emails. You can still generate digests manually from the Digest page.
+        </p>
+      )}
     </div>
   );
 }

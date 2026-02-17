@@ -2069,3 +2069,12 @@ export async function deleteReferenceTrack(id: number) {
   if (!d) throw new Error("DB unavailable");
   await d.delete(referenceTracks).where(eq(referenceTracks.id, id));
 }
+
+export async function updateUserDigestFrequency(
+  userId: number,
+  frequency: "weekly" | "biweekly" | "monthly" | "disabled"
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ digestFrequency: frequency }).where(eq(users.id, userId));
+}

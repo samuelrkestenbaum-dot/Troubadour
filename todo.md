@@ -1232,3 +1232,25 @@
 ### Testing
 - [x] Tests for cron scheduler
 - [x] (582 tests passing) All tests passing, zero TypeScript errors
+
+## Round 57 - Digest Preferences + Router Splitting
+
+### User Digest Frequency Preferences
+- [x] Add digestFrequency column to users table (weekly/biweekly/monthly/disabled)
+- [x] Add backend procedures for getting/updating digest preferences
+- [x] Add digest frequency selector to Settings page UI
+- [x] Wire digest scheduler to respect user frequency preferences
+
+### Router Splitting for Maintainability
+- [x] Extract job router into server/routers/jobRouter.ts (364 lines)
+- [x] Extract review router into server/routers/reviewRouter.ts (468 lines)
+- [x] Extract chat router into server/routers/chatRouter.ts (168 lines)
+- [x] (trackRouter already extracted in Round 56)
+- [x] Verify all imports and type inference work after splitting
+- [x] Fix corrupted function calls from extraction script (assertUsageAllowed comma operator bug)
+- [x] Update tests to check extracted router files instead of only routers.ts
+
+### Testing
+- [x] Tests for digest preferences (schema, procedures, scheduler frequency support)
+- [x] Tests for router splitting (procedure existence, appRouter integration)
+- [x] All 601 tests passing, zero TypeScript errors (tsc --noEmit clean)

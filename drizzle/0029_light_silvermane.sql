@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `digestFrequency` enum('weekly','biweekly','monthly','disabled') DEFAULT 'weekly' NOT NULL;

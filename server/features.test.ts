@@ -38,6 +38,7 @@ vi.mock("./db", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
+    digestFrequency: "weekly" as const,
     })),
     createProject: vi.fn().mockImplementation(async (data: any) => {
       const id = nextId++;
@@ -233,6 +234,7 @@ function createTestUser(): User {
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
+    digestFrequency: "weekly" as const,
   } as User;
 }
 
@@ -2207,14 +2209,19 @@ describe("incrementMonthlyReviewCount wired in job processor", () => {
 });
 
 describe("assertMonthlyReviewAllowed on all review endpoints", () => {
-  it("routers.ts calls assertMonthlyReviewAllowed on review, albumReview, compare, analyzeAndReview, batchReviewAll", async () => {
+  it("router files call assertMonthlyReviewAllowed on review, albumReview, compare, analyzeAndReview, batchReviewAll", async () => {
     const fs = await import("fs");
     const path = await import("path");
-    const source = fs.readFileSync(
+    const mainSource = fs.readFileSync(
       path.resolve(__dirname, "./routers.ts"),
       "utf-8"
     );
-    const matches = source.match(/assertMonthlyReviewAllowed/g);
+    const jobSource = fs.readFileSync(
+      path.resolve(__dirname, "./routers/jobRouter.ts"),
+      "utf-8"
+    );
+    const allSource = mainSource + jobSource;
+    const matches = allSource.match(/assertMonthlyReviewAllowed/g);
     expect(matches).not.toBeNull();
     // At least: definition + review + albumReview + compare + analyzeAndReview + batchReviewAll = 6
     expect(matches!.length).toBeGreaterThanOrEqual(6);
