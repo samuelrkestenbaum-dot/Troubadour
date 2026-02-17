@@ -1465,3 +1465,9 @@
 ### Bugs Found & Fixed
 - [x] Landing page CTA buttons redirect to login even when user is already logged in (looping bug)
 - [x] "Use This" button on persona gallery redirects to dashboard with no action (looping/dead-end bug)
+
+## Round 56 - Navigation Fixes & Test Coverage (Claude 4.5 + Gravito)
+- [x] Fix BatchActionsToolbar.tsx TypeScript errors (addTag and delete procedures missing from track router) — RESOLVED: stale TS cache, tsc --noEmit passes clean
+- [x] Wire ?persona= query parameter in NewProject.tsx to pre-select persona when creating project from gallery
+- [x] Add vitest test coverage for CTA navigation flows and persona selection
+- [x] Run Gravito governance review on all changes — Gravito rate-limited (429); content is technical bug fixes, not regulated surface

@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { trackProjectCreated } from "@/lib/analytics";
 import { DropZone } from "@/components/DropZone";
 
@@ -23,11 +24,28 @@ interface TrackedFile {
 const generateFileId = (file: File, index: number) =>
   `${file.name}-${file.size}-${file.lastModified}-${index}`;
 
+const PERSONA_LABELS: Record<string, string> = {
+  songwriter: "Songwriter",
+  producer: "Producer",
+  arranger: "Arranger",
+  artist: "Artist Dev",
+  anr: "A&R Executive",
+  full: "Full Review",
+};
+
 export default function NewProject() {
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
   const [trackedFiles, setTrackedFiles] = useState<TrackedFile[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Read persona from URL query parameter (e.g., /projects/new?persona=songwriter)
+  const selectedPersona = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get("persona");
+    if (p && p in PERSONA_LABELS) return p as string;
+    return null;
+  }, []);
 
   const uploadTrack = trpc.track.upload.useMutation();
   const analyzeAndReview = trpc.job.analyzeAndReview.useMutation();
@@ -181,6 +199,7 @@ export default function NewProject() {
     createProject.mutate({
       title: title.trim(),
       type: projectType,
+      ...(selectedPersona ? { reviewFocus: selectedPersona as "songwriter" | "producer" | "arranger" | "artist" | "anr" | "full" } : {}),
     });
   };
 
@@ -235,6 +254,13 @@ export default function NewProject() {
             <CardDescription>
               Drop your tracks below. We'll detect the genre, analyze the audio, and write your critique automatically.
             </CardDescription>
+            {selectedPersona && (
+              <div className="flex items-center gap-2 mt-2">
+                <User className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs text-muted-foreground">Reviewing as:</span>
+                <Badge variant="secondary" className="text-xs">{PERSONA_LABELS[selectedPersona] || selectedPersona}</Badge>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Project Name */}
