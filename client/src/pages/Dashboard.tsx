@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3 } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3, Activity, ChevronDown, ChevronUp, Tag, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -44,6 +44,10 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Fetch all user tags for filtering
+  const { data: allTags } = trpc.tags.listAll.useQuery(undefined, { staleTime: 60_000 });
 
   // Global drag listeners for quick-upload overlay
   useEffect(() => {
@@ -186,6 +190,16 @@ export default function Dashboard() {
       result = result.filter(p => p.status === statusFilter);
     }
 
+    // Tag filter — match projects that contain tracks with ALL selected tags
+    if (selectedTags.length > 0 && allTags) {
+      result = result.filter((p: any) => {
+        return selectedTags.every(tag => {
+          const tagData = allTags.find((t: any) => t.name === tag);
+          return tagData?.projectIds?.includes(p.id);
+        });
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortOrder) {
@@ -202,7 +216,7 @@ export default function Dashboard() {
     });
 
     return result;
-  }, [projects, searchTerm, statusFilter, sortOrder]);
+  }, [projects, searchTerm, statusFilter, sortOrder, selectedTags, allTags]);
 
   const { data: favoritesList } = trpc.favorite.list.useQuery();
   const { data: sharedProjects } = trpc.collaboration.sharedProjects.useQuery();
@@ -235,6 +249,9 @@ export default function Dashboard() {
 
       {/* Quick Stats Widgets */}
       <QuickStatsBar />
+
+      {/* Recent Activity Feed */}
+      <RecentActivityFeed />
 
       {/* Search / Filter / Sort bar */}
       {showSearchBar && (
@@ -271,6 +288,45 @@ export default function Dashboard() {
               <SelectItem value="name-desc">Name Z-A</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      )}
+
+      {/* Tag Filter Chips */}
+      {allTags && allTags.length > 0 && showSearchBar && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {allTags.slice(0, 20).map((t: any) => {
+            const isActive = selectedTags.includes(t.name);
+            return (
+              <Badge
+                key={t.name}
+                variant={isActive ? "default" : "outline"}
+                className={cn(
+                  "cursor-pointer text-xs transition-colors",
+                  isActive ? "" : "hover:bg-accent"
+                )}
+                onClick={() => {
+                  setSelectedTags(prev =>
+                    isActive ? prev.filter(tag => tag !== t.name) : [...prev, t.name]
+                  );
+                }}
+              >
+                {t.name}
+                <span className="ml-1 opacity-60">{t.count}</span>
+                {isActive && <XIcon className="h-3 w-3 ml-1" />}
+              </Badge>
+            );
+          })}
+          {selectedTags.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-muted-foreground"
+              onClick={() => setSelectedTags([])}
+            >
+              Clear tags
+            </Button>
+          )}
         </div>
       )}
 
@@ -603,5 +659,130 @@ function QuickStatsBar() {
         </Card>
       ))}
     </div>
+  );
+}
+
+function RecentActivityFeed() {
+  const [, setLocation] = useLocation();
+  const [expanded, setExpanded] = useState(false);
+  const { data: activities, isLoading } = trpc.analytics.recentFeed.useQuery(
+    { limit: expanded ? 20 : 5 },
+    { staleTime: 30_000 }
+  );
+
+  if (isLoading) {
+    return (
+      <Card className="border-border/50">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-2">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="flex-1 space-y-1">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!activities || activities.length === 0) {
+    return (
+      <Card className="border-border/50 border-dashed">
+        <CardContent className="py-6 text-center">
+          <Activity className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+          <p className="text-sm text-muted-foreground">No recent activity yet</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Reviews will appear here as they complete</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+              {activities.length}
+            </Badge>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? (
+              <>Show Less <ChevronUp className="h-3 w-3 ml-1" /></>
+            ) : (
+              <>Show More <ChevronDown className="h-3 w-3 ml-1" /></>
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="space-y-1">
+          {activities.map((item: any, idx: number) => {
+            const scores = item.scoresJson ? (typeof item.scoresJson === "string" ? JSON.parse(item.scoresJson) : item.scoresJson) : null;
+            const overallScore = scores?.overall ?? scores?.Overall ?? null;
+            return (
+              <button
+                key={item.id ?? idx}
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-accent/50 transition-colors text-left group"
+                onClick={() => {
+                  if (item.reviewId || item.id) {
+                    setLocation(`/reviews/${item.reviewId || item.id}`);
+                  }
+                }}
+              >
+                {/* Score circle */}
+                <div className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                  overallScore !== null && overallScore >= 8 ? "bg-emerald-500/15 text-emerald-500" :
+                  overallScore !== null && overallScore >= 6 ? "bg-amber-500/15 text-amber-500" :
+                  overallScore !== null ? "bg-red-500/15 text-red-500" :
+                  "bg-muted text-muted-foreground"
+                )}>
+                  {overallScore !== null ? overallScore.toFixed(1) : "—"}
+                </div>
+
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                    {item.trackTitle || item.originalFilename || "Untitled Track"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {item.reviewType && (
+                      <span className="capitalize">{item.reviewType} review</span>
+                    )}
+                    {item.genre && (
+                      <span> · {item.genre}</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Time */}
+                <span className="text-[11px] text-muted-foreground/60 shrink-0">
+                  {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : ""}
+                </span>
+
+                <ArrowRight className="h-3 w-3 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

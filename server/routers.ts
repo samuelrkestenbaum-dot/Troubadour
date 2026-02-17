@@ -199,13 +199,14 @@ export const appRouter = router({
     // Batch tag management
     listAll: protectedProcedure.query(async ({ ctx }) => {
       const allTracks = await db.getTracksByUser(ctx.user.id);
-      const tagMap = new Map<string, { count: number; trackIds: number[] }>();
+      const tagMap = new Map<string, { count: number; trackIds: number[]; projectIds: Set<number> }>();
       for (const track of allTracks) {
         const tags = track.tags ? track.tags.split(",").filter(Boolean).map((t: string) => t.trim()) : [];
         for (const tag of tags) {
-          const entry = tagMap.get(tag) || { count: 0, trackIds: [] };
+          const entry = tagMap.get(tag) || { count: 0, trackIds: [], projectIds: new Set() };
           entry.count++;
           entry.trackIds.push(track.id);
+          entry.projectIds.add(track.projectId);
           tagMap.set(tag, entry);
         }
       }
@@ -213,6 +214,7 @@ export const appRouter = router({
         name,
         count: info.count,
         trackIds: info.trackIds,
+        projectIds: Array.from(info.projectIds),
       })).sort((a, b) => b.count - a.count);
     }),
 
@@ -569,6 +571,11 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
   chat: chatRouter,
 
   analytics: router({
+    recentFeed: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(30).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return db.getRecentActivity(ctx.user.id, input?.limit ?? 10);
+      }),
     quickStats: protectedProcedure.query(async ({ ctx }) => {
       // Lightweight stats available to all tiers (no analytics gate)
       const stats = await db.getDashboardStats(ctx.user.id);

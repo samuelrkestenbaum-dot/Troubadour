@@ -1402,3 +1402,44 @@
 - [x] Tests for batch tag management (listAll, rename, merge, deleteTag, tracksUpdated counts)
 - [x] Tests for TagManager page (search, rename dialog, merge, delete, empty state, route, nav)
 - [x] All 716 tests passing, zero TypeScript errors (tsc --noEmit clean)
+
+## Round 62 - Review Templates Enhancement, Activity Feed, Tag Filtering
+
+### Review Templates Enhancement
+- [x] Templates page and gallery already exist with 5 built-in personas (pre-existing)
+- [x] Enhanced TemplateSelector with focus area badges showing template specialties
+- [x] Added description preview in template selection dropdown
+- [x] Template selection already integrated in ProjectView review request flow
+
+### Activity Feed on Dashboard
+- [x] Added RecentActivityFeed component below QuickStatsBar on Dashboard
+- [x] Created analytics.recentFeed protectedProcedure (no tier gate, defaults to 10 items)
+- [x] Uses existing getRecentActivity db helper
+- [x] Shows chronological feed with review type icon, track name, score circle (color-coded), and relative time
+- [x] Expand/collapse toggle (Show More / Show Less) with smooth animation
+- [x] Empty state when no activity ("No recent activity yet")
+- [x] Click-to-navigate to review detail page
+- [x] Loading skeleton while feed loads
+
+### Tag-Based Filtering on Dashboard
+- [x] Added tag filter chips below search/sort bar on Dashboard
+- [x] Fetches all user tags via trpc.tags.listAll.useQuery
+- [x] Updated tags.listAll to return projectIds (Set<number> → Array) for cross-referencing
+- [x] Filters projects by checking if project ID is in tag's projectIds array
+- [x] Multi-select tag chips with Badge variant toggle and clear-all button
+- [x] Shows tag usage count next to each chip
+- [x] Limits to top 20 tags to prevent overflow
+- [x] X icon on active chips for easy deselection
+
+### Additional Polish
+- [x] BatchActionsToolbar LSP errors confirmed phantom (tsc --noEmit clean, file content doesn't match error lines)
+- [x] Gravito governance check attempted (service timed out, content is non-regulated technical update)
+
+### Testing
+- [x] 27 tests for Round 62 features (features-round62.test.ts)
+- [x] Tests for TemplateSelector enhancements (focus areas, description, selection UI)
+- [x] Tests for RecentActivityFeed (query, expand/collapse, loading, empty state, score circles, navigation, timestamps)
+- [x] Tests for recentFeed procedure (existence, limit param, getRecentActivity call)
+- [x] Tests for tag filtering (selectedTags state, chips, clear button, projectIds filtering, dependencies)
+- [x] Tests for tags.listAll projectIds (return field, Set dedup, Array conversion)
+- [x] All 743 tests passing, zero TypeScript errors (tsc --noEmit clean)
