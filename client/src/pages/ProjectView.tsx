@@ -9,6 +9,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useChat } from "@/contexts/ChatContext";
@@ -140,6 +143,14 @@ export default function ProjectView({ id }: { id: number }) {
       toast.success(`Re-review queued for ${result.queued} track${result.queued !== 1 ? "s" : ""}`, {
         description: "Fresh critiques using the latest review format",
       });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateProject = trpc.project.update.useMutation({
+    onSuccess: () => {
+      utils.project.get.invalidate({ id });
+      toast.success("Project updated");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -485,6 +496,25 @@ export default function ProjectView({ id }: { id: number }) {
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
               <Badge variant="outline" className="capitalize">{project.type}</Badge>
               <span>{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</span>
+              <Select
+                value={project.reviewFocus || "full"}
+                onValueChange={(value) => {
+                  updateProject.mutate({ id, reviewFocus: value as any });
+                }}
+              >
+                <SelectTrigger className="h-7 w-[140px] text-xs border-dashed">
+                  <User className="h-3 w-3 mr-1 opacity-60" />
+                  <SelectValue placeholder="Persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Review</SelectItem>
+                  <SelectItem value="songwriter">Songwriter</SelectItem>
+                  <SelectItem value="producer">Producer</SelectItem>
+                  <SelectItem value="arranger">Arranger</SelectItem>
+                  <SelectItem value="artist">Artist Dev</SelectItem>
+                  <SelectItem value="anr">A&R Executive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

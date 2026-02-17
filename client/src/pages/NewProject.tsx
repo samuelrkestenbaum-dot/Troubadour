@@ -39,13 +39,20 @@ export default function NewProject() {
   const [trackedFiles, setTrackedFiles] = useState<TrackedFile[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Read persona from URL query parameter (e.g., /projects/new?persona=songwriter)
+  // Load user's preferred persona from server
+  const { data: personaPref } = trpc.persona.getPreference.useQuery();
+
+  // Read persona from URL query parameter, fallback to user preference
   const selectedPersona = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const p = params.get("persona");
     if (p && p in PERSONA_LABELS) return p as string;
+    // Fallback to user's saved preference (skip "full" as it's the default)
+    if (personaPref?.preferredPersona && personaPref.preferredPersona !== "full") {
+      return personaPref.preferredPersona;
+    }
     return null;
-  }, []);
+  }, [personaPref?.preferredPersona]);
 
   const uploadTrack = trpc.track.upload.useMutation();
   const analyzeAndReview = trpc.job.analyzeAndReview.useMutation();

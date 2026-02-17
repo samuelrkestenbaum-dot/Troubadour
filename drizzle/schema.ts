@@ -22,6 +22,7 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   digestFrequency: mysqlEnum("digestFrequency", ["weekly", "biweekly", "monthly", "disabled"]).default("weekly").notNull(),
   lastDigestSentAt: timestamp("lastDigestSentAt"),
+  preferredPersona: mysqlEnum("preferredPersona", ["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full").notNull(),
   notificationPreferences: json("notificationPreferences").$type<{
     review_complete: boolean;
     collaboration_invite: boolean;

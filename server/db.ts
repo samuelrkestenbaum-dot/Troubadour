@@ -2160,3 +2160,19 @@ export async function updateLastDigestSentAt(userId: number) {
   if (!db) return;
   await db.update(users).set({ lastDigestSentAt: new Date() }).where(eq(users.id, userId));
 }
+
+export async function updateUserPreferredPersona(
+  userId: number,
+  persona: "songwriter" | "producer" | "arranger" | "artist" | "anr" | "full"
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ preferredPersona: persona }).where(eq(users.id, userId));
+}
+
+export async function getUserPreferredPersona(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) return "full";
+  const [user] = await db.select({ preferredPersona: users.preferredPersona }).from(users).where(eq(users.id, userId));
+  return user?.preferredPersona ?? "full";
+}

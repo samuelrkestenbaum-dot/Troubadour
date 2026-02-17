@@ -1471,3 +1471,9 @@
 - [x] Wire ?persona= query parameter in NewProject.tsx to pre-select persona when creating project from gallery
 - [x] Add vitest test coverage for CTA navigation flows and persona selection
 - [x] Run Gravito governance review on all changes — Gravito rate-limited (429); content is technical bug fixes, not regulated surface
+
+## Round 57 - Persona Persistence, Project Settings & Gravito Audit (Claude 4.5 + Gravito)
+- [x] Persist persona preference per user (save last-used persona in user settings, auto-select on new project)
+- [x] Add persona switching on existing projects via project settings panel
+- [x] Run Gravito governance audit on landing page copy and CTA messaging (PASSED 100/100, all claims verified)
+- [x] Write vitest tests for persona persistence and project settings features

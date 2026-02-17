@@ -91,6 +91,10 @@ export const appRouter = router({
           targetVibe: input.targetVibe || null,
           reviewFocus: input.reviewFocus,
         });
+        // Persist last-used persona as user preference
+        if (input.reviewFocus) {
+          await db.updateUserPreferredPersona(ctx.user.id, input.reviewFocus);
+        }
         return result;
       }),
 
@@ -1034,6 +1038,21 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         }
 
         return { success: emailSent, email: user.email };
+      }),
+  }),
+
+  persona: router({
+    getPreference: protectedProcedure
+      .query(async ({ ctx }) => {
+        const persona = await db.getUserPreferredPersona(ctx.user.id);
+        return { preferredPersona: persona };
+      }),
+
+    updatePreference: protectedProcedure
+      .input(z.object({ persona: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUserPreferredPersona(ctx.user.id, input.persona);
+        return { success: true, persona: input.persona };
       }),
   }),
 

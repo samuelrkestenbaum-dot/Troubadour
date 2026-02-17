@@ -172,6 +172,8 @@ vi.mock("./db", () => {
       { trackId: 2, overall: 8, quickTake: "Great", reviewVersion: 1, filename: "banger.mp3", genre: "Hip-Hop" },
     ]),
     softDeleteUser: vi.fn().mockResolvedValue(undefined),
+    updateUserPreferredPersona: vi.fn().mockResolvedValue(undefined),
+    getUserPreferredPersona: vi.fn().mockResolvedValue(null),
   };
 });
 

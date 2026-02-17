@@ -193,6 +193,8 @@ vi.mock("./db", () => {
     getRecentActivity: vi.fn().mockResolvedValue([]),
     getAverageScores: vi.fn().mockResolvedValue({}),
     getTopTracks: vi.fn().mockResolvedValue([]),
+    updateUserPreferredPersona: vi.fn().mockResolvedValue(undefined),
+    getUserPreferredPersona: vi.fn().mockResolvedValue(null),
   };
 });
 

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `preferredPersona` enum('songwriter','producer','arranger','artist','anr','full') DEFAULT 'full' NOT NULL;
