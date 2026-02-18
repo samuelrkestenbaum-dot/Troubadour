@@ -8,6 +8,7 @@ import {
   Layers, Minimize2, Radio, Film, Mic, Cpu,
   Loader2, Music2, Sparkles, ChevronDown, ChevronUp,
   AlertCircle, CheckCircle2, Lightbulb, ArrowRight, Wand2,
+  History, Download, Clock,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -251,18 +252,34 @@ export function InstrumentationAdvisorView({ trackId }: { trackId: number }) {
   const [artistNotes, setArtistNotes] = useState("");
   const [advice, setAdvice] = useState<InstrumentationAdvice | null>(null);
   const [showNotes, setShowNotes] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const { data: targetStates } = trpc.instrumentation.targetStates.useQuery();
+  const { data: history, refetch: refetchHistory } = trpc.instrumentation.history.useQuery({ trackId });
 
   const generateMutation = trpc.instrumentation.generate.useMutation({
     onSuccess: (data: any) => {
       setAdvice(data);
-      toast.success("Instrumentation advice generated!");
+      refetchHistory();
+      toast.success("Instrumentation advice generated & saved!");
     },
     onError: (err: any) => {
       toast.error(err.message);
     },
   });
+
+  const handleExportSessionPrep = () => {
+    const targetState = advice?.targetState || undefined;
+    const url = `/api/trpc/instrumentation.exportSessionPrep?input=${encodeURIComponent(JSON.stringify({ trackId, targetState }))}`;
+    window.open(url, "_blank");
+    toast.success("Opening session prep sheet...");
+  };
+
+  const loadFromHistory = (entry: any) => {
+    setAdvice(entry.adviceJson as InstrumentationAdvice);
+    setShowHistory(false);
+    toast.success(`Loaded ${entry.targetState} advice from ${new Date(entry.createdAt).toLocaleDateString()}`);
+  };
 
   const handleGenerate = () => {
     if (!selectedTarget) {
@@ -384,13 +401,35 @@ export function InstrumentationAdvisorView({ trackId }: { trackId: number }) {
                 <Badge className="text-xs bg-primary/15 text-primary border-primary/30">{advice.targetLabel}</Badge>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAdvice(null)}
-            >
-              New Analysis
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportSessionPrep}
+                title="Export as session prep sheet"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Export
+              </Button>
+              {history && history.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowHistory(!showHistory)}
+                  title="View history"
+                >
+                  <History className="h-3.5 w-3.5 mr-1" />
+                  History ({history.length})
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAdvice(null)}
+              >
+                New Analysis
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
@@ -446,6 +485,46 @@ export function InstrumentationAdvisorView({ trackId }: { trackId: number }) {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground leading-relaxed">{advice.arrangementArc}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* History panel */}
+      {showHistory && history && history.length > 0 && (
+        <Card className="border-border/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              Previous Analyses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {history.map((entry: any) => (
+                <button
+                  key={entry.id}
+                  onClick={() => loadFromHistory(entry)}
+                  className="w-full text-left p-3 rounded-lg border border-border/40 hover:border-border hover:bg-muted/30 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {entry.targetState}
+                      </Badge>
+                      {entry.artistNotes && (
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          "{entry.artistNotes}"
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {new Date(entry.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

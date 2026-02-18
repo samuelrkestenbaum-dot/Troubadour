@@ -31,6 +31,7 @@ import { PlaylistSuggestion } from "@/components/PlaylistSuggestion";
 import { ArtworkGallery } from "@/components/ArtworkGallery";
 import { ProjectTimeline } from "@/components/ProjectTimeline";
 import { ProjectCompletionScore } from "@/components/ProjectCompletionScore";
+import { SignatureSoundView } from "@/components/SignatureSoundView";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { trackTrackUploaded, trackReviewStarted } from "@/lib/analytics";
@@ -920,6 +921,7 @@ export default function ProjectView({ id }: { id: number }) {
            <ProjectCompletionScore projectId={id} />
            <ProjectTimeline projectId={id} tracks={tracks} />
            {project.type === "album" && <ArtworkGallery projectId={id} />}
+           <SignatureSoundView projectId={id} />
         </>
       )}
 

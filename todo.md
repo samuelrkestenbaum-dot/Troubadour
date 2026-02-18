@@ -1944,3 +1944,41 @@
 - [x] Run full test suite — 52 files, 1288 tests, ALL PASS
 - [x] TypeScript clean (tsc --noEmit exit 0)
 - [ ] Gravito governance audit deferred (Gravito temporarily unavailable — timeout)
+
+## Round 76 - Instrumentation Persistence, Signature Sound Advisor, Session Prep Export
+
+### Feature 1: Persist Instrumentation Advice to DB
+- [x] Add instrumentationAdvice table to schema (trackId, targetState, adviceJson, createdAt)
+- [x] Add db helpers: saveInstrumentationAdvice, getAdviceByTrack, getAdviceByTrackAndTarget, getLatestAdvice
+- [x] Update tRPC generate mutation to persist results
+- [x] Add tRPC queries: instrumentation.history, instrumentation.compare
+- [x] Add tRPC exportSessionPrep procedure (Markdown format)
+- [x] Update frontend with history panel, compare view, and export button
+
+### Feature 2: Album-Level Signature Sound Advisor
+- [x] Build signatureSound service (signatureSoundAdvisor.ts) using Claude 4.5
+- [x] Analyze all tracks in a project: cohesion score, signature elements, transition strategy
+- [x] Add tRPC procedures: signatureSound.generate, signatureSound.get, signatureSound.history, signatureSound.exportMarkdown
+- [x] Build SignatureSoundView component with full UI (project-level, added to ProjectView)
+- [x] Persist signature sound advice to signatureSound DB table
+- [x] History panel with timestamped past analyses
+
+### Feature 3: Session Prep Sheet Export
+- [x] Build Markdown export for instrumentation advice (exportSessionPrep procedure)
+- [x] Build Markdown export for signature sound (exportMarkdown procedure)
+- [x] Section-by-section tables with instrument, part type, role, priority, technique
+- [x] Export buttons in both InstrumentationAdvisorView and SignatureSoundView
+
+### Tests & Quality
+- [x] Write vitest tests for all new features (21 tests in features-round76.test.ts)
+- [x] Run full test suite — 53 files, 1309 tests, ALL PASS
+- [x] TypeScript clean (tsc --noEmit exit 0)
+
+### Clipboard Paste Upload for Audio Files
+- [x] Add document-level paste event listener to DropZone component
+- [x] Support pasting files from WhatsApp (video/mp4), Telegram (audio/ogg), and other messaging apps
+- [x] Handle 10+ audio MIME types + fallback extension detection for files without MIME
+- [x] Visual feedback: emerald green flash + ClipboardPaste icon + toast notification
+- [x] Keyboard hint in full-size DropZone (Ctrl+V to paste from WhatsApp, Telegram, etc.)
+- [x] Auto-rename generic clipboard filenames ("audio" → "pasted-audio-{timestamp}.ogg")
+- [x] Validation tests for audio MIME detection included in features-round76.test.ts (8 tests)

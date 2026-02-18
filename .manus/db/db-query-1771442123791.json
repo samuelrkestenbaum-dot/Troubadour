@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `signatureSound` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `projectId` int NOT NULL,\n  `userId` int NOT NULL,\n  `adviceJson` json NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `signatureSound_id` PRIMARY KEY(`id`),\n  INDEX `idx_sigSound_projectId` (`projectId`),\n  INDEX `idx_sigSound_userId` (`userId`),\n  FOREIGN KEY (`projectId`) REFERENCES `projects`(`id`) ON DELETE CASCADE,\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE IF NOT EXISTS `signatureSound` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `projectId` int NOT NULL,\n  `userId` int NOT NULL,\n  `adviceJson` json NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `signatureSound_id` PRIMARY KEY(`id`),\n  INDEX `idx_sigSound_projectId` (`projectId`),\n  INDEX `idx_sigSound_userId` (`userId`),\n  FOREIGN KEY (`projectId`) REFERENCES `projects`(`id`) ON DELETE CASCADE,\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 401
+}

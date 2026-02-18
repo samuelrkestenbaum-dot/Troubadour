@@ -5,6 +5,7 @@ import * as db from "../db";
 import { assertFeatureAllowed } from "../guards";
 import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "../services/analysisService";
 import { generateInstrumentationAdvice, TARGET_STATES, type TargetState } from "../services/instrumentationAdvisor";
+import { generateSignatureSound } from "../services/signatureSoundAdvisor";
 
 export const analysisRouter = {
   // ── Mix Report (Feature 3) ──
@@ -435,8 +436,291 @@ export const analysisRouter = {
           lyrics: lyricsRow?.[0]?.text || undefined,
           artistNotes: input.artistNotes,
         });
+
+        // Persist to DB
+        const adviceId = await db.saveInstrumentationAdvice({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          targetState: input.targetState,
+          adviceJson: advice as unknown as Record<string, unknown>,
+          artistNotes: input.artistNotes,
+        });
         
-        return advice;
+        return { ...advice, id: adviceId };
+      }),
+
+    // Get all saved advice for a track (history across target states)
+    history: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        const rows = await db.getInstrumentationAdviceByTrack(input.trackId);
+        return rows.map(r => ({
+          id: r.id,
+          targetState: r.targetState,
+          adviceJson: r.adviceJson,
+          artistNotes: r.artistNotes,
+          createdAt: r.createdAt,
+        }));
+      }),
+
+    // Get the latest advice for a specific target state
+    getByTarget: protectedProcedure
+      .input(z.object({ trackId: z.number(), targetState: z.string() }))
+      .query(async ({ input }) => {
+        const row = await db.getInstrumentationAdviceByTrackAndTarget(input.trackId, input.targetState);
+        if (!row) return null;
+        return {
+          id: row.id,
+          targetState: row.targetState,
+          adviceJson: row.adviceJson,
+          artistNotes: row.artistNotes,
+          createdAt: row.createdAt,
+        };
+      }),
+
+    // Export as session prep sheet (Markdown)
+    exportSessionPrep: exportProcedure
+      .input(z.object({ trackId: z.number(), targetState: z.string().optional() }))
+      .query(async ({ input }) => {
+        // Get the latest advice (optionally filtered by target state)
+        let row;
+        if (input.targetState) {
+          row = await db.getInstrumentationAdviceByTrackAndTarget(input.trackId, input.targetState);
+        } else {
+          row = await db.getLatestInstrumentationAdvice(input.trackId);
+        }
+        if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No instrumentation advice found. Generate one first." });
+
+        const track = await db.getTrackById(input.trackId);
+        const trackName = track?.originalFilename || "Track";
+        const advice = row.adviceJson as any;
+
+        // Build Markdown session prep sheet
+        let md = `# Session Prep Sheet\n\n`;
+        md += `**Track:** ${advice.trackTitle || trackName}\n`;
+        md += `**Genre:** ${advice.genre || "Unknown"}\n`;
+        md += `**Target:** ${advice.targetLabel || row.targetState}\n`;
+        md += `**Generated:** ${new Date(row.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}\n\n`;
+        md += `---\n\n`;
+
+        // Overall Strategy
+        md += `## Overall Strategy\n\n${advice.overallStrategy || "N/A"}\n\n`;
+
+        // Section-by-section
+        if (advice.sections?.length) {
+          md += `## Section Breakdown\n\n`;
+          for (const s of advice.sections) {
+            md += `### ${s.sectionName} (${s.startTime}–${s.endTime}) — Energy: ${s.energy}/10\n\n`;
+            md += `**Current instruments:** ${s.currentInstruments?.join(", ") || "None"}\n\n`;
+            if (s.suggestions?.length) {
+              md += `| Priority | Instrument | Part Type | Role | Technique |\n`;
+              md += `|----------|-----------|-----------|------|-----------|\n`;
+              for (const sg of s.suggestions) {
+                md += `| ${sg.priority?.toUpperCase() || ""} | ${sg.instrument} | ${sg.partType} | ${sg.role} | ${sg.technique || "—"} |\n`;
+              }
+              md += `\n`;
+            }
+            if (s.removalSuggestions?.length) {
+              md += `**Consider removing:** ${s.removalSuggestions.join(", ")}\n\n`;
+            }
+            if (s.arrangementNote) {
+              md += `> ${s.arrangementNote}\n\n`;
+            }
+          }
+        }
+
+        // Global suggestions
+        if (advice.globalSuggestions?.length) {
+          md += `## Global Suggestions (across all sections)\n\n`;
+          md += `| Priority | Instrument | Part Type | Role | Technique |\n`;
+          md += `|----------|-----------|-----------|------|-----------|\n`;
+          for (const sg of advice.globalSuggestions) {
+            md += `| ${sg.priority?.toUpperCase() || ""} | ${sg.instrument} | ${sg.partType} | ${sg.role} | ${sg.technique || "—"} |\n`;
+          }
+          md += `\n`;
+        }
+
+        // Arrangement Arc
+        if (advice.arrangementArc) {
+          md += `## Arrangement Arc\n\n${advice.arrangementArc}\n\n`;
+        }
+
+        // Key Takeaway
+        if (advice.keyTakeaway) {
+          md += `## Key Takeaway\n\n> ${advice.keyTakeaway}\n\n`;
+        }
+
+        // Artist Notes
+        if (row.artistNotes) {
+          md += `---\n\n*Artist notes: ${row.artistNotes}*\n\n`;
+        }
+
+        md += `---\n\n*Generated by Troubadour — AI-Powered Music Review Platform*\n`;
+
+        return { markdown: md, trackName };
+      }),
+  }),
+
+  // ── Signature Sound Advisor (album-level unifying elements) ──
+  signatureSound: router({
+    get: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const row = await db.getSignatureSoundByProject(input.projectId);
+        if (!row) return null;
+        return {
+          id: row.id,
+          adviceJson: row.adviceJson,
+          createdAt: row.createdAt,
+        };
+      }),
+
+    history: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const rows = await db.getSignatureSoundHistory(input.projectId);
+        return rows.map(r => ({
+          id: r.id,
+          adviceJson: r.adviceJson,
+          createdAt: r.createdAt,
+        }));
+      }),
+
+    generate: aiAnalysisProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "analytics"); // Pro feature
+
+        const allTracks = await db.getTracksByProject(input.projectId);
+        const reviewedTracks = allTracks.filter(t => t.status === "reviewed");
+        if (reviewedTracks.length < 2) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Need at least 2 reviewed tracks to analyze signature sound" });
+        }
+
+        // Gather audio analysis and reviews for each track
+        const trackData = [];
+        for (const track of reviewedTracks) {
+          const features = await db.getAudioFeaturesByTrack(track.id);
+          if (!features?.geminiAnalysisJson) continue;
+          const trackReviews = await db.getReviewsByTrack(track.id);
+          const latestReview = trackReviews.find(r => r.isLatest && r.reviewType === "track");
+          const scores = (latestReview?.scoresJson as Record<string, number>) || {};
+          trackData.push({
+            trackTitle: track.originalFilename,
+            genre: track.detectedGenre || "Unknown",
+            audioAnalysis: features.geminiAnalysisJson as any,
+            reviewQuickTake: latestReview?.quickTake || undefined,
+            overallScore: scores.overall ?? scores.Overall ?? undefined,
+          });
+        }
+
+        if (trackData.length < 2) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Need at least 2 tracks with audio analysis" });
+        }
+
+        const result = await generateSignatureSound({
+          projectTitle: project.title,
+          tracks: trackData,
+        });
+
+        // Persist
+        const id = await db.saveSignatureSound({
+          projectId: input.projectId,
+          userId: ctx.user.id,
+          adviceJson: result as unknown as Record<string, unknown>,
+        });
+
+        return { id, ...result };
+      }),
+
+    // Export as Markdown
+    exportMarkdown: exportProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const row = await db.getSignatureSoundByProject(input.projectId);
+        if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No signature sound analysis found. Generate one first." });
+
+        const advice = row.adviceJson as any;
+        let md = `# Signature Sound Report\n\n`;
+        md += `**Album:** ${project.title}\n`;
+        md += `**Generated:** ${new Date(row.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}\n\n`;
+        md += `---\n\n`;
+
+        // Vision
+        if (advice.overallVision) {
+          md += `## Sonic Vision\n\n> ${advice.overallVision}\n\n`;
+        }
+
+        // Current Cohesion
+        if (advice.currentCohesion) {
+          md += `## Current Cohesion Score: ${advice.currentCohesion.score}/10\n\n`;
+          if (advice.currentCohesion.strengths?.length) {
+            md += `**Strengths:**\n`;
+            for (const s of advice.currentCohesion.strengths) md += `- ${s}\n`;
+            md += `\n`;
+          }
+          if (advice.currentCohesion.gaps?.length) {
+            md += `**Gaps:**\n`;
+            for (const g of advice.currentCohesion.gaps) md += `- ${g}\n`;
+            md += `\n`;
+          }
+        }
+
+        // Signature Elements
+        if (advice.signatureElements?.length) {
+          md += `## Signature Elements\n\n`;
+          for (let i = 0; i < advice.signatureElements.length; i++) {
+            const el = advice.signatureElements[i];
+            md += `### ${i + 1}. ${el.element}\n\n`;
+            md += `**Category:** ${el.category} | **Subtlety:** ${el.subtlety} | **Priority:** ${el.priority}\n\n`;
+            md += `${el.description}\n\n`;
+            md += `**How to Apply:** ${el.howToApply}\n\n`;
+            if (el.trackSpecificNotes?.length) {
+              md += `| Track | Application |\n`;
+              md += `|-------|------------|\n`;
+              for (const n of el.trackSpecificNotes) {
+                md += `| ${n.trackName} | ${n.application} |\n`;
+              }
+              md += `\n`;
+            }
+          }
+        }
+
+        // Transition Strategy
+        if (advice.transitionStrategy) {
+          md += `## Transition Strategy\n\n${advice.transitionStrategy}\n\n`;
+        }
+
+        // Sequencing Notes
+        if (advice.sequencingNotes) {
+          md += `## Sequencing Notes\n\n${advice.sequencingNotes}\n\n`;
+        }
+
+        // Key Takeaway
+        if (advice.keyTakeaway) {
+          md += `## Key Takeaway\n\n> ${advice.keyTakeaway}\n\n`;
+        }
+
+        md += `---\n\n*Generated by Troubadour \u2014 AI-Powered Music Review Platform*\n`;
+
+        return { markdown: md, projectTitle: project.title };
       }),
   }),
 };

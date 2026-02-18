@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3043,4 +3043,103 @@ export async function getTotalUserCount(): Promise<number> {
   if (!db) return 0;
   const result = await db.select({ count: sql<number>`COUNT(*)` }).from(users).where(isNull(users.deletedAt));
   return result[0]?.count ?? 0;
+}
+
+// ── Instrumentation Advice Persistence ──
+
+export async function saveInstrumentationAdvice(data: {
+  trackId: number;
+  userId: number;
+  targetState: string;
+  adviceJson: Record<string, unknown>;
+  artistNotes?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(instrumentationAdvice).values({
+    trackId: data.trackId,
+    userId: data.userId,
+    targetState: data.targetState,
+    adviceJson: data.adviceJson,
+    artistNotes: data.artistNotes || null,
+  });
+  return result[0].insertId;
+}
+
+export async function getInstrumentationAdviceByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(instrumentationAdvice)
+    .where(eq(instrumentationAdvice.trackId, trackId))
+    .orderBy(desc(instrumentationAdvice.createdAt));
+}
+
+export async function getInstrumentationAdviceByTrackAndTarget(trackId: number, targetState: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(instrumentationAdvice)
+    .where(
+      and(
+        eq(instrumentationAdvice.trackId, trackId),
+        eq(instrumentationAdvice.targetState, targetState)
+      )
+    )
+    .orderBy(desc(instrumentationAdvice.createdAt))
+    .limit(1);
+  return rows[0] || null;
+}
+
+export async function getLatestInstrumentationAdvice(trackId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(instrumentationAdvice)
+    .where(eq(instrumentationAdvice.trackId, trackId))
+    .orderBy(desc(instrumentationAdvice.createdAt))
+    .limit(1);
+  return rows[0] || null;
+}
+
+// ── Signature Sound Persistence ──
+
+export async function saveSignatureSound(data: {
+  projectId: number;
+  userId: number;
+  adviceJson: Record<string, unknown>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(signatureSound).values({
+    projectId: data.projectId,
+    userId: data.userId,
+    adviceJson: data.adviceJson,
+  });
+  return result[0].insertId;
+}
+
+export async function getSignatureSoundByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(signatureSound)
+    .where(eq(signatureSound.projectId, projectId))
+    .orderBy(desc(signatureSound.createdAt))
+    .limit(1);
+  return rows[0] || null;
+}
+
+export async function getSignatureSoundHistory(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(signatureSound)
+    .where(eq(signatureSound.projectId, projectId))
+    .orderBy(desc(signatureSound.createdAt));
 }

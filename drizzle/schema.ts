@@ -577,3 +577,38 @@ export const adminSettings = mysqlTable("adminSettings", {
 ]);
 export type AdminSetting = typeof adminSettings.$inferSelect;
 export type InsertAdminSetting = typeof adminSettings.$inferInsert;
+
+// ── Instrumentation Advice (persisted) ──
+export const instrumentationAdvice = mysqlTable("instrumentationAdvice", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  targetState: varchar("targetState", { length: 50 }).notNull(),
+  adviceJson: json("adviceJson").$type<Record<string, unknown>>().notNull(),
+  artistNotes: text("artistNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_instrAdvice_trackId").on(t.trackId),
+  index("idx_instrAdvice_userId").on(t.userId),
+  index("idx_instrAdvice_trackId_target").on(t.trackId, t.targetState),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type InstrumentationAdviceRow = typeof instrumentationAdvice.$inferSelect;
+export type InsertInstrumentationAdvice = typeof instrumentationAdvice.$inferInsert;
+
+// ── Signature Sound (album-level unifying elements) ──
+export const signatureSound = mysqlTable("signatureSound", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  adviceJson: json("adviceJson").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_sigSound_projectId").on(t.projectId),
+  index("idx_sigSound_userId").on(t.userId),
+  foreignKey({ columns: [t.projectId], foreignColumns: [projects.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type SignatureSoundRow = typeof signatureSound.$inferSelect;
+export type InsertSignatureSound = typeof signatureSound.$inferInsert;

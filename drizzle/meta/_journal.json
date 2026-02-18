@@ -267,6 +267,13 @@
       "when": 1771432390948,
       "tag": "0037_harsh_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1771442060402,
+      "tag": "0038_dry_purple_man",
+      "breakpoints": true
     }
   ]
 }

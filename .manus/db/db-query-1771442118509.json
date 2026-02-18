@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `instrumentationAdvice` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `trackId` int NOT NULL,\n  `userId` int NOT NULL,\n  `targetState` varchar(50) NOT NULL,\n  `adviceJson` json NOT NULL,\n  `artistNotes` text,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `instrumentationAdvice_id` PRIMARY KEY(`id`),\n  INDEX `idx_instrAdvice_trackId` (`trackId`),\n  INDEX `idx_instrAdvice_userId` (`userId`),\n  INDEX `idx_instrAdvice_trackId_target` (`trackId`, `targetState`),\n  FOREIGN KEY (`trackId`) REFERENCES `tracks`(`id`) ON DELETE CASCADE,\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE IF NOT EXISTS `instrumentationAdvice` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `trackId` int NOT NULL,\n  `userId` int NOT NULL,\n  `targetState` varchar(50) NOT NULL,\n  `adviceJson` json NOT NULL,\n  `artistNotes` text,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `instrumentationAdvice_id` PRIMARY KEY(`id`),\n  INDEX `idx_instrAdvice_trackId` (`trackId`),\n  INDEX `idx_instrAdvice_userId` (`userId`),\n  INDEX `idx_instrAdvice_trackId_target` (`trackId`, `targetState`),\n  FOREIGN KEY (`trackId`) REFERENCES `tracks`(`id`) ON DELETE CASCADE,\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 500
+}
