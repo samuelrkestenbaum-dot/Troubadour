@@ -1116,6 +1116,36 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
       return db.getAdminRecentActivity();
     }),
+    getUserDetail: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        const detail = await db.getAdminUserDetail(input.userId);
+        if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        return detail;
+      }),
+    updateRole: protectedProcedure
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin"]) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot change your own role" });
+        await db.adminUpdateUserRole(input.userId, input.role);
+        return { success: true };
+      }),
+    updateTier: protectedProcedure
+      .input(z.object({ userId: z.number(), tier: z.enum(["free", "artist", "pro"]) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        await db.adminUpdateUserTier(input.userId, input.tier);
+        return { success: true };
+      }),
+    resetMonthlyCount: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        await db.adminResetUserMonthlyCount(input.userId);
+        return { success: true };
+      }),
   }),
 
 });

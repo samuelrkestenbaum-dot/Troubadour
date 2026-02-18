@@ -2,9 +2,12 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp } from "lucide-react";
+import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
+import { UserDetailModal } from "@/components/UserDetailModal";
 
 function StatCard({ title, value, icon: Icon, description }: { title: string; value: string | number; icon: React.ElementType; description?: string }) {
   return (
@@ -50,6 +53,9 @@ export default function AdminDashboard() {
   const users = trpc.admin.getUsers.useQuery(undefined, { enabled: user?.role === "admin" });
   const activity = trpc.admin.getRecentActivity.useQuery(undefined, { enabled: user?.role === "admin" });
 
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [showUserDetail, setShowUserDetail] = useState(false);
+
   if (user?.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -61,6 +67,11 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const openUserDetail = (userId: number) => {
+    setSelectedUserId(userId);
+    setShowUserDetail(true);
+  };
 
   return (
     <div className="space-y-6 p-1">
@@ -145,6 +156,7 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-2 font-medium text-muted-foreground">Subscription</th>
                     <th className="text-left py-3 px-2 font-medium text-muted-foreground">Joined</th>
                     <th className="text-left py-3 px-2 font-medium text-muted-foreground">Last Active</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,6 +183,17 @@ export default function AdminDashboard() {
                       </td>
                       <td className="py-3 px-2 text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(u.lastSignedIn), { addSuffix: true })}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openUserDetail(u.id)}
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-1" />
+                          Manage
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -220,6 +243,13 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* User Detail Modal */}
+      <UserDetailModal
+        userId={selectedUserId}
+        open={showUserDetail}
+        onOpenChange={setShowUserDetail}
+      />
     </div>
   );
 }

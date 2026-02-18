@@ -1619,3 +1619,28 @@
 - [x] All 857 tests passing
 - [x] TypeScript clean (tsc --noEmit exit 0; watcher errors are stale cache from BatchActionsToolbar)
 - [x] Browser test admin dashboard: 4 stat cards, tier distribution, user table, recent reviews, role-gated sidebar nav all verified
+## Round 66 - Admin User Management + Notification Center (Claude 4.5 + Gravito)
+
+### Admin User Management Actions
+- [x] Add admin.getUserDetail, admin.updateRole, admin.updateTier, admin.resetMonthlyCount tRPC procedures
+- [x] Add getAdminUserDetail, adminUpdateUserRole, adminUpdateUserTier, adminResetUserMonthlyCount db helpers
+- [x] Build UserDetailModal with stats cards, account details, admin actions (role/tier/reset), recent reviews
+- [x] Wire Manage button into AdminDashboard user table rows
+- [x] Role change confirmation dialog with self-change prevention
+
+### In-App Notification Center
+- [x] Already fully built: notifications table (6 types), db helpers (create, get, markRead, markAllRead, getUnread, preferences)
+- [x] tRPC procedures: notification.list, notification.unreadCount, notification.markRead, notification.markAllRead, notification.getPreferences, notification.updatePreferences
+- [x] NotificationBell component with dropdown, unread badge, mark-as-read — wired into DashboardLayout
+- [x] Notification creation wired into review completion, digest, and system events
+- [x] User notification preferences with per-type toggles in Settings page
+
+### Gravito Governance
+- [x] presGovFullAudit: 38 pages, 92/100 avg, 0 failures, admin page 100/100
+- [x] Notification center already built and previously audited
+
+### Tests & Quality
+- [x] Write 35 tests in features-round66.test.ts (admin procedures, db helpers, UserDetailModal, governance)
+- [x] All 892 tests passing
+- [x] TypeScript clean (tsc --noEmit exit 0)
+- [x] Browser test: Admin Dashboard stat cards, user table, Manage button, UserDetailModal with all actions verified

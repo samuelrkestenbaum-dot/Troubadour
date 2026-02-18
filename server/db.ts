@@ -2301,3 +2301,98 @@ export async function getAdminRecentActivity() {
     .limit(20);
   return recentReviews;
 }
+
+// ── Admin User Management Helpers ──
+
+export async function getAdminUserDetail(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      tier: users.tier,
+      stripeCustomerId: users.stripeCustomerId,
+      stripeSubscriptionId: users.stripeSubscriptionId,
+      monthlyReviewCount: users.monthlyReviewCount,
+      monthlyResetAt: users.monthlyResetAt,
+      audioMinutesUsed: users.audioMinutesUsed,
+      audioMinutesLimit: users.audioMinutesLimit,
+      digestFrequency: users.digestFrequency,
+      preferredPersona: users.preferredPersona,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)));
+
+  if (!user) return null;
+
+  // Get user's project count
+  const [projectCount] = await db
+    .select({ count: count() })
+    .from(projects)
+    .where(eq(projects.userId, userId));
+
+  // Get user's total review count
+  const [reviewCount] = await db
+    .select({ count: count() })
+    .from(reviews)
+    .where(eq(reviews.userId, userId));
+
+  // Get user's track count
+  const [trackCount] = await db
+    .select({ count: count() })
+    .from(tracks)
+    .where(eq(tracks.userId, userId));
+
+  // Get recent reviews (last 10)
+  const recentReviews = await db
+    .select({
+      id: reviews.id,
+      trackId: reviews.trackId,
+      reviewType: reviews.reviewType,
+      modelUsed: reviews.modelUsed,
+      createdAt: reviews.createdAt,
+    })
+    .from(reviews)
+    .where(eq(reviews.userId, userId))
+    .orderBy(desc(reviews.createdAt))
+    .limit(10);
+
+  return {
+    ...user,
+    stats: {
+      totalProjects: projectCount?.count ?? 0,
+      totalReviews: reviewCount?.count ?? 0,
+      totalTracks: trackCount?.count ?? 0,
+    },
+    recentReviews,
+  };
+}
+
+export async function adminUpdateUserRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) return false;
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+  return true;
+}
+
+export async function adminUpdateUserTier(userId: number, tier: "free" | "artist" | "pro") {
+  const db = await getDb();
+  if (!db) return false;
+  await db.update(users).set({ tier }).where(eq(users.id, userId));
+  return true;
+}
+
+export async function adminResetUserMonthlyCount(userId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.update(users).set({ monthlyReviewCount: 0, monthlyResetAt: new Date() }).where(eq(users.id, userId));
+  return true;
+}
