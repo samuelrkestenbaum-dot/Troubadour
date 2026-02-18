@@ -2141,11 +2141,37 @@
 - [x] Run Gravito governance review (503 Service Unavailable — noted as pending)
 - [x] Write tests for all improvements (29 tests in features-round82.test.ts)
 - [x] TypeScript clean, all tests pass (56 files, 1430 tests)
-- [ ] Push to GitHub (pending)
+- [x] Push to GitHub
 
 ### Round 83 - Free Tier Limit Change (Claude 4.5)
 - [x] Change free tier monthlyReviewLimit from 3 to 1 in products.ts
 - [x] Update Pricing page, Settings page, Support FAQ to show "1 AI review per month"
 - [x] Update test assertions (features.test.ts) to match new limit
 - [x] All tests pass (56 files, 1430 tests)
-- [ ] Push to GitHub (pending)
+- [x] Push to GitHub
+
+## Round 84 - Upgrade Prompt, Digest Preview, Streak Wiring (Claude 4.5 + Gravito)
+
+### Contextual Upgrade Prompt
+- [x] Build upgrade prompt component shown when free user hits 1-review limit
+- [x] Show what Artist/Pro tier unlocks (unlimited reviews, Action Modes, priority processing)
+- [x] Include one-click upgrade CTA linking to checkout
+- [x] Display contextually after review limit rejection (not just a generic paywall)
+
+### Preview Digest on Settings
+- [x] Add "Preview Digest" button to Settings page email/notification section
+- [x] Build tRPC procedure to generate a preview digest for the current user
+- [x] Render the preview in a modal or inline card with the same HTML as the real email
+- [x] Show streak, skill progression, and artist DNA data in the preview
+
+### Streak Recording in Review Pipeline
+- [x] Verify recordActivity is called after review completion in jobProcessor
+- [x] Ensure streak updates on both track upload AND review completion
+- [x] Test that streak dashboard reflects activity without manual triggers
+
+### Quality & Governance
+- [x] Claude 4.5 quality audit on all changes
+- [ ] Gravito governance review (service experiencing 503 errors)
+- [x] Write tests for all Round 84 features (34 new tests in features-round83.test.ts)
+- [x] All tests pass (57 files, 1464 tests)
+- [ ] Push to GitHub

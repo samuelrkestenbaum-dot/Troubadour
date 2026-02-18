@@ -18,6 +18,7 @@ import {
   ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Zap, History, Download,
   ExternalLink, Trash2
 } from "lucide-react";
+import { UpgradePrompt, useUpgradePrompt } from "@/components/UpgradePrompt";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { TrackTags } from "@/components/TrackTags";
 import { ScoreLineChart } from "@/components/ScoreLineChart";
@@ -715,12 +716,11 @@ export default function TrackView({ id }: { id: number }) {
     },
   });
 
+  const { showUpgrade, upgradeProps } = useUpgradePrompt();
+
   const handleJobError = (err: any) => {
-    if (err.message?.includes("limit") || err.data?.code === "FORBIDDEN") {
-      toast.error(err.message, {
-        action: { label: "Upgrade", onClick: () => setLocation("/pricing") },
-        duration: 8000,
-      });
+    if (err.message?.includes("limit") || err.message?.includes("Upgrade") || err.data?.code === "FORBIDDEN") {
+      showUpgrade(err.message, err.message?.includes("review") ? "review" : "upload");
     } else {
       toast.error(err.message);
     }
@@ -845,6 +845,9 @@ export default function TrackView({ id }: { id: number }) {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      {/* Upgrade Prompt Modal */}
+      {upgradeProps && <UpgradePrompt {...upgradeProps} />}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">

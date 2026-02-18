@@ -989,6 +989,68 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         return { success: true, frequency: input.frequency };
       }),
 
+    preview: protectedProcedure
+      .query(async ({ ctx }) => {
+        const data = await db.getDigestData(ctx.user.id, 7);
+
+        // Build streak data
+        let streakHtml = '';
+        try {
+          const { getStreakInfo } = await import("./services/retentionEngine");
+          const streak = await getStreakInfo(ctx.user.id);
+          streakHtml = `<div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:24px;padding:16px;background:#12122a;border-radius:12px;">
+            <div><div style="font-size:2em;font-weight:700;color:#f59e0b;">🔥 ${streak.currentStreak}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Day Streak</div></div>
+            <div><div style="font-size:2em;font-weight:700;color:#8b5cf6;">${streak.longestStreak}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Best Streak</div></div>
+            <div><div style="font-size:2em;font-weight:700;color:#3b82f6;">${streak.totalUploads}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Total Uploads</div></div>
+          </div>`;
+        } catch { /* streak data optional */ }
+
+        // Build skill progression summary
+        let skillHtml = '';
+        try {
+          const overview = await db.getSkillProgressionOverview(ctx.user.id);
+          if (overview && overview.length > 0) {
+            const skillRows = overview.slice(0, 5).map((s: any) => {
+              const pct = Math.round((s.latestScore / 10) * 100);
+              return `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:4px;"><span>${s.dimension}</span><span style="color:#c8102e;font-weight:600;">${s.latestScore}/10</span></div><div style="background:#1e1e35;border-radius:4px;height:6px;"><div style="background:linear-gradient(90deg,#c8102e,#f59e0b);border-radius:4px;height:6px;width:${pct}%;"></div></div></div>`;
+            }).join('');
+            skillHtml = `<div style="margin-bottom:24px;"><h2 style="font-size:1.1em;font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid #1e1e35;">Skill Growth</h2>${skillRows}</div>`;
+          }
+        } catch { /* skill data optional */ }
+
+        let trackRows = '';
+        if (data.reviews && data.reviews.length > 0) {
+          trackRows = data.reviews.slice(0, 5).map((r) => {
+            const scores = (typeof r.scoresJson === 'string' ? JSON.parse(r.scoresJson) : r.scoresJson) as Record<string, number> | null;
+            const score = scores?.overall ?? scores?.overallScore;
+            const scoreDisplay = typeof score === 'number' ? score : '\u2014';
+            const scoreColor = typeof score === 'number' ? (score >= 8 ? '#22c55e' : score >= 6 ? '#3b82f6' : score >= 4 ? '#f59e0b' : '#ef4444') : '#888';
+            return `<tr><td style="padding:12px 16px;border-bottom:1px solid #1e1e35;">${r.trackFilename || 'Unknown'}</td><td style="padding:12px 16px;border-bottom:1px solid #1e1e35;color:${scoreColor};font-weight:700;text-align:center;">${scoreDisplay}/10</td><td style="padding:12px 16px;border-bottom:1px solid #1e1e35;color:#888;font-size:0.85em;">${r.quickTake || '\u2014'}</td></tr>`;
+          }).join('');
+        }
+
+        const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Troubadour Weekly Digest Preview</title></head><body style="margin:0;padding:0;background:#0a0a14;color:#e8e8f0;font-family:'Inter',system-ui,-apple-system,sans-serif;">
+          <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
+            <div style="text-align:center;padding:24px 0;border-bottom:2px solid #1e1e35;margin-bottom:24px;">
+              <h1 style="font-size:1.5em;font-weight:800;margin:0 0 4px;">Troubadour</h1>
+              <p style="color:#888;margin:0;font-size:0.9em;">Your Weekly Digest Preview</p>
+              <p style="color:#3b82f6;margin:8px 0 0;font-size:0.8em;">This is a preview of what your weekly email will look like.</p>
+            </div>
+            ${streakHtml}
+            <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:24px;">
+              <div><div style="font-size:2em;font-weight:700;color:#c8102e;">${data.stats.totalReviews}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Reviews</div></div>
+              <div><div style="font-size:2em;font-weight:700;color:#c8102e;">${data.stats.totalNewProjects}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Projects</div></div>
+              <div><div style="font-size:2em;font-weight:700;color:#c8102e;">${data.stats.averageScore ?? '\u2014'}</div><div style="font-size:0.75em;color:#888;text-transform:uppercase;">Avg Score</div></div>
+            </div>
+            ${skillHtml}
+            ${trackRows ? `<h2 style="font-size:1.1em;font-weight:600;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid #1e1e35;">Recent Reviews</h2><table style="width:100%;border-collapse:collapse;"><thead><tr style="color:#888;font-size:0.8em;text-transform:uppercase;"><th style="text-align:left;padding:8px 16px;">Track</th><th style="text-align:center;padding:8px 16px;">Score</th><th style="text-align:left;padding:8px 16px;">Quick Take</th></tr></thead><tbody>${trackRows}</tbody></table>` : '<p style="text-align:center;color:#888;padding:24px;">No reviews this week. Upload some tracks to get started!</p>'}
+            <div style="text-align:center;padding:24px 0;border-top:1px solid #1e1e35;margin-top:24px;color:#888;font-size:0.75em;">Preview generated by Troubadour AI</div>
+          </div>
+        </body></html>`;
+
+        return { htmlContent, stats: data.stats };
+      }),
+
     sendTest: protectedProcedure
       .mutation(async ({ ctx }) => {
         const user = await db.getUserById(ctx.user.id);

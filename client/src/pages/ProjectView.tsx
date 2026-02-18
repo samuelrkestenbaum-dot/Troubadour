@@ -28,6 +28,7 @@ import { SentimentTimeline } from "@/components/SentimentTimeline";
 import { BatchActionsToolbar } from "@/components/BatchActionsToolbar";
 import { DraggableTrackList } from "@/components/DraggableTrackList";
 import { PlaylistSuggestion } from "@/components/PlaylistSuggestion";
+import { UpgradePrompt, useUpgradePrompt } from "@/components/UpgradePrompt";
 import { ArtworkGallery } from "@/components/ArtworkGallery";
 import { ProjectTimeline } from "@/components/ProjectTimeline";
 import { ProjectCompletionScore } from "@/components/ProjectCompletionScore";
@@ -61,6 +62,7 @@ export default function ProjectView({ id }: { id: number }) {
   const [reviewLength, setReviewLength] = useState<ReviewLength>("standard");
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
   const [reorderMode, setReorderMode] = useState(false);
+  const { showUpgrade, upgradeProps } = useUpgradePrompt();
 
   useEffect(() => {
     setContext({ projectId: id, trackId: null });
@@ -76,7 +78,13 @@ export default function ProjectView({ id }: { id: number }) {
   });
 
   const uploadTrack = trpc.track.upload.useMutation({
-    onError: (err) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err?.data?.code === "FORBIDDEN" || err?.message?.includes("limit") || err?.message?.includes("Upgrade")) {
+        showUpgrade(err.message, "upload");
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const analyzeTrack = trpc.job.analyze.useMutation({
@@ -93,7 +101,13 @@ export default function ProjectView({ id }: { id: number }) {
       utils.project.get.invalidate({ id });
       toast.success("Review started — writing your critique");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err?.data?.code === "FORBIDDEN" || err?.message?.includes("monthly review") || err?.message?.includes("Upgrade")) {
+        showUpgrade(err.message, "review");
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const albumReview = trpc.job.albumReview.useMutation({
@@ -116,7 +130,13 @@ export default function ProjectView({ id }: { id: number }) {
     onSuccess: () => {
       utils.project.get.invalidate({ id });
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err?.data?.code === "FORBIDDEN" || err?.message?.includes("monthly review") || err?.message?.includes("Upgrade")) {
+        showUpgrade(err.message, "review");
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const retryJob = trpc.job.retry.useMutation({
@@ -435,6 +455,9 @@ export default function ProjectView({ id }: { id: number }) {
           </div>
         </div>
       )}
+
+      {/* Upgrade Prompt Modal */}
+      {upgradeProps && <UpgradePrompt {...upgradeProps} />}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start justify-between gap-3">

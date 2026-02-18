@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2, AlertTriangle, Send, Mail, Clock } from "lucide-react";
+import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2, AlertTriangle, Send, Mail, Clock, Eye } from "lucide-react";
 
 const TIER_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
@@ -438,6 +438,11 @@ function DigestPreferencesSection() {
     },
   });
 
+  const [showPreview, setShowPreview] = useState(false);
+  const previewQuery = trpc.digest.preview.useQuery(undefined, {
+    enabled: showPreview,
+  });
+
   const currentFrequency = prefsQuery.data?.frequency ?? "weekly";
   const lastDigestSentAt = prefsQuery.data?.lastDigestSentAt;
 
@@ -505,20 +510,81 @@ function DigestPreferencesSection() {
             }
           </span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => sendTestMutation.mutate()}
-          disabled={sendTestMutation.isPending}
-          className="shrink-0"
-        >
-          {sendTestMutation.isPending ? (
-            <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending...</>
-          ) : (
-            <><Send className="h-3.5 w-3.5 mr-1.5" /> Send Test Digest</>
-          )}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreview(true)}
+            className="shrink-0"
+          >
+            <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => sendTestMutation.mutate()}
+            disabled={sendTestMutation.isPending}
+            className="shrink-0"
+          >
+            {sendTestMutation.isPending ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending...</>
+            ) : (
+              <><Send className="h-3.5 w-3.5 mr-1.5" /> Send Test Digest</>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {/* Digest Preview Modal */}
+      {showPreview && (
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-primary" />
+                Weekly Digest Preview
+              </DialogTitle>
+              <DialogDescription>
+                This is what your weekly email will look like based on your current data.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto rounded-lg border border-border/50">
+              {previewQuery.isLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Generating preview...</span>
+                </div>
+              ) : previewQuery.error ? (
+                <div className="flex items-center justify-center py-16 text-sm text-destructive">
+                  Failed to load preview: {previewQuery.error.message}
+                </div>
+              ) : previewQuery.data ? (
+                <iframe
+                  srcDoc={previewQuery.data.htmlContent}
+                  className="w-full h-[500px] border-0"
+                  title="Digest Preview"
+                  sandbox="allow-same-origin"
+                />
+              ) : null}
+            </div>
+            <DialogFooter className="flex-row justify-between sm:justify-between">
+              <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)}>
+                Close
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  sendTestMutation.mutate();
+                  setShowPreview(false);
+                }}
+                disabled={sendTestMutation.isPending}
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" /> Send This to My Email
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
