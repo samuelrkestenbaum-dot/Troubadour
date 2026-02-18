@@ -6,6 +6,12 @@ import { assertFeatureAllowed } from "../guards";
 import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "../services/analysisService";
 import { generateInstrumentationAdvice, TARGET_STATES, type TargetState } from "../services/instrumentationAdvisor";
 import { generateSignatureSound } from "../services/signatureSoundAdvisor";
+import { extractAndSaveScores, getProgressionOverview, getProgressionTimeline, analyzeTrends } from "../services/skillTracker";
+import { benchmarkUser } from "../services/competitiveBenchmark";
+import { evaluateReleaseReadiness, getLatestReadiness, getReleaseReadinessHistory } from "../services/releaseReadiness";
+import { getStreakInfo, recordActivity, setWeeklyGoal } from "../services/retentionEngine";
+import { generateArtistDNA, getLatestDNA, getDNAHistory } from "../services/artistDNAService";
+import { classifyArtistArchetype, getArtistArchetype, getPlatformStats as getFlywheelStats } from "../services/dataFlywheel";
 
 export const analysisRouter = {
   // ── Mix Report (Feature 3) ──
@@ -722,5 +728,128 @@ export const analysisRouter = {
 
         return { markdown: md, projectTitle: project.title };
       }),
+  }),
+
+  // ── Feature 1: Longitudinal Improvement Tracking ──
+  skillTracker: router({
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      return getProgressionOverview(ctx.user.id);
+    }),
+
+    trend: protectedProcedure
+      .input(z.object({ dimension: z.string().optional(), focusMode: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        return getProgressionTimeline(ctx.user.id, { dimension: input.dimension, focusMode: input.focusMode });
+      }),
+
+    extract: protectedProcedure
+      .input(z.object({ reviewId: z.number(), focusMode: z.string(), scores: z.record(z.string(), z.number()), genre: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const review = await db.getReviewById(input.reviewId);
+        if (!review) throw new TRPCError({ code: "NOT_FOUND" });
+        return extractAndSaveScores({
+          userId: ctx.user.id,
+          trackId: review.trackId!,
+          reviewId: input.reviewId,
+          focusMode: input.focusMode,
+          scores: input.scores,
+          genre: input.genre,
+        });
+      }),
+
+    insights: aiAnalysisProcedure
+      .mutation(async ({ ctx }) => {
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "analytics");
+        return analyzeTrends(ctx.user.id);
+      }),
+  }),
+
+  // ── Feature 2: Competitive Benchmarking ──
+  competitiveBenchmark: router({
+    evaluate: aiAnalysisProcedure
+      .input(z.object({ genre: z.string(), focusMode: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "analytics");
+        return benchmarkUser({ userId: ctx.user.id, genre: input.genre, focusMode: input.focusMode });
+      }),
+  }),
+
+  // ── Feature 3: Release Readiness Scoring ──
+  releaseReadiness: router({
+    evaluate: aiAnalysisProcedure
+      .input(z.object({ trackId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        assertFeatureAllowed(user?.tier || "free", "analytics");
+        return evaluateReleaseReadiness({ trackId: input.trackId, userId: ctx.user.id });
+      }),
+
+    latest: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return getLatestReadiness(input.trackId);
+      }),
+
+    history: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return getReleaseReadinessHistory(input.trackId);
+      }),
+  }),
+
+  // ── Feature 4: Behavioral Retention Engine ──
+  streak: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return getStreakInfo(ctx.user.id);
+    }),
+
+    record: protectedProcedure
+      .input(z.object({ type: z.enum(["upload", "review"]) }))
+      .mutation(async ({ ctx, input }) => {
+        return recordActivity(ctx.user.id, input.type);
+      }),
+
+    setGoal: protectedProcedure
+      .input(z.object({ goal: z.number().min(1).max(14) }))
+      .mutation(async ({ ctx, input }) => {
+        await setWeeklyGoal(ctx.user.id, input.goal);
+        return { success: true };
+      }),
+  }),
+
+  // ── Feature 5: Artist DNA Identity Model ──
+  artistDNA: router({
+    generate: aiAnalysisProcedure.mutation(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      assertFeatureAllowed(user?.tier || "free", "analytics");
+      return generateArtistDNA(ctx.user.id);
+    }),
+
+    latest: protectedProcedure.query(async ({ ctx }) => {
+      return getLatestDNA(ctx.user.id);
+    }),
+
+    history: protectedProcedure.query(async ({ ctx }) => {
+      return getDNAHistory(ctx.user.id);
+    }),
+  }),
+
+  // ── Feature 6: Data Flywheel ──
+  flywheel: router({
+    archetype: protectedProcedure.query(async ({ ctx }) => {
+      return getArtistArchetype(ctx.user.id);
+    }),
+
+    classify: aiAnalysisProcedure.mutation(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      assertFeatureAllowed(user?.tier || "free", "analytics");
+      return classifyArtistArchetype(ctx.user.id);
+    }),
+
+    platformStats: protectedProcedure.query(async () => {
+      return getFlywheelStats();
+    }),
   }),
 };

@@ -274,6 +274,13 @@
       "when": 1771442060402,
       "tag": "0038_dry_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1771449472612,
+      "tag": "0039_zippy_the_stranger",
+      "breakpoints": true
     }
   ]
 }

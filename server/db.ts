@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound, InsertSkillProgression, InsertGenreBenchmarkStats, InsertReleaseReadiness, InsertUserStreak, InsertArtistDNA, InsertGenreCluster, InsertArtistArchetype } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3142,4 +3142,269 @@ export async function getSignatureSoundHistory(projectId: number) {
     .from(signatureSound)
     .where(eq(signatureSound.projectId, projectId))
     .orderBy(desc(signatureSound.createdAt));
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Feature 1: Skill Progression (Longitudinal Improvement Tracking)
+// ══════════════════════════════════════════════════════════════
+
+export async function saveSkillProgression(entries: InsertSkillProgression[]) {
+  const db = await getDb();
+  if (!db || entries.length === 0) return;
+  await db.insert(skillProgression).values(entries);
+}
+
+export async function getSkillProgressionByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(skillProgression)
+    .where(eq(skillProgression.userId, userId))
+    .orderBy(asc(skillProgression.createdAt));
+}
+
+export async function getSkillProgressionByDimension(userId: number, dimension: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(skillProgression)
+    .where(and(eq(skillProgression.userId, userId), eq(skillProgression.dimension, dimension)))
+    .orderBy(asc(skillProgression.createdAt));
+}
+
+export async function getSkillProgressionByFocusMode(userId: number, focusMode: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(skillProgression)
+    .where(and(eq(skillProgression.userId, userId), eq(skillProgression.focusMode, focusMode)))
+    .orderBy(asc(skillProgression.createdAt));
+}
+
+export async function getSkillProgressionOverview(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get latest score per dimension
+  const all = await db.select().from(skillProgression)
+    .where(eq(skillProgression.userId, userId))
+    .orderBy(desc(skillProgression.createdAt));
+  // Group by dimension, get first (latest) and count
+  const dimMap = new Map<string, { latest: number; first: number; count: number; focusMode: string }>();
+  const dimAll = new Map<string, number[]>();
+  for (const row of all) {
+    if (!dimMap.has(row.dimension)) {
+      dimMap.set(row.dimension, { latest: row.score, first: row.score, count: 0, focusMode: row.focusMode });
+    }
+    const entry = dimMap.get(row.dimension)!;
+    entry.first = row.score; // keeps overwriting, so last iteration = earliest
+    entry.count++;
+    if (!dimAll.has(row.dimension)) dimAll.set(row.dimension, []);
+    dimAll.get(row.dimension)!.push(row.score);
+  }
+  return Array.from(dimMap.entries()).map(([dimension, data]) => ({
+    dimension,
+    focusMode: data.focusMode,
+    latestScore: data.latest,
+    firstScore: data.first,
+    delta: data.latest - data.first,
+    dataPoints: data.count,
+    avgScore: Math.round((dimAll.get(dimension)!.reduce((a, b) => a + b, 0) / data.count)),
+  }));
+}
+
+// ══════════════════════════════════════════════════════════════
+// Feature 2: Genre Benchmark Stats (Competitive Benchmarking)
+// ══════════════════════════════════════════════════════════════
+
+export async function upsertGenreBenchmarkStats(entries: InsertGenreBenchmarkStats[]) {
+  const db = await getDb();
+  if (!db || entries.length === 0) return;
+  for (const entry of entries) {
+    await db.insert(genreBenchmarkStats).values(entry)
+      .onDuplicateKeyUpdate({
+        set: { p25: entry.p25, p50: entry.p50, p75: entry.p75, p90: entry.p90, mean: entry.mean, sampleSize: entry.sampleSize },
+      });
+  }
+}
+
+export async function getGenreBenchmarkStatsByGenre(genre: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(genreBenchmarkStats)
+    .where(eq(genreBenchmarkStats.genre, genre));
+}
+
+export async function getGenreBenchmarkStatsByGenreAndFocus(genre: string, focusMode: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(genreBenchmarkStats)
+    .where(and(eq(genreBenchmarkStats.genre, genre), eq(genreBenchmarkStats.focusMode, focusMode)));
+}
+
+export async function getAllGenreBenchmarkGenres() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.selectDistinct({ genre: genreBenchmarkStats.genre }).from(genreBenchmarkStats);
+  return rows.map(r => r.genre);
+}
+
+// ══════════════════════════════════════════════════════════════
+// Feature 3: Release Readiness
+// ══════════════════════════════════════════════════════════════
+
+export async function saveReleaseReadiness(entry: InsertReleaseReadiness) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(releaseReadiness).values(entry);
+  return result.insertId;
+}
+
+export async function getReleaseReadinessByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(releaseReadiness)
+    .where(eq(releaseReadiness.trackId, trackId))
+    .orderBy(desc(releaseReadiness.createdAt));
+}
+
+export async function getLatestReleaseReadiness(trackId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(releaseReadiness)
+    .where(eq(releaseReadiness.trackId, trackId))
+    .orderBy(desc(releaseReadiness.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Feature 4: User Streaks (Behavioral Retention Engine)
+// ══════════════════════════════════════════════════════════════
+
+export async function getOrCreateUserStreak(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(userStreaks).where(eq(userStreaks.userId, userId)).limit(1);
+  if (rows.length > 0) return rows[0];
+  await db.insert(userStreaks).values({ userId, currentStreak: 0, longestStreak: 0, totalUploads: 0, totalReviews: 0 });
+  const created = await db.select().from(userStreaks).where(eq(userStreaks.userId, userId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function recordUserActivity(userId: number, type: "upload" | "review") {
+  const db = await getDb();
+  if (!db) return null;
+  const streak = await getOrCreateUserStreak(userId);
+  if (!streak) return null;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  let newStreak = streak.currentStreak;
+  if (streak.lastActivityDate === today) {
+    // Already active today, no streak change
+  } else if (streak.lastActivityDate === yesterday) {
+    newStreak = streak.currentStreak + 1;
+  } else {
+    newStreak = 1; // Reset streak
+  }
+  const longestStreak = Math.max(streak.longestStreak, newStreak);
+  const totalUploads = type === "upload" ? streak.totalUploads + 1 : streak.totalUploads;
+  const totalReviews = type === "review" ? streak.totalReviews + 1 : streak.totalReviews;
+  await db.update(userStreaks)
+    .set({ currentStreak: newStreak, longestStreak, lastActivityDate: today, totalUploads, totalReviews })
+    .where(eq(userStreaks.userId, userId));
+  return { currentStreak: newStreak, longestStreak, lastActivityDate: today, totalUploads, totalReviews };
+}
+
+export async function getInactiveUsers(daysInactive: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date(Date.now() - daysInactive * 86400000).toISOString().slice(0, 10);
+  const rows = await db.select({
+    userId: userStreaks.userId,
+    lastActivityDate: userStreaks.lastActivityDate,
+    currentStreak: userStreaks.currentStreak,
+    longestStreak: userStreaks.longestStreak,
+  }).from(userStreaks)
+    .where(sql`${userStreaks.lastActivityDate} < ${cutoff}`);
+  return rows;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Feature 5: Artist DNA
+// ══════════════════════════════════════════════════════════════
+
+export async function saveArtistDNA(entry: InsertArtistDNA) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(artistDNA).values(entry);
+  return result.insertId;
+}
+
+export async function getLatestArtistDNA(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(artistDNA)
+    .where(eq(artistDNA.userId, userId))
+    .orderBy(desc(artistDNA.generatedAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getArtistDNAHistory(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(artistDNA)
+    .where(eq(artistDNA.userId, userId))
+    .orderBy(desc(artistDNA.generatedAt))
+    .limit(10);
+}
+
+// ══════════════════════════════════════════════════════════════
+// Feature 6: Genre Clusters & Artist Archetypes (Data Flywheel)
+// ══════════════════════════════════════════════════════════════
+
+export async function upsertGenreCluster(entry: InsertGenreCluster) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(genreClusters).values(entry)
+    .onDuplicateKeyUpdate({
+      set: { archetypeJson: entry.archetypeJson, sampleSize: entry.sampleSize },
+    });
+}
+
+export async function getAllGenreClusters() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(genreClusters).orderBy(desc(genreClusters.sampleSize));
+}
+
+export async function getGenreClusterByGenre(genre: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(genreClusters)
+    .where(eq(genreClusters.genre, genre));
+}
+
+export async function upsertArtistArchetype(entry: InsertArtistArchetype) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(artistArchetypes).values(entry)
+    .onDuplicateKeyUpdate({
+      set: { archetypeJson: entry.archetypeJson, clusterLabel: entry.clusterLabel, confidence: entry.confidence },
+    });
+}
+
+export async function getArtistArchetype(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(artistArchetypes)
+    .where(eq(artistArchetypes.userId, userId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getArchetypesByCluster(clusterLabel: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(artistArchetypes)
+    .where(eq(artistArchetypes.clusterLabel, clusterLabel))
+    .orderBy(desc(artistArchetypes.confidence));
 }

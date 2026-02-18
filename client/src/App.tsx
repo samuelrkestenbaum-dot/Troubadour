@@ -33,6 +33,12 @@ import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import Changelog from "./pages/Changelog";
 import AdminDashboard from "./pages/AdminDashboard";
+import SkillProgression from "./pages/SkillProgression";
+import CompetitiveBenchmarks from "./pages/CompetitiveBenchmarks";
+import Streak from "./pages/Streak";
+import ArtistDNA from "./pages/ArtistDNA";
+import Flywheel from "./pages/Flywheel";
+import ReleaseReadiness from "./pages/ReleaseReadiness";
 import { OnboardingTour } from "./components/OnboardingTour";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
@@ -92,6 +98,12 @@ function DashboardRoutes() {
         <Route path="/digest" component={Digest} />
         <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />
+        <Route path="/skill-progression" component={SkillProgression} />
+        <Route path="/competitive-benchmarks" component={CompetitiveBenchmarks} />
+        <Route path="/release-readiness" component={ReleaseReadiness} />
+        <Route path="/streak" component={Streak} />
+        <Route path="/artist-dna" component={ArtistDNA} />
+        <Route path="/flywheel" component={Flywheel} />
         <Route path="/admin" component={AdminDashboard} />
         <Route component={NotFound} />
       </Switch>

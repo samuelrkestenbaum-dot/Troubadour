@@ -612,3 +612,128 @@ export const signatureSound = mysqlTable("signatureSound", {
 ]);
 export type SignatureSoundRow = typeof signatureSound.$inferSelect;
 export type InsertSignatureSound = typeof signatureSound.$inferInsert;
+
+// ── Skill Progression (Feature 1: Longitudinal Improvement Tracking) ──
+export const skillProgression = mysqlTable("skillProgression", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  trackId: int("trackId").notNull(),
+  reviewId: int("reviewId").notNull(),
+  focusMode: varchar("focusMode", { length: 50 }).notNull(),
+  dimension: varchar("dimension", { length: 100 }).notNull(),
+  score: int("score").notNull(),
+  genre: varchar("genre", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_skillProg_userId").on(t.userId),
+  index("idx_skillProg_userId_dimension").on(t.userId, t.dimension),
+  index("idx_skillProg_userId_focusMode").on(t.userId, t.focusMode),
+  index("idx_skillProg_createdAt").on(t.createdAt),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.reviewId], foreignColumns: [reviews.id] }).onDelete("cascade"),
+]);
+export type SkillProgressionRow = typeof skillProgression.$inferSelect;
+export type InsertSkillProgression = typeof skillProgression.$inferInsert;
+
+// ── Genre Benchmark Stats (Feature 2: Competitive Benchmarking) ──
+export const genreBenchmarkStats = mysqlTable("genreBenchmarkStats", {
+  id: int("id").autoincrement().primaryKey(),
+  genre: varchar("genre", { length: 100 }).notNull(),
+  focusMode: varchar("focusMode", { length: 50 }).notNull(),
+  dimension: varchar("dimension", { length: 100 }).notNull(),
+  p25: int("p25").notNull(),
+  p50: int("p50").notNull(),
+  p75: int("p75").notNull(),
+  p90: int("p90").notNull(),
+  mean: int("mean").notNull(),
+  sampleSize: int("sampleSize").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_genreBench_genre_focus_dim").on(t.genre, t.focusMode, t.dimension),
+  index("idx_genreBench_genre").on(t.genre),
+]);
+export type GenreBenchmarkStatsRow = typeof genreBenchmarkStats.$inferSelect;
+export type InsertGenreBenchmarkStats = typeof genreBenchmarkStats.$inferInsert;
+
+// ── Release Readiness (Feature 3: Release Readiness Scoring) ──
+export const releaseReadiness = mysqlTable("releaseReadiness", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  overallSignal: mysqlEnum("overallSignal", ["green", "yellow", "red"]).notNull(),
+  overallScore: int("overallScore").notNull(),
+  dimensionSignals: json("dimensionSignals").$type<Record<string, { signal: string; score: number; reason: string }>>().notNull(),
+  blockers: json("blockers").$type<Array<{ dimension: string; severity: string; description: string; fix: string }>>().notNull(),
+  analysisJson: json("analysisJson").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_releaseReady_trackId").on(t.trackId),
+  index("idx_releaseReady_userId").on(t.userId),
+  foreignKey({ columns: [t.trackId], foreignColumns: [tracks.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type ReleaseReadinessRow = typeof releaseReadiness.$inferSelect;
+export type InsertReleaseReadiness = typeof releaseReadiness.$inferInsert;
+
+// ── User Streaks (Feature 4: Behavioral Retention Engine) ──
+export const userStreaks = mysqlTable("userStreaks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  currentStreak: int("currentStreak").default(0).notNull(),
+  longestStreak: int("longestStreak").default(0).notNull(),
+  lastActivityDate: varchar("lastActivityDate", { length: 10 }), // YYYY-MM-DD
+  totalUploads: int("totalUploads").default(0).notNull(),
+  totalReviews: int("totalReviews").default(0).notNull(),
+  weeklyUploadGoal: int("weeklyUploadGoal").default(2).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_userStreaks_userId").on(t.userId),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type UserStreakRow = typeof userStreaks.$inferSelect;
+export type InsertUserStreak = typeof userStreaks.$inferInsert;
+
+// ── Artist DNA (Feature 5: Artist DNA Identity Model) ──
+export const artistDNA = mysqlTable("artistDNA", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  dnaJson: json("dnaJson").$type<Record<string, unknown>>().notNull(),
+  trackCount: int("trackCount").notNull(),
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_artistDNA_userId").on(t.userId),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type ArtistDNARow = typeof artistDNA.$inferSelect;
+export type InsertArtistDNA = typeof artistDNA.$inferInsert;
+
+// ── Genre Clusters (Feature 6: Data Flywheel) ──
+export const genreClusters = mysqlTable("genreClusters", {
+  id: int("id").autoincrement().primaryKey(),
+  genre: varchar("genre", { length: 100 }).notNull(),
+  subgenre: varchar("subgenre", { length: 100 }),
+  archetypeJson: json("archetypeJson").$type<Record<string, unknown>>().notNull(),
+  sampleSize: int("sampleSize").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_genreClusters_genre_sub").on(t.genre, t.subgenre),
+  index("idx_genreClusters_genre").on(t.genre),
+]);
+export type GenreClusterRow = typeof genreClusters.$inferSelect;
+export type InsertGenreCluster = typeof genreClusters.$inferInsert;
+
+// ── Artist Archetypes (Feature 6: Data Flywheel) ──
+export const artistArchetypes = mysqlTable("artistArchetypes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  archetypeJson: json("archetypeJson").$type<Record<string, unknown>>().notNull(),
+  clusterLabel: varchar("clusterLabel", { length: 100 }).notNull(),
+  confidence: int("confidence").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_artistArch_userId").on(t.userId),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type ArtistArchetypeRow = typeof artistArchetypes.$inferSelect;
+export type InsertArtistArchetype = typeof artistArchetypes.$inferInsert;
