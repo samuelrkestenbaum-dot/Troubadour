@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import {
   Shield, ShieldOff, Crown, User as UserIcon, RotateCcw,
   FolderOpen, FileText, Music, Clock, Mail, Calendar,
-  AlertTriangle
+  AlertTriangle, ClipboardList, ArrowUpRight, ArrowDownRight
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState } from "react";
@@ -33,6 +33,110 @@ function TierBadge({ tier }: { tier: string }) {
   );
 }
 
+function AuditActionBadge({ action }: { action: string }) {
+  const styles: Record<string, string> = {
+    update_role: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    update_tier: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    reset_monthly_count: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  };
+  const labels: Record<string, string> = {
+    update_role: "Role",
+    update_tier: "Tier",
+    reset_monthly_count: "Reset",
+  };
+  return (
+    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${styles[action] || ""}`}>
+      {labels[action] || action}
+    </Badge>
+  );
+}
+
+function UserAuditHistory({ userId, open }: { userId: number | null; open: boolean }) {
+  const auditLog = trpc.admin.getUserAuditLog.useQuery(
+    { userId: userId! },
+    { enabled: !!userId && open }
+  );
+
+  if (auditLog.isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-4">
+          <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+            <ClipboardList className="h-3.5 w-3.5" /> Admin Action History
+          </h4>
+          <div className="space-y-2">
+            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!auditLog.data || auditLog.data.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-4">
+          <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+            <ClipboardList className="h-3.5 w-3.5" /> Admin Action History
+          </h4>
+          <p className="text-xs text-muted-foreground text-center py-3">No admin actions on this user yet</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-4">
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+          <ClipboardList className="h-3.5 w-3.5" /> Admin Action History ({auditLog.data.length})
+        </h4>
+        <div className="space-y-1.5">
+          {auditLog.data.map((entry) => {
+            const details = entry.details as Record<string, unknown> | null;
+            return (
+              <div key={entry.id} className="flex items-center justify-between py-1.5 px-2 rounded bg-muted/30 text-xs">
+                <div className="flex items-center gap-2">
+                  <AuditActionBadge action={entry.action} />
+                  <span className="text-muted-foreground">by {entry.adminName || `Admin #${entry.adminUserId}`}</span>
+                  {details && (
+                    <span className="flex items-center gap-0.5">
+                      {entry.action === "update_role" && (
+                        <>
+                          <span className="text-muted-foreground">{String(details.previousRole)}</span>
+                          <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">{String(details.newRole)}</span>
+                        </>
+                      )}
+                      {entry.action === "update_tier" && (
+                        <>
+                          <span className="text-muted-foreground">{String(details.previousTier)}</span>
+                          <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">{String(details.newTier)}</span>
+                        </>
+                      )}
+                      {entry.action === "reset_monthly_count" && (
+                        <>
+                          <span className="text-muted-foreground">{String(details.previousCount)}</span>
+                          <ArrowDownRight className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">0</span>
+                        </>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <span className="text-muted-foreground whitespace-nowrap ml-2">
+                  {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function UserDetailModal({ userId, open, onOpenChange }: UserDetailModalProps) {
   const utils = trpc.useUtils();
   const [showRoleConfirm, setShowRoleConfirm] = useState(false);
@@ -49,6 +153,7 @@ export function UserDetailModal({ userId, open, onOpenChange }: UserDetailModalP
       utils.admin.getUserDetail.invalidate({ userId: userId! });
       utils.admin.getUsers.invalidate();
       utils.admin.getStats.invalidate();
+      utils.admin.getUserAuditLog.invalidate({ userId: userId! });
       setShowRoleConfirm(false);
       setPendingRole(null);
     },
@@ -61,6 +166,7 @@ export function UserDetailModal({ userId, open, onOpenChange }: UserDetailModalP
       utils.admin.getUserDetail.invalidate({ userId: userId! });
       utils.admin.getUsers.invalidate();
       utils.admin.getStats.invalidate();
+      utils.admin.getUserAuditLog.invalidate({ userId: userId! });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -69,6 +175,7 @@ export function UserDetailModal({ userId, open, onOpenChange }: UserDetailModalP
     onSuccess: () => {
       toast.success("Monthly review count reset");
       utils.admin.getUserDetail.invalidate({ userId: userId! });
+      utils.admin.getUserAuditLog.invalidate({ userId: userId! });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -262,6 +369,9 @@ export function UserDetailModal({ userId, open, onOpenChange }: UserDetailModalP
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Admin Action History (Audit Log) */}
+              <UserAuditHistory userId={userId} open={open} />
 
               {/* Recent Reviews */}
               {user.recentReviews.length > 0 && (

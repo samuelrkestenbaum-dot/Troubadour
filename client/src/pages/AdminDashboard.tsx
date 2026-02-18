@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState, useMemo } from "react";
 import { UserDetailModal } from "@/components/UserDetailModal";
@@ -274,6 +274,9 @@ function RevenueTab({ isAdmin, users: userData }: { isAdmin: boolean; users: Arr
         </CardContent>
       </Card>
 
+      {/* User & Review Growth Chart */}
+      <GrowthChart isAdmin={isAdmin} />
+
       {/* Revenue Disclaimer */}
       <p className="text-xs text-muted-foreground text-center">
         Revenue estimates are calculated from local tier data. For authoritative figures, check your{" "}
@@ -282,6 +285,193 @@ function RevenueTab({ isAdmin, users: userData }: { isAdmin: boolean; users: Arr
         </a>.
       </p>
     </div>
+  );
+}
+
+function GrowthChart({ isAdmin }: { isAdmin: boolean }) {
+  const userGrowth = trpc.admin.getUserGrowth.useQuery(undefined, { enabled: isAdmin });
+  const reviewGrowth = trpc.admin.getReviewGrowth.useQuery(undefined, { enabled: isAdmin });
+
+  const chartData = useMemo(() => {
+    if (!userGrowth.data && !reviewGrowth.data) return null;
+
+    // Build a date map for the last 90 days
+    const days = 90;
+    const dateMap = new Map<string, { users: number; reviews: number }>();
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      dateMap.set(key, { users: 0, reviews: 0 });
+    }
+
+    // Fill in user signups
+    if (userGrowth.data) {
+      for (const row of userGrowth.data) {
+        const key = String(row.date);
+        const existing = dateMap.get(key);
+        if (existing) existing.users = Number(row.count);
+      }
+    }
+
+    // Fill in reviews
+    if (reviewGrowth.data) {
+      for (const row of reviewGrowth.data) {
+        const key = String(row.date);
+        const existing = dateMap.get(key);
+        if (existing) existing.reviews = Number(row.count);
+      }
+    }
+
+    // Convert to array and compute cumulative
+    const entries = Array.from(dateMap.entries()).map(([date, vals]) => ({
+      date,
+      users: vals.users,
+      reviews: vals.reviews,
+    }));
+
+    // Compute running totals
+    let cumulativeUsers = 0;
+    let cumulativeReviews = 0;
+    const cumulative = entries.map((e) => {
+      cumulativeUsers += e.users;
+      cumulativeReviews += e.reviews;
+      return { ...e, cumulativeUsers, cumulativeReviews };
+    });
+
+    const maxDaily = Math.max(...entries.map((e) => Math.max(e.users, e.reviews)), 1);
+
+    return { entries, cumulative, maxDaily, totalNewUsers: cumulativeUsers, totalNewReviews: cumulativeReviews };
+  }, [userGrowth.data, reviewGrowth.data]);
+
+  if (userGrowth.isLoading || reviewGrowth.isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <Skeleton className="h-48 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!chartData || chartData.entries.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" /> Growth Over Time (90d)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center py-8">No growth data available yet</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { entries, maxDaily, totalNewUsers, totalNewReviews } = chartData;
+  const chartWidth = 100;
+  const chartHeight = 40;
+  const barWidth = chartWidth / entries.length;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <BarChart3 className="h-4 w-4" /> Growth Over Time (90d)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Summary row */}
+        <div className="flex gap-6 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm bg-primary" />
+            <span className="text-sm text-muted-foreground">New Users: <span className="font-medium text-foreground">{totalNewUsers}</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm bg-amber-500" />
+            <span className="text-sm text-muted-foreground">Reviews: <span className="font-medium text-foreground">{totalNewReviews}</span></span>
+          </div>
+        </div>
+
+        {/* SVG Bar Chart */}
+        <div className="w-full overflow-hidden">
+          <svg
+            viewBox={`0 0 ${chartWidth} ${chartHeight + 8}`}
+            className="w-full h-48"
+            preserveAspectRatio="none"
+          >
+            {/* Grid lines */}
+            {[0.25, 0.5, 0.75, 1].map((pct) => (
+              <line
+                key={pct}
+                x1="0"
+                y1={chartHeight - chartHeight * pct}
+                x2={chartWidth}
+                y2={chartHeight - chartHeight * pct}
+                stroke="currentColor"
+                strokeOpacity="0.08"
+                strokeWidth="0.15"
+              />
+            ))}
+
+            {/* Bars */}
+            {entries.map((entry, i) => {
+              const userH = (entry.users / maxDaily) * chartHeight;
+              const reviewH = (entry.reviews / maxDaily) * chartHeight;
+              const x = i * barWidth;
+              const halfBar = barWidth * 0.35;
+              return (
+                <g key={entry.date}>
+                  {/* User bar */}
+                  <rect
+                    x={x + barWidth * 0.08}
+                    y={chartHeight - userH}
+                    width={halfBar}
+                    height={Math.max(userH, 0.2)}
+                    rx="0.15"
+                    className="fill-primary"
+                    opacity={userH > 0 ? 0.8 : 0.1}
+                  >
+                    <title>{entry.date}: {entry.users} new users</title>
+                  </rect>
+                  {/* Review bar */}
+                  <rect
+                    x={x + barWidth * 0.08 + halfBar + barWidth * 0.04}
+                    y={chartHeight - reviewH}
+                    width={halfBar}
+                    height={Math.max(reviewH, 0.2)}
+                    rx="0.15"
+                    className="fill-amber-500"
+                    opacity={reviewH > 0 ? 0.8 : 0.1}
+                  >
+                    <title>{entry.date}: {entry.reviews} reviews</title>
+                  </rect>
+                </g>
+              );
+            })}
+
+            {/* X-axis labels (every ~30 days) */}
+            {entries.filter((_, i) => i === 0 || i === 29 || i === 59 || i === entries.length - 1).map((entry, idx) => {
+              const i = idx === 0 ? 0 : idx === 1 ? 29 : idx === 2 ? 59 : entries.length - 1;
+              return (
+                <text
+                  key={entry.date}
+                  x={i * barWidth + barWidth / 2}
+                  y={chartHeight + 5}
+                  textAnchor="middle"
+                  className="fill-muted-foreground"
+                  fontSize="2.5"
+                >
+                  {format(new Date(entry.date + "T00:00:00"), "MMM d")}
+                </text>
+              );
+            })}
+          </svg>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

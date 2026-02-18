@@ -2453,3 +2453,58 @@ export async function getAuditLogByUser(targetUserId: number, limit = 50) {
     .orderBy(desc(adminAuditLog.createdAt))
     .limit(limit);
 }
+
+// ── User Growth & Analytics Helpers ──
+
+export async function getUserGrowthData(days = 90) {
+  const db = await getDb();
+  if (!db) return [];
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  
+  const result = await db.select({
+    date: sql<string>`DATE(${users.createdAt})`.as("date"),
+    count: count().as("count"),
+  })
+    .from(users)
+    .where(gte(users.createdAt, since))
+    .groupBy(sql`DATE(${users.createdAt})`)
+    .orderBy(asc(sql`DATE(${users.createdAt})`));
+  
+  return result;
+}
+
+export async function getReviewGrowthData(days = 90) {
+  const db = await getDb();
+  if (!db) return [];
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  
+  const result = await db.select({
+    date: sql<string>`DATE(${reviews.createdAt})`.as("date"),
+    count: count().as("count"),
+  })
+    .from(reviews)
+    .where(gte(reviews.createdAt, since))
+    .groupBy(sql`DATE(${reviews.createdAt})`)
+    .orderBy(asc(sql`DATE(${reviews.createdAt})`));
+  
+  return result;
+}
+
+export async function getTierTransitionData() {
+  const db = await getDb();
+  if (!db) return { free: 0, artist: 0, pro: 0, withStripe: 0 };
+  
+  const [freeCount] = await db.select({ count: count() }).from(users).where(eq(users.tier, "free"));
+  const [artistCount] = await db.select({ count: count() }).from(users).where(eq(users.tier, "artist"));
+  const [proCount] = await db.select({ count: count() }).from(users).where(eq(users.tier, "pro"));
+  const [stripeCount] = await db.select({ count: count() }).from(users).where(sql`${users.stripeSubscriptionId} IS NOT NULL`);
+  
+  return {
+    free: freeCount?.count ?? 0,
+    artist: artistCount?.count ?? 0,
+    pro: proCount?.count ?? 0,
+    withStripe: stripeCount?.count ?? 0,
+  };
+}

@@ -1669,3 +1669,31 @@
 - [x] Write 47 tests in features-round67.test.ts (audit log schema/helpers/procedures/wiring/UI, revenue analytics, tabbed layout)
 - [x] All 939 tests passing (40 test files)
 - [x] TypeScript clean (tsc --noEmit exit 0, BatchActionsToolbar errors are stale LSP cache)
+
+## Round 68 - Per-User Audit Log, PostHog Activation, User Growth Chart (Claude 4.5 + Gravito)
+
+### Per-User Audit Log in UserDetailModal
+- [x] Add UserAuditHistory component with AuditActionBadge to UserDetailModal
+- [x] Query admin.getUserAuditLog filtered by userId with loading/empty states
+- [x] Display action type badges (Role/Tier/Reset), admin name, change details (old→new), timestamps
+- [x] Invalidate audit log cache after all admin mutations (role, tier, reset)
+
+### PostHog Analytics Activation
+- [x] Set VITE_POSTHOG_KEY (phc_...) via webdev_request_secrets from PostHog project API
+- [x] Validated key via PostHog /decide endpoint (2 tests passing)
+- [x] 15+ pre-scaffolded event trackers now active (project, track, review, upgrade, export, share, chat, action mode, support)
+
+### User Growth Chart
+- [x] Add getUserGrowthData, getReviewGrowthData, getTierTransitionData db helpers with DATE grouping
+- [x] Add admin.getUserGrowth and admin.getReviewGrowth tRPC procedures (admin-gated, configurable days)
+- [x] Build GrowthChart component with dual SVG bar chart (users + reviews), legend, grid lines, tooltips, x-axis labels
+- [x] Integrate GrowthChart into Revenue tab between Conversion Funnel and disclaimer
+
+### Gravito Governance
+- [x] Gravito service returned 503 (temporarily unavailable); no regulated content (medical/financial/legal) in admin dashboard
+- [x] Revenue disclaimer already directs to Stripe Dashboard for authoritative figures
+
+### Tests & Quality
+- [x] Write 50 tests: features-round68.test.ts (audit log modal, PostHog activation, growth chart) + posthog-key-validation.test.ts
+- [x] All 989 tests passing (42 test files)
+- [x] TypeScript clean (tsc --noEmit exit 0)

@@ -1179,6 +1179,18 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         return db.getAuditLogByUser(input.userId, input.limit ?? 50);
       }),
+    getUserGrowth: protectedProcedure
+      .input(z.object({ days: z.number().min(7).max(365).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return db.getUserGrowthData(input?.days ?? 90);
+      }),
+    getReviewGrowth: protectedProcedure
+      .input(z.object({ days: z.number().min(7).max(365).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return db.getReviewGrowthData(input?.days ?? 90);
+      }),
   }),
 
 });
