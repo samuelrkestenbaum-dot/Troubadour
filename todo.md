@@ -1757,3 +1757,32 @@
 - [x] Fixed 34 tests across rounds 65-69 for adminRouter.ts path changes
 - [x] All 1,065 tests passing (44 test files)
 - [x] TypeScript clean (tsc --noEmit exit 0)
+
+## Round 71 - Fix LSP Errors, Auto Churn Digest, Subscription Timeline (Claude 4.5)
+
+### Fix BatchActionsToolbar LSP Errors
+- [x] Investigated: code already uses correct trpc.tags.update and trpc.track.deleteTrack
+- [x] Errors are phantom LSP cache artifacts — tsc --noEmit exits 0 cleanly
+- [x] Confirmed track router exports addTag and deleteTrack procedures
+- [x] Dev server watcher has stale cache; actual compilation is clean
+
+### Automatic Churn Alert Digest
+- [x] Created server/services/churnAlertScheduler.ts with hourly interval check, 9 AM UTC trigger
+- [x] Default threshold 50%, configurable via setChurnThreshold/getChurnThreshold exports
+- [x] Uses notifyOwner for alerts with retention rate, active/inactive counts, threshold
+- [x] Date-based dedup key prevents duplicate alerts on same day
+- [x] Logs auto_churn_alert in audit log with system admin ID
+- [x] Wired start/stop into server _core/index.ts boot and SIGTERM/SIGINT handlers
+- [x] Exports forceChurnCheck for testing and manual trigger
+
+### Subscription Lifecycle Timeline
+- [x] Add getTierChangeHistory db helper: filters adminAuditLog by update_tier, joins admin names, orders asc
+- [x] Add admin.getTierChangeHistory tRPC procedure (admin-gated, userId input)
+- [x] Build TierTimeline component with vertical timeline, colored dots, upgrade/downgrade arrows
+- [x] Shows account creation → each tier change → current tier with time-on-tier
+- [x] Integrated into UserDetailModal between Audit History and Recent Reviews
+
+### Tests & Quality
+- [x] Write 53 tests in features-round71.test.ts (BatchActionsToolbar refs, churn scheduler, server integration, tier history db/router/UI, integration)
+- [x] All 1,118 tests passing (45 test files)
+- [x] TypeScript clean (tsc --noEmit exit 0)

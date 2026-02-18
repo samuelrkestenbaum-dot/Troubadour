@@ -302,22 +302,37 @@ async function startServer() {
     }).catch(err => {
       logger.error("Failed to start digest scheduler", { error: err.message });
     });
+
+    // Start the daily churn alert scheduler
+    import("../services/churnAlertScheduler").then(({ startChurnAlertScheduler }) => {
+      startChurnAlertScheduler();
+    }).catch(err => {
+      logger.error("Failed to start churn alert scheduler", { error: err.message });
+    });
   });
 
   // Register graceful shutdown handlers
   registerGracefulShutdown({ server, gracePeriodMs: 15_000 });
 
-  // Ensure digest scheduler is stopped on shutdown
+  // Ensure digest scheduler and churn alert scheduler are stopped on shutdown
   process.once("SIGTERM", async () => {
     try {
       const { stopDigestScheduler } = await import("../services/digestScheduler");
       stopDigestScheduler();
+    } catch { /* already handled by graceful shutdown */ }
+    try {
+      const { stopChurnAlertScheduler } = await import("../services/churnAlertScheduler");
+      stopChurnAlertScheduler();
     } catch { /* already handled by graceful shutdown */ }
   });
   process.once("SIGINT", async () => {
     try {
       const { stopDigestScheduler } = await import("../services/digestScheduler");
       stopDigestScheduler();
+    } catch { /* already handled by graceful shutdown */ }
+    try {
+      const { stopChurnAlertScheduler } = await import("../services/churnAlertScheduler");
+      stopChurnAlertScheduler();
     } catch { /* already handled by graceful shutdown */ }
   });
 }

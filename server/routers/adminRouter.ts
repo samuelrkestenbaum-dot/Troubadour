@@ -153,6 +153,14 @@ export const adminRouter = router({
       return { success: true, sent, isAlert, metrics };
     }),
 
+  // ── Tier Change History (Subscription Lifecycle) ──
+  getTierChangeHistory: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      return db.getTierChangeHistory(input.userId);
+    }),
+
   // ── Cohort Analysis ──
   getCohortAnalysis: protectedProcedure
     .input(z.object({ months: z.number().min(3).max(24).optional() }).optional())

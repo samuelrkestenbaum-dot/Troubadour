@@ -2683,3 +2683,32 @@ export async function getCohortData(months = 12) {
 
   return cohorts;
 }
+
+// ── Tier Change History (Subscription Lifecycle) ──
+
+export async function getTierChangeHistory(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get all tier change audit log entries for this user, plus the user's creation date and initial tier
+  const entries = await db.select({
+    id: adminAuditLog.id,
+    adminUserId: adminAuditLog.adminUserId,
+    adminName: users.name,
+    action: adminAuditLog.action,
+    details: adminAuditLog.details,
+    createdAt: adminAuditLog.createdAt,
+  })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(adminAuditLog.adminUserId, users.id))
+    .where(
+      and(
+        eq(adminAuditLog.targetUserId, userId),
+        eq(adminAuditLog.action, "update_tier")
+      )
+    )
+    .orderBy(asc(adminAuditLog.createdAt))
+    .limit(100);
+  
+  return entries;
+}

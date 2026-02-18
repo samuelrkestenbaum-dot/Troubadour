@@ -9,7 +9,8 @@ import { trpc } from "@/lib/trpc";
 import {
   Shield, ShieldOff, Crown, User as UserIcon, RotateCcw,
   FolderOpen, FileText, Music, Clock, Mail, Calendar,
-  AlertTriangle, ClipboardList, ArrowUpRight, ArrowDownRight
+  AlertTriangle, ClipboardList, ArrowUpRight, ArrowDownRight,
+  TrendingUp, Minus
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState } from "react";
@@ -131,6 +132,135 @@ function UserAuditHistory({ userId, open }: { userId: number | null; open: boole
               </div>
             );
           })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const TIER_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  free: { bg: "bg-zinc-500/10", text: "text-zinc-400", dot: "bg-zinc-400" },
+  artist: { bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
+  pro: { bg: "bg-primary/10", text: "text-primary", dot: "bg-primary" },
+};
+
+const TIER_ORDER: Record<string, number> = { free: 0, artist: 1, pro: 2 };
+
+function TierTimeline({ userId, open, userCreatedAt, currentTier }: {
+  userId: number | null;
+  open: boolean;
+  userCreatedAt: string | Date;
+  currentTier: string;
+}) {
+  const tierHistory = trpc.admin.getTierChangeHistory.useQuery(
+    { userId: userId! },
+    { enabled: !!userId && open }
+  );
+
+  // Build timeline events: start with account creation, then each tier change
+  const events: Array<{ date: Date; fromTier: string; toTier: string; adminName: string | null; isCreation: boolean }> = [];
+
+  // Account creation event
+  const createdDate = new Date(userCreatedAt);
+  events.push({ date: createdDate, fromTier: "", toTier: "free", adminName: null, isCreation: true });
+
+  // Tier change events from audit log
+  if (tierHistory.data) {
+    for (const entry of tierHistory.data) {
+      const details = entry.details as Record<string, unknown> | null;
+      if (details) {
+        events.push({
+          date: new Date(entry.createdAt),
+          fromTier: String(details.previousTier || "unknown"),
+          toTier: String(details.newTier || "unknown"),
+          adminName: entry.adminName || null,
+          isCreation: false,
+        });
+      }
+    }
+  }
+
+  if (tierHistory.isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-4">
+          <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5" /> Subscription Timeline
+          </h4>
+          <div className="space-y-2">
+            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-4">
+        <h4 className="text-sm font-medium mb-3 flex items-center gap-1.5">
+          <TrendingUp className="h-3.5 w-3.5" /> Subscription Timeline
+        </h4>
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+
+          <div className="space-y-3">
+            {events.map((event, i) => {
+              const tierColor = TIER_COLORS[event.toTier] || TIER_COLORS.free;
+              const isUpgrade = !event.isCreation && (TIER_ORDER[event.toTier] ?? 0) > (TIER_ORDER[event.fromTier] ?? 0);
+              const isDowngrade = !event.isCreation && (TIER_ORDER[event.toTier] ?? 0) < (TIER_ORDER[event.fromTier] ?? 0);
+
+              return (
+                <div key={i} className="flex items-start gap-3 relative pl-5">
+                  {/* Timeline dot */}
+                  <div className={`absolute left-0 top-1.5 h-[15px] w-[15px] rounded-full border-2 border-background ${tierColor.dot}`} />
+
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      {event.isCreation ? (
+                        <span className="text-xs font-medium">Account Created</span>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs">
+                          <TierBadge tier={event.fromTier} />
+                          {isUpgrade ? (
+                            <ArrowUpRight className="h-3 w-3 text-emerald-400" />
+                          ) : isDowngrade ? (
+                            <ArrowDownRight className="h-3 w-3 text-red-400" />
+                          ) : (
+                            <Minus className="h-3 w-3 text-muted-foreground" />
+                          )}
+                          <TierBadge tier={event.toTier} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(event.date, "MMM d, yyyy 'at' h:mm a")}
+                      </span>
+                      {event.adminName && (
+                        <span className="text-[10px] text-muted-foreground">
+                          by {event.adminName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Current state indicator */}
+            <div className="flex items-start gap-3 relative pl-5">
+              <div className={`absolute left-0 top-1.5 h-[15px] w-[15px] rounded-full border-2 border-background ${TIER_COLORS[currentTier]?.dot || TIER_COLORS.free.dot} ring-2 ring-offset-1 ring-offset-background ${currentTier === 'pro' ? 'ring-primary/30' : currentTier === 'artist' ? 'ring-amber-400/30' : 'ring-zinc-400/30'}`} />
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium">Current:</span>
+                <TierBadge tier={currentTier} />
+                <span className="text-[10px] text-muted-foreground">
+                  ({formatDistanceToNow(events[events.length - 1]?.date || createdDate)} on this tier)
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -372,6 +502,9 @@ export function UserDetailModal({ userId, open, onOpenChange }: UserDetailModalP
 
               {/* Admin Action History (Audit Log) */}
               <UserAuditHistory userId={userId} open={open} />
+
+              {/* Subscription Lifecycle Timeline */}
+              <TierTimeline userId={userId} open={open} userCreatedAt={user.createdAt} currentTier={user.tier} />
 
               {/* Recent Reviews */}
               {user.recentReviews.length > 0 && (
