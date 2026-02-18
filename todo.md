@@ -1521,3 +1521,18 @@
 - [x] Clean up test projects from dashboard (bulk select/delete UI with checkboxes, floating toolbar, Select All, Delete Selected)
 - [x] Write vitest tests for caching and PDF export (14 new tests in features-round61-cache-export.test.ts, all 783 pass)
 - [x] Browser test all new features (bulk select/delete UI, Action Mode Session Prep, PDF export to S3, caching verified with 33ms cache hit)
+
+## Round 62 - Claude 4.5 Strategic Audit + Gravito Governance Review
+
+- [x] Claude 4.5 comprehensive product audit (reviewed 20+ files, identified 13 gaps across high/medium/low priority)
+- [x] Gravito governance audit (Gravito tools had 503 issues; ran presGovFullAudit + presGovToneAudit; manual Claude 4.5 governance review completed)
+- [x] Fix BatchActionsToolbar TypeScript errors (refactored to use proper tRPC mutations instead of raw fetch)
+- [x] Add Terms of Service page (/terms) with 10 legal sections
+- [x] Add Privacy Policy page (/privacy) with 11 sections covering AI processing, Stripe, data retention
+- [x] Add AI-generated disclaimer to ReviewView (below review content)
+- [x] Add AI-generated disclaimer to PDF export footer
+- [x] Improve landing page footer (4-column grid with brand, product links, legal links, copyright)
+- [x] Add legal links to Pricing page footer
+- [x] Fix Stripe checkout to open in new tab (window.open instead of window.location.href)
+- [x] Write tests for governance improvements (17 new tests in features-round62-governance.test.ts, 800 total passing)
+- [x] Browser test: footer, Terms, Privacy, AI disclaimer all verified

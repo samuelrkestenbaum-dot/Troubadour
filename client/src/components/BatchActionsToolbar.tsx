@@ -53,8 +53,15 @@ export function BatchActionsToolbar({
     },
   });
 
-  // Use the tags router for adding tags (avoids LSP deep-inference issue on track router)
-  const updateTags = trpc.tags.update.useMutation({
+  // Use the tags.update mutation for batch tagging
+  const updateTagsMut = trpc.tags.update.useMutation({
+    onSuccess: () => {
+      utils.project.get.invalidate({ id: projectId });
+    },
+  });
+
+  // Use the track.deleteTrack mutation for batch deletion
+  const deleteTrackMut = trpc.track.deleteTrack.useMutation({
     onSuccess: () => {
       utils.project.get.invalidate({ id: projectId });
     },
@@ -102,7 +109,7 @@ export function BatchActionsToolbar({
         if (!existingTags.includes(tag)) {
           existingTags.push(tag);
         }
-        await updateTags.mutateAsync({ trackId: id, tags: existingTags });
+        await updateTagsMut.mutateAsync({ trackId: id, tags: existingTags });
         tagged++;
       } catch {
         // Skip failures
@@ -121,14 +128,8 @@ export function BatchActionsToolbar({
     let deleted = 0;
     for (const id of Array.from(selectedIds)) {
       try {
-        // Use project.delete pattern: call via tRPC utils to avoid LSP deep-inference issue
-        const response = await fetch(`/api/trpc/track.deleteTrack`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ json: { id } }),
-          credentials: "include",
-        });
-        if (response.ok) deleted++;
+        await deleteTrackMut.mutateAsync({ id });
+        deleted++;
       } catch {
         // Skip failures
       }
@@ -336,4 +337,3 @@ export function TrackSelectCheckbox({
     </button>
   );
 }
-

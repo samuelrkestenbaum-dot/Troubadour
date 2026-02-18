@@ -28,6 +28,8 @@ import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import Digest from "./pages/Digest";
 import TagManager from "./pages/TagManager";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import { OnboardingTour } from "./components/OnboardingTour";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
@@ -101,6 +103,8 @@ function Router() {
         {(params) => <SharedReview token={params.token} />}
       </Route>
       <Route path="/pricing" component={Pricing} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/invite/:token" component={AcceptInvite} />
       <Route path="/404" component={NotFound} />
       <Route>

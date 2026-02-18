@@ -88,8 +88,8 @@ export default function Pricing() {
 
   const checkoutMutation = trpc.subscription.checkout.useMutation({
     onSuccess: (data) => {
-      toast.success("Redirecting to checkout...");
-      window.location.href = data.url;
+      toast.success("Opening checkout in a new tab...");
+      window.open(data.url, '_blank');
     },
     onError: (err) => {
       toast.error(err.message);
@@ -272,6 +272,13 @@ export default function Pricing() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Legal Links */}
+      <div className="text-center pb-8 text-xs text-muted-foreground/60 space-x-4">
+        <a href="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</a>
+        <span>&middot;</span>
+        <a href="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</a>
       </div>
     </div>
   );
