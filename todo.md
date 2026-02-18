@@ -1560,3 +1560,29 @@
 - [x] Updated features-round58.test.ts line count threshold to 1200 for new support/platform routers
 - [x] All 821 tests passing
 - [x] Browser test: landing page social proof, Support page FAQ/contact form, footer links all verified
+
+## Round 64 - Deep Quality Pass (Claude 4.5 + Gravito)
+
+### LSP Fix
+- [x] BatchActionsToolbar.tsx LSP errors confirmed stale (tsc --noEmit exit 0, procedures exist correctly, cleared incremental cache)
+
+### Changelog Page
+- [x] Create /changelog page with release history (10 entries v1.0-v3.6, timeline design, type badges)
+- [x] Register /changelog route in App.tsx
+- [x] Add changelog link to footer Product section
+
+### Medium-Priority Audit Fixes
+- [x] Rename 'Full Picture' to 'Full Review' with clipboard icon and clearer description
+- [x] Export feature gate verified intentionally ungated (comment: 'available on all plans')
+- [x] Onboarding tour persistence verified (localStorage with TOUR_STORAGE_KEY)
+- [x] Dashboard drag-and-drop verified fully wired (dragenter/dragleave/dragover/drop handlers)
+
+### Gravito Governance
+- [x] Run Gravito presGovValidatePage on Changelog: PASS (0 violations)
+- [x] Run Gravito presGovFullAudit: PASS (92/100 score)
+
+### Tests & Quality
+- [x] Write 16 tests in features-round64.test.ts (Changelog, Action Mode rename, footer, governance, disclaimers)
+- [x] All 837 tests passing
+- [x] TypeScript clean (tsc --noEmit exit 0, tsc --watch 0 errors)
+- [x] Browser test: Changelog page, Full Review rename, AI disclaimer, footer links all verified

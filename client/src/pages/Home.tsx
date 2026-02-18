@@ -367,6 +367,7 @@ export default function Home() {
                 <li><a href="/pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
                 <li><a href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</a></li>
                 <li><a href="/support" className="hover:text-foreground transition-colors">Support</a></li>
+                <li><a href="/changelog" className="hover:text-foreground transition-colors">What's New</a></li>
               </ul>
             </div>
 

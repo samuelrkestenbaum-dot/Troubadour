@@ -11,9 +11,9 @@ type ActionModeKey = "session-prep" | "pitch-ready" | "rewrite-focus" | "remix-f
 
 const ACTION_MODES: Record<ActionModeKey, { label: string; icon: string; description: string; color: string }> = {
   "full-picture": {
-    label: "Full Picture",
-    icon: "🎯",
-    description: "The complete comprehensive review",
+    label: "Full Review",
+    icon: "📋",
+    description: "Original comprehensive review (default view)",
     color: "border-primary/30 bg-primary/5 hover:bg-primary/10",
   },
   "session-prep": {

@@ -31,6 +31,7 @@ import TagManager from "./pages/TagManager";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
+import Changelog from "./pages/Changelog";
 import { OnboardingTour } from "./components/OnboardingTour";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
@@ -107,6 +108,7 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/support" component={Support} />
+      <Route path="/changelog" component={Changelog} />
       <Route path="/invite/:token" component={AcceptInvite} />
       <Route path="/404" component={NotFound} />
       <Route>
