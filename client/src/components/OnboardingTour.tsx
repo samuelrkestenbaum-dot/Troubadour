@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import {
   X, ArrowRight, ArrowLeft, Music, Upload, BarChart3,
-  Sparkles, CheckCircle2, Compass
+  Sparkles, CheckCircle2, Compass, Brain, Flame, Dna, TrendingUp
 } from "lucide-react";
 
 const TOUR_STORAGE_KEY = "troubadour-onboarding-complete";
@@ -55,6 +55,13 @@ const tourSteps: TourStep[] = [
     title: "Get AI Reviews",
     description: "Click 'Review All' to get detailed AI critiques. Choose from different reviewer personas (Producer, A&R, Songwriter) and review lengths (Brief, Standard, Detailed).",
     icon: <BarChart3 className="h-6 w-6 text-violet-400" />,
+    position: "center",
+  },
+  {
+    id: "intelligence-suite",
+    title: "Intelligence Suite",
+    description: "Six powerful tools beyond reviews: track your Skill Progression over time, benchmark against your genre, check Release Readiness with traffic-light scoring, maintain Creative Streaks, discover your Artist DNA fingerprint, and explore Genre Intelligence. Find them all in the sidebar.",
+    icon: <Brain className="h-6 w-6 text-cyan-400" />,
     position: "center",
   },
   {

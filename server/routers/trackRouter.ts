@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import * as db from "../db";
 import { storagePut } from "../storage";
+import { recordActivity } from "../services/retentionEngine";
 
 const ALLOWED_AUDIO_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
@@ -75,6 +76,14 @@ export const trackRouter = router({
         versionNumber,
         parentTrackId: input.parentTrackId ?? null,
       });
+
+      // Record upload activity for streak tracking
+      try {
+        await recordActivity(ctx.user.id, "upload");
+      } catch (e) {
+        console.warn("[Streak] Failed to record upload activity:", e);
+      }
+
       return { trackId: track.id, storageUrl: url };
     }),
   get: protectedProcedure

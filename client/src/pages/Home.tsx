@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import {
-  Music, Headphones, BarChart3, GitCompare, FileText, Zap, ArrowRight,
+  Music, Headphones, BarChart3, GitCompare, FileText, Zap, ArrowRight, Upload,
   PenLine, Sliders, Layers, Mic, TrendingUp, Star, Target, MessageCircle, Sparkles,
   GraduationCap, Swords, Rocket, Flame, Dna, Database, ChevronRight
 } from "lucide-react";
@@ -154,19 +154,19 @@ export default function Home() {
         <div className="container max-w-4xl mx-auto text-center relative">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 shadow-sm shadow-primary/10">
             <Sparkles className="h-3.5 w-3.5" />
-            AI-Powered Audio Intelligence
+            AI-Powered Music Intelligence
           </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
-            The AI that actually{" "}
-            <span className="bg-gradient-to-r from-red-500 via-amber-400 to-red-500 bg-clip-text text-transparent">listens</span>{" "}
-            to your music
+            Master Your Music.{" "}
+            <span className="bg-gradient-to-r from-red-500 via-amber-400 to-red-500 bg-clip-text text-transparent">Grow</span>{" "}
+            Your Sound.
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Upload your tracks. Get a comprehensive critique covering songwriting, production, arrangement, performance, and commercial potential — all in one review.
+            Troubadour delivers more than just feedback. Get actionable insights, track your artistic evolution, and make data-driven decisions for every release.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={handleGetStarted} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
-              {user ? "Create New Project" : "Start Your First Review"}
+              {user ? "Create New Project" : "Get Your First AI Critique Free"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -179,9 +179,9 @@ export default function Home() {
       {/* What Your Review Covers — Dimension Carousel */}
       <section className="py-24 border-t border-border/30">
         <div className="container max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Every review covers everything</h2>
+          <h2 className="text-3xl font-bold text-center mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Beyond Basic Feedback</h2>
           <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-            No need to choose a focus. Every critique covers all five dimensions — so nothing gets missed.
+            Our AI dives deep into every aspect of your track, giving you a comprehensive breakdown.
           </p>
 
           {/* Dimension Selector Tabs */}
@@ -257,9 +257,9 @@ export default function Home() {
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { step: "01", title: "Upload Your Audio", description: "Drop your tracks — singles or full albums. Add context like genre, reference artists, and what you're going for.", icon: Music, gradient: "from-sky-500/15 to-sky-500/5", iconColor: "text-sky-400" },
-              { step: "02", title: "Engine Listens", description: "Your audio is analyzed for tempo, key, sections, instrumentation, mix quality, energy curves, and more.", icon: Headphones, gradient: "from-violet-500/15 to-violet-500/5", iconColor: "text-violet-400" },
-              { step: "03", title: "Comprehensive Critique", description: "A detailed review covering every dimension — songwriting, production, arrangement, performance, and commercial potential.", icon: FileText, gradient: "from-emerald-500/15 to-emerald-500/5", iconColor: "text-emerald-400" },
+                { step: "01", title: "Upload Your Track", description: "Securely submit your audio file in seconds. We support all major formats.", icon: Upload, gradient: "from-amber-500/15 to-amber-500/5", iconColor: "text-amber-400" },
+              { step: "02", title: "Instant AI Analysis", description: "Our AI processes your music, dissecting its core elements and potential.", icon: Headphones, gradient: "from-violet-500/15 to-violet-500/5", iconColor: "text-violet-400" },
+              { step: "03", title: "Unlock Actionable Insights", description: "Receive a detailed report, skill tracking, and strategic intelligence for your next move.", icon: FileText, gradient: "from-emerald-500/15 to-emerald-500/5", iconColor: "text-emerald-400" },
             ].map((item) => (
               <div key={item.step} className="relative p-7 rounded-2xl border border-border/40 bg-card/80 hover:border-border/60 transition-all group">
                 <div className="text-xs font-mono text-muted-foreground/50 mb-4">{item.step}</div>
@@ -282,11 +282,11 @@ export default function Home() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <BarChart3 className="h-5 w-5 text-violet-400" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-violet-400">Album-Level Intelligence</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-violet-400">AI Audio Reviews</span>
                 </div>
-                <h3 className="text-2xl font-bold mb-3" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Full album analysis, not just tracks</h3>
+                <h3 className="text-2xl font-bold mb-3" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Your Personal A&R, On Demand</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Upload an entire album and get track-by-track reviews plus album-level analysis — sequencing, singles picks, thematic cohesion, and a comprehensive A&R memo. The critique you'd write, but in minutes.
+                  Stop guessing. Troubadour provides comprehensive, unbiased critiques across songwriting, production, arrangement, performance, and commercial potential. Understand exactly what works and what needs refinement, so you can craft your best music yet.
                 </p>
               </div>
               <Button size="lg" onClick={handleGetStarted} className="bg-violet-500 hover:bg-violet-600 text-white shrink-0 shadow-lg shadow-violet-500/25">
@@ -301,7 +301,7 @@ export default function Home() {
       {/* Features Grid */}
       <section className="py-24 border-t border-border/30">
         <div className="container max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-16" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Everything You Need</h2>
+          <h2 className="text-3xl font-bold text-center mb-16" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>What Troubadour Unlocks For You</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               { icon: BarChart3, title: "Multi-Dimensional Scoring", desc: "Every review scores across songwriting, production, arrangement, performance, and commercial potential — the full picture in one critique." },
@@ -334,14 +334,14 @@ export default function Home() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm font-medium mb-6 shadow-sm">
               <Sparkles className="h-3.5 w-3.5" />
-              Beyond Reviews
+              Strategic Intelligence Suite
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
-              Your music career,{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-sky-400 bg-clip-text text-transparent">measured and mapped</span>
+              Know Where You Stand.{" "}
+              <span className="bg-gradient-to-r from-emerald-400 to-sky-400 bg-clip-text text-transparent">Know Where You're Going.</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg leading-relaxed">
-              Troubadour doesn't just review tracks — it tracks your growth, benchmarks you against your genre, and tells you when you're ready to release.
+              Move beyond isolated feedback. Troubadour's intelligence suite gives you the strategic advantage to truly understand your music and career trajectory.
             </p>
           </div>
 
@@ -359,7 +359,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Watch your songwriting, production, and performance scores evolve over time. AI-powered trend analysis tells you exactly where you're improving and what needs focused practice.
+                Watch your craft evolve. See how your songwriting, production, and arrangement skills improve over time with clear, per-dimension trend analysis.
               </p>
               <div className="flex items-center gap-2 text-sm text-amber-400 font-medium group-hover:gap-3 transition-all">
                 <span>Track your growth</span>
@@ -379,7 +379,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                See where your tracks rank against others in your genre. Percentile gauges across every dimension show you exactly how your chorus energy, mix quality, and hook strength compare.
+                Position yourself strategically. Understand where your track stands against genre percentiles — "Your chorus energy is in the 82nd percentile of indie rock."
               </p>
               <div className="flex items-center gap-2 text-sm text-sky-400 font-medium group-hover:gap-3 transition-all">
                 <span>See your percentiles</span>
@@ -399,7 +399,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                A traffic-light system that tells you if your track is ready to ship. Green, yellow, or red across every dimension — with specific blockers listed so you know exactly what to fix.
+                Release with confidence, not anxiety. Get a clear go/no-go assessment (green, yellow, red) for your track, highlighting specific blockers before you launch.
               </p>
               <div className="flex items-center gap-2 text-sm text-emerald-400 font-medium group-hover:gap-3 transition-all">
                 <span>Check release readiness</span>
@@ -419,7 +419,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Build momentum with upload streaks, weekly goals, and milestone badges. The engine tracks your creative cadence and nudges you when you've been away too long.
+                Build unstoppable momentum. Gamify your creative process with daily upload streaks, weekly goals, and milestones that keep you consistently creating.
               </p>
               <div className="flex items-center gap-2 text-sm text-orange-400 font-medium group-hover:gap-3 transition-all">
                 <span>Build your streak</span>
@@ -442,7 +442,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                A living profile of your artistic identity — harmonic tendencies, melodic contour, rhythmic density, and emotional arc. See how your sound evolves and where you're drifting.
+                Discover your unique sonic fingerprint. Troubadour maps your harmonic tendencies, melodic contour, rhythmic density, and emotional arc to define your evolving artistic identity.
               </p>
               <div className="flex items-center gap-2 text-sm text-violet-400 font-medium group-hover:gap-3 transition-all">
                 <span>Discover your DNA</span>
@@ -462,7 +462,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                See where you sit in the genre landscape. AI-powered clustering maps your archetype against the broader community — every review makes the intelligence sharper.
+                Navigate the musical landscape. See exactly where you fit within your genre, uncover your archetype, and compare your sound against established norms.
               </p>
               <div className="flex items-center gap-2 text-sm text-rose-400 font-medium group-hover:gap-3 transition-all">
                 <span>Explore the landscape</span>
@@ -477,13 +477,13 @@ export default function Home() {
       <section className="py-24 border-t border-border/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent" />
         <div className="container max-w-2xl mx-auto text-center relative">
-          <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Ready for honest feedback?</h2>
+          <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Stop Guessing. Start Growing.</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            Stop guessing. Get a comprehensive critique grounded in what the engine actually heard.
+            The future of music feedback is here. Get the insights you need to refine your craft, understand your audience, and confidently release your best work.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
             <Button size="lg" onClick={handleGetStarted} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
-              {user ? "Create New Project" : "Get Started Free"}
+              {user ? "Create New Project" : "Get Your First AI Critique Free"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4">
@@ -504,7 +504,7 @@ export default function Home() {
                 <span className="text-lg font-bold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Troubadour</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                AI-powered music critique for artists who want honest, actionable feedback. Every review is generated by AI — use it as a creative tool alongside your own musical instincts.
+                Your AI co-pilot for creative growth. Actionable insights, skill tracking, and strategic intelligence for every release.
               </p>
             </div>
 
@@ -535,7 +535,7 @@ export default function Home() {
               &copy; {new Date().getFullYear()} Troubadour. All reviews are AI-generated.
             </p>
             <p className="text-xs text-muted-foreground/60">
-              Built for musicians, by music lovers.
+              Your AI co-pilot for creative growth.
             </p>
           </div>
         </div>

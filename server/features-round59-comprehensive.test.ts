@@ -276,7 +276,7 @@ describe("Round 59 – Comprehensive Review (Persona Removal)", () => {
       expect(content).not.toContain("Select your role");
       expect(content).not.toContain("The engine adjusts what it listens for");
       // Should contain comprehensive review language
-      expect(content).toContain("Every review covers everything");
+      expect(content).toContain("Beyond Basic Feedback");
       expect(content).toContain("comprehensive");
     });
 

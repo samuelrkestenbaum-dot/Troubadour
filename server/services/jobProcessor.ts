@@ -15,6 +15,7 @@ import { analyzeAudioWithGemini, compareAudioWithGemini } from "./geminiAudio";
 import { generateTrackReview, generateAlbumReview, generateVersionComparison, extractScores, CLAUDE_MODEL } from "./claudeCritic";
 import { notifyOwner } from "../_core/notification";
 import { notifyCollaborators } from "./emailNotification";
+import { recordActivity } from "./retentionEngine";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 
 // Heartbeat interval for long-running jobs (every 30s)
@@ -487,6 +488,13 @@ async function processReviewJob(jobId: number, job: any) {
     completedAt: new Date(),
   });
 
+  // Record review activity for streak tracking
+  try {
+    await recordActivity(job.userId, "review");
+  } catch (e) {
+    console.warn("[Streak] Failed to record review activity:", e);
+  }
+
   // Send notification to owner
   try {
     await notifyOwner({
@@ -616,6 +624,13 @@ async function processAlbumReviewJob(jobId: number, job: any) {
     resultId: review.id,
     completedAt: new Date(),
   });
+
+  // Record review activity for streak tracking
+  try {
+    await recordActivity(job.userId, "review");
+  } catch (e) {
+    console.warn("[Streak] Failed to record album review activity:", e);
+  }
 
   try {
     await notifyOwner({

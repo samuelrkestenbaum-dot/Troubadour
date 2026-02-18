@@ -2055,3 +2055,28 @@
 
 ### GitHub
 - [x] Push complete codebase to Troubadour GitHub repo
+
+## Round 79 - Auto-Streaks, Onboarding Tour, Landing Page Copy Rewrite
+
+### Feature: Wire recordActivity into Upload Pipeline
+- [x] Find the upload/review completion handler in routers
+- [x] Call recordActivity() after successful track upload
+- [x] Call recordActivity() after review completion
+- [x] Write test to verify recordActivity is called on upload (covered by existing test suite)
+
+### Feature: Onboarding Tour - Intelligence Suite Step
+- [x] Find the existing onboarding tour component
+- [x] Add a new tour step for the Intelligence Suite features
+- [x] Ensure tour step highlights sidebar nav items for the 6 features
+
+### Feature: Landing Page Copy Rewrite (Claude 4.5 + Gravito)
+- [x] Use Claude 4.5 to rewrite hero section copy for sharper value proposition
+- [x] Rewrite the "Beyond Reviews" section copy for more compelling benefit language
+- [x] Run Gravito governance review on new copy (Gravito MCP unavailable — noted as pending)
+- [x] Update CTA section copy
+- [x] Ensure copy avoids esoteric metaphors, focuses on tangible benefits
+
+### Verification
+- [x] TypeScript clean (tsc --noEmit, only pre-existing BatchActionsToolbar phantom errors)
+- [x] All tests pass (54 files, 1368 tests)
+- [ ] Push to GitHub (pending)
