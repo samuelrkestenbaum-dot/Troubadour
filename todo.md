@@ -1501,12 +1501,12 @@
 - [x] Browser test all flows — landing page, new project, templates gallery all confirmed persona-free
 
 ## Round 60 - Post-Review Action Modes
-- [ ] Save pending checkpoint from Round 59 persona removal
-- [ ] Audit current review page code (TrackReview.tsx, review display, chat)
-- [ ] Design Action Mode data model (modes: session-prep, pitch-ready, rewrite-focus, remix-focus, full-picture)
-- [ ] Build backend tRPC procedure for Action Mode reshaping (LLM-powered, takes review + mode → reshaped summary)
-- [ ] Build Action Mode UI selector on review page (appears after review is complete)
-- [ ] Build reshaped view component that displays goal-oriented summary
-- [ ] Write vitest tests for Action Mode backend and UI
-- [ ] Run Gravito governance audit on Action Mode copy
-- [ ] Browser test all Action Mode flows
+- [x] Save pending checkpoint from Round 59 persona removal (version 0bcf99e9)
+- [x] Audit current review page code (ReviewView.tsx — 820 lines, has Quick Take, Scores, Full Review, Comments, Conversation Panel)
+- [x] Design Action Mode data model (modes: session-prep, pitch-ready, rewrite-focus, remix-focus, full-picture)
+- [x] Build backend tRPC procedure for Action Mode reshaping (LLM-powered, takes review + mode → reshaped summary)
+- [x] Build Action Mode UI selector on review page (appears after review is complete)
+- [x] Build reshaped view component that displays goal-oriented summary
+- [x] Write vitest tests for Action Mode backend and UI (14 tests, all pass)
+- [x] Run Gravito governance audit on Action Mode copy — enforcement 100/100, perception: professional tone, 70 trust, 0.85 clarity, abstraction 0.6 (acceptable)
+- [x] Browser test all Action Mode flows — Session Prep tested, LLM reshaping works, structured output with Priority Fixes, Technical Notes, Arrangement Changes, Performance Notes

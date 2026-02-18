@@ -33,6 +33,7 @@ import { trackExportUsed, trackShareLinkCreated, trackFeatureGated } from "@/lib
 import { scoreColor } from "@/lib/scoreColor";
 import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 import { CollapsibleReview } from "@/components/CollapsibleReview";
+import { ActionModeSelector, ActionModeContent } from "@/components/ActionModeSelector";
 import { TemplateSelector } from "@/components/TemplateSelector";
 import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
 import { ReviewDiffView } from "@/components/ReviewDiffView";
@@ -414,6 +415,8 @@ export default function ReviewView({ id }: { id: number }) {
   const [reReviewLength, setReReviewLength] = useState<ReviewLength>("standard");
   const [showDiff, setShowDiff] = useState(false);
   const [diffReviewId, setDiffReviewId] = useState<number | null>(null);
+  const [actionModeContent, setActionModeContent] = useState<string | null>(null);
+  const [activeActionMode, setActiveActionMode] = useState<string>("full-picture");
 
   const reReviewMut = trpc.job.reReview.useMutation({
     onSuccess: () => {
@@ -719,12 +722,27 @@ export default function ReviewView({ id }: { id: number }) {
 
       <Separator />
 
-      {/* Full Review */}
-      <Card>
-        <CardContent className="py-6">
-          <CollapsibleReview markdown={stripDuplicateSections(review.reviewMarkdown)} />
-        </CardContent>
-      </Card>
+      {/* Action Mode Selector */}
+      {review.reviewType === "track" && (
+        <ActionModeSelector
+          reviewId={review.id}
+          onModeContent={(content, mode) => {
+            setActionModeContent(content);
+            setActiveActionMode(mode);
+          }}
+        />
+      )}
+
+      {/* Full Review or Reshaped Content */}
+      {actionModeContent && activeActionMode !== "full-picture" ? (
+        <ActionModeContent content={actionModeContent} mode={activeActionMode as any} />
+      ) : (
+        <Card>
+          <CardContent className="py-6">
+            <CollapsibleReview markdown={stripDuplicateSections(review.reviewMarkdown)} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Review Comments */}
       <ReviewComments reviewId={review.id} canComment={true} />

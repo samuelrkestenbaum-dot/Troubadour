@@ -6,6 +6,7 @@ import * as db from "../db";
 import { assertFeatureAllowed } from "../guards";
 import archiver from "archiver";
 import { storagePut } from "../storage";
+import { reshapeReview, type ActionModeKey } from "../services/actionModes";
 
 export const reviewRouter = router({
   get: protectedProcedure
@@ -575,6 +576,41 @@ export const reviewRouter = router({
         filename: `${safeProjectName}-reviews.zip`,
         trackCount: allTracks.filter(t => allReviews.some(r => r.trackId === t.id && r.isLatest && r.reviewType === "track")).length,
         hasAlbumReview: !!albumReview,
+      };
+    }),
+
+  actionMode: protectedProcedure
+    .input(z.object({
+      reviewId: z.number(),
+      mode: z.enum(["session-prep", "pitch-ready", "rewrite-focus", "remix-focus", "full-picture"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const review = await db.getReviewById(input.reviewId);
+      if (!review || review.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+      }
+
+      // Full picture just returns the original review
+      if (input.mode === "full-picture") {
+        return {
+          mode: input.mode,
+          content: review.reviewMarkdown,
+          cached: true,
+        };
+      }
+
+      const scores = review.scoresJson as Record<string, number> | null;
+      const reshaped = await reshapeReview(
+        review.reviewMarkdown,
+        review.quickTake,
+        scores,
+        input.mode as ActionModeKey,
+      );
+
+      return {
+        mode: input.mode,
+        content: reshaped,
+        cached: false,
       };
     }),
 });
