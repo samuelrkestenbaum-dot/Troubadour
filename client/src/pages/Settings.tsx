@@ -175,7 +175,7 @@ export default function Settings() {
                     <span className="text-muted-foreground">Reviews</span>
                   </div>
                   <span className="text-right">
-                    {tier === "free" ? "3/month" : "Unlimited"}
+                    {tier === "free" ? "1/month" : "Unlimited"}
                   </span>
                 </div>
                 {sub && (

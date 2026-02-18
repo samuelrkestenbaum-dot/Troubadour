@@ -1,7 +1,7 @@
 /**
  * Troubadour Subscription Plans
  * 
- * Free: 3 reviews/month, basic features
+ * Free: 1 review/month, basic features
  * Artist ($19/mo): 120 min, all features
  * Pro ($49/mo): 480 min, priority, all features
  */
@@ -11,10 +11,10 @@ export const PLANS = {
     name: "Free",
     tier: "free" as const,
     audioMinutesLimit: 60,
-    monthlyReviewLimit: 3,
+    monthlyReviewLimit: 1,
     priceMonthly: 0,
     features: [
-      "3 AI reviews per month",
+      "1 AI review per month",
       "Basic audio analysis",
       "Genre detection",
       "Score breakdown",

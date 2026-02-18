@@ -1942,7 +1942,7 @@ describe("monthly review limits", () => {
     const overLimitUser = {
       ...createTestUser(),
       tier: "free",
-      monthlyReviewCount: 3,
+      monthlyReviewCount: 1,
     };
     const ctx = createAuthContext(overLimitUser as any);
     const caller = appRouter.createCaller(ctx);
@@ -1967,7 +1967,7 @@ describe("monthly review limits", () => {
     const underLimitUser = {
       ...createTestUser(),
       tier: "free",
-      monthlyReviewCount: 1,
+      monthlyReviewCount: 0,
       audioMinutesUsed: 5,
       audioMinutesLimit: 60,
     };
@@ -2005,7 +2005,7 @@ describe("monthly review limit on analyzeAndReview", () => {
     const overLimitUser = {
       ...createTestUser(),
       tier: "free",
-      monthlyReviewCount: 3,
+      monthlyReviewCount: 1,
     };
     const ctx = createAuthContext(overLimitUser as any);
     const caller = appRouter.createCaller(ctx);
@@ -2072,7 +2072,7 @@ describe("getPlanByTier", () => {
   it("returns correct plan for each tier", async () => {
     const { getPlanByTier } = await import("./stripe/products");
     expect(getPlanByTier("free").name).toBe("Free");
-    expect(getPlanByTier("free").monthlyReviewLimit).toBe(3);
+    expect(getPlanByTier("free").monthlyReviewLimit).toBe(1);
     expect(getPlanByTier("artist").name).toBe("Artist");
     expect(getPlanByTier("pro").name).toBe("Pro");
     expect(getPlanByTier("unknown").name).toBe("Free"); // fallback

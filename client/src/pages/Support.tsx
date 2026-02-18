@@ -62,7 +62,7 @@ const FAQ_ITEMS = [
     items: [
       {
         q: "What's included in the free plan?",
-        a: "The free plan includes 3 reviews per month, 60 minutes of audio analysis, and access to all core review features. Upgrade to Artist ($19/mo) or Pro ($49/mo) for unlimited reviews, more audio minutes, and advanced features like Action Modes and priority processing.",
+        a: "The free plan includes 1 AI review per month, 60 minutes of audio analysis, and access to all core review features. Upgrade to Artist ($19/mo) or Pro ($49/mo) for unlimited reviews, more audio minutes, and advanced features like Action Modes and priority processing.",
       },
       {
         q: "How do I cancel my subscription?",

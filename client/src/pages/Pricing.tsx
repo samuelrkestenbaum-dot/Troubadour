@@ -22,7 +22,7 @@ const PLANS = [
     bgGradient: "from-slate-800/50 to-slate-900/50",
     borderColor: "border-border/50",
     features: [
-      { text: "3 AI reviews per month", included: true },
+      { text: "1 AI review per month", included: true },
       { text: "Basic audio analysis", included: true },
       { text: "Genre detection", included: true },
       { text: "Score breakdown", included: true },

@@ -2142,3 +2142,10 @@
 - [x] Write tests for all improvements (29 tests in features-round82.test.ts)
 - [x] TypeScript clean, all tests pass (56 files, 1430 tests)
 - [ ] Push to GitHub (pending)
+
+### Round 83 - Free Tier Limit Change (Claude 4.5)
+- [x] Change free tier monthlyReviewLimit from 3 to 1 in products.ts
+- [x] Update Pricing page, Settings page, Support FAQ to show "1 AI review per month"
+- [x] Update test assertions (features.test.ts) to match new limit
+- [x] All tests pass (56 files, 1430 tests)
+- [ ] Push to GitHub (pending)
