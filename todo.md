@@ -1483,3 +1483,19 @@
 - [x] Add persona onboarding step for first-time users (prompt role selection during initial signup)
 - [x] Run full Gravito creative integrity audit — enforcement 100/100, 7/7 claims verified, perception: professional tone, 65 trust, 0.85 clarity. runCreativeIntegrity 503 (service down)
 - [x] Write vitest tests for new features (18 tests in features-round58-onboarding.test.ts)
+
+## Round 59 - Remove Persona System, Replace with Comprehensive Structured Reviews (Claude 4.5 + Gravito)
+- [x] Audit all persona-related code across the codebase
+- [x] Remove PersonaOnboarding dialog component and its import in App.tsx
+- [x] Remove persona switcher dropdown from ProjectView header
+- [x] Refactor review generation to always produce comprehensive structured reviews (Songwriting, Production, Performance, Commercial Potential sections)
+- [x] Remove persona selection from NewProject.tsx (reviewFocus field, persona badge, URL param handling)
+- [x] Remove persona selection from TemplatesGallery.tsx (Use This button persona routing)
+- [x] Simplify Templates page to focus on review style/depth rather than persona — now shows "What's in a Review" with 5 sections
+- [x] Remove persona backend procedures (persona.getPreference, persona.updatePreference)
+- [x] Remove preferredPersona column from users schema (deprecated - column kept for backward compat, not used)
+- [x] Remove reviewFocus from project.create and project.update inputs (hardcoded to 'full')
+- [x] Update landing page Home.tsx to remove persona-specific messaging
+- [x] Update tests to reflect removal of persona system (removed 3 persona test files, added features-round59-comprehensive.test.ts, all 754 tests pass)
+- [x] Run Gravito governance audit on updated copy — 3/3 claims verified, 0.75 clarity, 65 trust, professional tone, no blocks
+- [x] Browser test all flows — landing page, new project, templates gallery all confirmed persona-free

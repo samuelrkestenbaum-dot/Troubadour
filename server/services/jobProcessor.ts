@@ -288,9 +288,9 @@ async function processAnalyzeJob(jobId: number, job: any) {
   await db.updateTrackStatus(track.id, "analyzing");
   await db.updateJob(jobId, { progress: 10, progressMessage: "Sending audio for analysis..." });
 
-  // Get project to check reviewFocus
+  // Always use comprehensive "full" review — no persona filtering
   const project = await db.getProjectById(track.projectId);
-  const reviewFocus = (project?.reviewFocus as any) || "full";
+  const reviewFocus = "full" as const;
 
   // Step 1: Gemini analyzes the audio (guided by reviewFocus)
   const geminiAnalysis = await analyzeAudioWithGemini(track.storageUrl, track.mimeType, reviewFocus);
@@ -381,7 +381,8 @@ async function processReviewJob(jobId: number, job: any) {
   const trackLyrics = await db.getLyricsByTrack(track.id);
   const lyricsText = trackLyrics.length > 0 ? trackLyrics[0].text : undefined;
 
-  const reviewFocus = (project.reviewFocus as any) || "full";
+  // Always use comprehensive "full" review — no persona filtering
+  const reviewFocus = "full" as const;
 
   // Extract template focus areas, review length, and custom system prompt from job metadata
   const jobMetadata = job.metadata as { templateId?: number; focusAreas?: string[]; reviewLength?: string; systemPrompt?: string } | null;

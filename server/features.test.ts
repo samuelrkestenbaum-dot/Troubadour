@@ -172,8 +172,7 @@ vi.mock("./db", () => {
       { trackId: 2, overall: 8, quickTake: "Great", reviewVersion: 1, filename: "banger.mp3", genre: "Hip-Hop" },
     ]),
     softDeleteUser: vi.fn().mockResolvedValue(undefined),
-    updateUserPreferredPersona: vi.fn().mockResolvedValue(undefined),
-    getUserPreferredPersona: vi.fn().mockResolvedValue(null),
+
   };
 });
 
@@ -325,7 +324,6 @@ describe("project.create", () => {
       title: "Full Details Track",
       type: "single",
       description: "My debut single",
-      reviewFocus: "producer",
       referenceArtists: "Frank Ocean",
     });
 
@@ -333,17 +331,16 @@ describe("project.create", () => {
     expect(result.id).toBeGreaterThan(0);
   });
 
-  it("rejects invalid reviewFocus", async () => {
+  it("always uses 'full' reviewFocus (no persona selection)", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(
-      caller.project.create({
-        type: "single",
-        title: "Bad Focus",
-        reviewFocus: "invalid" as any,
-      })
-    ).rejects.toThrow();
+    const result = await caller.project.create({
+      type: "single",
+      title: "No Persona Project",
+    });
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
   });
 
   it("rejects empty title", async () => {

@@ -5,10 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle, User } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle } from "lucide-react";
 import { trackProjectCreated } from "@/lib/analytics";
 import { DropZone } from "@/components/DropZone";
 
@@ -24,35 +23,11 @@ interface TrackedFile {
 const generateFileId = (file: File, index: number) =>
   `${file.name}-${file.size}-${file.lastModified}-${index}`;
 
-const PERSONA_LABELS: Record<string, string> = {
-  songwriter: "Songwriter",
-  producer: "Producer",
-  arranger: "Arranger",
-  artist: "Artist Dev",
-  anr: "A&R Executive",
-  full: "Full Review",
-};
-
 export default function NewProject() {
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
   const [trackedFiles, setTrackedFiles] = useState<TrackedFile[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-
-  // Load user's preferred persona from server
-  const { data: personaPref } = trpc.persona.getPreference.useQuery();
-
-  // Read persona from URL query parameter, fallback to user preference
-  const selectedPersona = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    const p = params.get("persona");
-    if (p && p in PERSONA_LABELS) return p as string;
-    // Fallback to user's saved preference (skip "full" as it's the default)
-    if (personaPref?.preferredPersona && personaPref.preferredPersona !== "full") {
-      return personaPref.preferredPersona;
-    }
-    return null;
-  }, [personaPref?.preferredPersona]);
 
   const uploadTrack = trpc.track.upload.useMutation();
   const analyzeAndReview = trpc.job.analyzeAndReview.useMutation();
@@ -206,7 +181,6 @@ export default function NewProject() {
     createProject.mutate({
       title: title.trim(),
       type: projectType,
-      ...(selectedPersona ? { reviewFocus: selectedPersona as "songwriter" | "producer" | "arranger" | "artist" | "anr" | "full" } : {}),
     });
   };
 
@@ -259,15 +233,8 @@ export default function NewProject() {
               Upload & Review
             </CardTitle>
             <CardDescription>
-              Drop your tracks below. We'll detect the genre, analyze the audio, and write your critique automatically.
+              Drop your tracks below. We'll analyze the audio and write a comprehensive critique covering songwriting, production, performance, and commercial potential.
             </CardDescription>
-            {selectedPersona && (
-              <div className="flex items-center gap-2 mt-2">
-                <User className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs text-muted-foreground">Reviewing as:</span>
-                <Badge variant="secondary" className="text-xs">{PERSONA_LABELS[selectedPersona] || selectedPersona}</Badge>
-              </div>
-            )}
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Project Name */}
@@ -300,50 +267,22 @@ export default function NewProject() {
             {/* File List with Progress */}
             {trackedFiles.length > 0 && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">
-                    {trackedFiles.length} {trackedFiles.length === 1 ? "track" : "tracks"}
-                    {!isCreating && " ready"}
-                    {trackedFiles.length > 1 && !isCreating && <span className="text-muted-foreground ml-1">(album)</span>}
-                    {trackedFiles.length === 1 && !isCreating && <span className="text-muted-foreground ml-1">(single)</span>}
-                  </Label>
-                  {trackedFiles.length > 1 && !isCreating && (
-                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setTrackedFiles([])}>
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-                <div className="border border-border/50 rounded-lg divide-y divide-border/30">
-                  {trackedFiles.map((tf) => (
-                    <div key={tf.id} className="px-3 py-2.5">
-                      <div className="flex items-center gap-3 text-sm">
-                        {isCreating ? getStatusIcon(tf.status) : (
-                          <FileAudio className="h-4 w-4 text-primary/60 shrink-0" />
-                        )}
-                        <span className="truncate flex-1">{tf.file.name}</span>
-                        {isCreating ? (
-                          <span className={`text-xs shrink-0 ${tf.status === "done" ? "text-emerald-500" : tf.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-                            {getStatusLabel(tf.status)}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="text-xs text-muted-foreground shrink-0">{formatSize(tf.file.size)}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeFile(tf.id)}
-                              className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded"
-                              aria-label={`Remove ${tf.file.name}`}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      {isCreating && (tf.status === "reading" || tf.status === "uploading") && (
-                        <Progress
-                          value={tf.status === "reading" ? tf.progress : 100}
-                          className="h-1 mt-2"
-                        />
+                <Label>Tracks ({trackedFiles.length})</Label>
+                <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                  {trackedFiles.map(tf => (
+                    <div key={tf.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-sm">
+                      {getStatusIcon(tf.status)}
+                      <FileAudio className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate flex-1 font-medium">{tf.file.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{formatSize(tf.file.size)}</span>
+                      {(tf.status === "reading" || tf.status === "uploading") && (
+                        <Progress value={tf.progress} className="w-16 h-1.5" />
+                      )}
+                      <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">{getStatusLabel(tf.status)}</span>
+                      {!isCreating && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeFile(tf.id)}>
+                          <X className="h-3 w-3" />
+                        </Button>
                       )}
                     </div>
                   ))}
@@ -352,19 +291,21 @@ export default function NewProject() {
             )}
 
             {/* Submit */}
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-muted-foreground">
-                {isCreating
-                  ? "Creating project and uploading tracks..."
-                  : trackedFiles.length === 0
-                    ? "You can also upload tracks after creating the project."
-                    : "Genre, tempo, and key are detected automatically."}
-              </p>
-              <Button type="submit" disabled={isCreating || createProject.isPending} size="lg">
-                {(isCreating || createProject.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {isCreating ? "Working..." : trackedFiles.length > 0 ? "Create & Upload" : "Create Project"}
-              </Button>
-            </div>
+            <Button type="submit" className="w-full" disabled={isCreating || !title.trim()}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating & uploading...
+                </>
+              ) : (
+                <>
+                  <Music className="h-4 w-4 mr-2" />
+                  {trackedFiles.length > 0
+                    ? `Create Project & Upload ${trackedFiles.length} ${trackedFiles.length === 1 ? "Track" : "Tracks"}`
+                    : "Create Project"}
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       </form>

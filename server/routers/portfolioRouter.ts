@@ -14,8 +14,8 @@ export const portfolioRouter = {
         trackId: z.number(),
         templateAId: z.number().optional(),
         templateBId: z.number().optional(),
-        focusA: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full"),
-        focusB: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full"),
+        focusA: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full").optional(),
+        focusB: z.enum(["songwriter", "producer", "arranger", "artist", "anr", "full"]).default("full").optional(),
         reviewLength: z.enum(["brief", "standard", "detailed"]).default("standard"),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -26,7 +26,7 @@ export const portfolioRouter = {
         const metadataBase = { reviewLength: input.reviewLength };
 
         // Queue job A
-        const metaA: Record<string, any> = { ...metadataBase, reviewFocus: input.focusA, abSide: "A", abBatchId: batchId };
+        const metaA: Record<string, any> = { ...metadataBase, reviewFocus: "full", abSide: "A", abBatchId: batchId };
         if (input.templateAId) {
           const tpl = await db.getReviewTemplateById(input.templateAId);
           if (tpl) {
@@ -45,7 +45,7 @@ export const portfolioRouter = {
         });
 
         // Queue job B
-        const metaB: Record<string, any> = { ...metadataBase, reviewFocus: input.focusB, abSide: "B", abBatchId: batchId };
+        const metaB: Record<string, any> = { ...metadataBase, reviewFocus: "full", abSide: "B", abBatchId: batchId };
         if (input.templateBId) {
           const tpl = await db.getReviewTemplateById(input.templateBId);
           if (tpl) {

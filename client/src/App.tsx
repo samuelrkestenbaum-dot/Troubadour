@@ -29,7 +29,6 @@ import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import Digest from "./pages/Digest";
 import TagManager from "./pages/TagManager";
 import { OnboardingTour } from "./components/OnboardingTour";
-import { PersonaOnboarding } from "./components/PersonaOnboarding";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -121,7 +120,6 @@ function App() {
           <KeyboardShortcutsDialog />
           <GlobalKeyboardShortcuts />
           <OnboardingTour />
-          <PersonaOnboarding />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

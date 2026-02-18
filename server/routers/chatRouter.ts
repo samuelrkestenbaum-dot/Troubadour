@@ -38,7 +38,6 @@ export const chatRouter = router({
           contextParts.push(`\nProject: "${project.title}" (${project.type}, ${project.genre || "no genre specified"})`);
           if (project.intentNotes) contextParts.push(`Artist intent: ${project.intentNotes}`);
           if (project.referenceArtists) contextParts.push(`Reference artists: ${project.referenceArtists}`);
-          if (project.reviewFocus) contextParts.push(`Review focus: ${project.reviewFocus}`);
           const tracks = await db.getTracksByProject(project.id);
           if (tracks.length > 0) {
             contextParts.push(`\nTracks (${tracks.length}):`);
