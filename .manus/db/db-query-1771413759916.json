@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, title, status, createdAt FROM projects WHERE title LIKE '%Test%' OR title LIKE '%test%' ORDER BY createdAt DESC LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT id, title, status, createdAt FROM projects WHERE title LIKE '%Test%' OR title LIKE '%test%' ORDER BY createdAt DESC LIMIT 30;",
+  "rows": [
+    {
+      "id": "90043",
+      "title": "Test songwriter",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:55:12"
+    },
+    {
+      "id": "90044",
+      "title": "Test producer",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:55:12"
+    },
+    {
+      "id": "90047",
+      "title": "Test anr",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:55:12"
+    },
+    {
+      "id": "90046",
+      "title": "Test artist",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:55:12"
+    },
+    {
+      "id": "90045",
+      "title": "Test arranger",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:55:12"
+    },
+    {
+      "id": "90048",
+      "title": "Test full",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:55:12"
+    },
+    {
+      "id": "90035",
+      "title": "Test anr",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:54:53"
+    },
+    {
+      "id": "90033",
+      "title": "Test arranger",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:54:53"
+    },
+    {
+      "id": "90036",
+      "title": "Test full",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:54:53"
+    },
+    {
+      "id": "90034",
+      "title": "Test artist",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:54:53"
+    },
+    {
+      "id": "90032",
+      "title": "Test producer",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:54:52"
+    },
+    {
+      "id": "90031",
+      "title": "Test songwriter",
+      "status": "draft",
+      "createdAt": "2026-02-17 23:54:52"
+    },
+    {
+      "id": "90023",
+      "title": "Test anr",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:10:19"
+    },
+    {
+      "id": "90024",
+      "title": "Test full",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:10:19"
+    },
+    {
+      "id": "90021",
+      "title": "Test arranger",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:10:19"
+    },
+    {
+      "id": "90019",
+      "title": "Test songwriter",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:10:19"
+    },
+    {
+      "id": "90020",
+      "title": "Test producer",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:10:19"
+    },
+    {
+      "id": "90022",
+      "title": "Test artist",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:10:19"
+    },
+    {
+      "id": "90016",
+      "title": "Test artist",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:26"
+    },
+    {
+      "id": "90015",
+      "title": "Test arranger",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:26"
+    },
+    {
+      "id": "90017",
+      "title": "Test anr",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:26"
+    },
+    {
+      "id": "90014",
+      "title": "Test producer",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:26"
+    },
+    {
+      "id": "90018",
+      "title": "Test full",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:26"
+    },
+    {
+      "id": "90013",
+      "title": "Test songwriter",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:26"
+    },
+    {
+      "id": "90012",
+      "title": "Test full",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:11"
+    },
+    {
+      "id": "90009",
+      "title": "Test arranger",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:11"
+    },
+    {
+      "id": "90008",
+      "title": "Test producer",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:11"
+    },
+    {
+      "id": "90010",
+      "title": "Test artist",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:11"
+    },
+    {
+      "id": "90007",
+      "title": "Test songwriter",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:11"
+    },
+    {
+      "id": "90011",
+      "title": "Test anr",
+      "status": "draft",
+      "createdAt": "2026-02-17 22:08:11"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tstatus\tcreatedAt\n90043\tTest songwriter\tdraft\t2026-02-17 23:55:12\n90044\tTest producer\tdraft\t2026-02-17 23:55:12\n90047\tTest anr\tdraft\t2026-02-17 23:55:12\n90046\tTest artist\tdraft\t2026-02-17 23:55:12\n90045\tTest arranger\tdraft\t2026-02-17 23:55:12\n90048\tTest full\tdraft\t2026-02-17 23:55:12\n90035\tTest anr\tdraft\t2026-02-17 23:54:53\n90033\tTest arranger\tdraft\t2026-02-17 23:54:53\n90036\tTest full\tdraft\t2026-02-17 23:54:53\n90034\tTest artist\tdraft\t2026-02-17 23:54:53\n90032\tTest producer\tdraft\t2026-02-17 23:54:52\n90031\tTest songwriter\tdraft\t2026-02-17 23:54:52\n90023\tTest anr\tdraft\t2026-02-17 22:10:19\n90024\tTest full\tdraft\t2026-02-17 22:10:19\n90021\tTest arranger\tdraft\t2026-02-17 22:10:19\n90019\tTest songwriter\tdraft\t2026-02-17 22:10:19\n90020\tTest producer\tdraft\t2026-02-17 22:10:19\n90022\tTest artist\tdraft\t2026-02-17 22:10:19\n90016\tTest artist\tdraft\t2026-02-17 22:08:26\n90015\tTest arranger\tdraft\t2026-02-17 22:08:26\n90017\tTest anr\tdraft\t2026-02-17 22:08:26\n90014\tTest producer\tdraft\t2026-02-17 22:08:26\n90018\tTest full\tdraft\t2026-02-17 22:08:26\n90013\tTest songwriter\tdraft\t2026-02-17 22:08:26\n90012\tTest full\tdraft\t2026-02-17 22:08:11\n90009\tTest arranger\tdraft\t2026-02-17 22:08:11\n90008\tTest producer\tdraft\t2026-02-17 22:08:11\n90010\tTest artist\tdraft\t2026-02-17 22:08:11\n90007\tTest songwriter\tdraft\t2026-02-17 22:08:11\n90011\tTest anr\tdraft\t2026-02-17 22:08:11\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

@@ -735,7 +735,7 @@ export default function ReviewView({ id }: { id: number }) {
 
       {/* Full Review or Reshaped Content */}
       {actionModeContent && activeActionMode !== "full-picture" ? (
-        <ActionModeContent content={actionModeContent} mode={activeActionMode as any} />
+        <ActionModeContent content={actionModeContent} mode={activeActionMode as any} reviewId={review.id} />
       ) : (
         <Card>
           <CardContent className="py-6">

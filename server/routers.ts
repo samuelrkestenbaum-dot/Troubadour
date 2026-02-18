@@ -125,6 +125,20 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    bulkDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+      .mutation(async ({ ctx, input }) => {
+        let deleted = 0;
+        for (const id of input.ids) {
+          const project = await db.getProjectById(id);
+          if (project && project.userId === ctx.user.id) {
+            await db.deleteProject(id);
+            deleted++;
+          }
+        }
+        return { deleted, total: input.ids.length };
+      }),
+
     uploadCoverImage: protectedProcedure
       .input(z.object({
         projectId: z.number(),

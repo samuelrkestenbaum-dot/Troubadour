@@ -246,6 +246,13 @@
       "when": 1771365377753,
       "tag": "0034_pink_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1771413014095,
+      "tag": "0035_shallow_lifeguard",
+      "breakpoints": true
     }
   ]
 }

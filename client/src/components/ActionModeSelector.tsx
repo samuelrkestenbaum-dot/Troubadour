@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, Sparkles, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -171,10 +171,29 @@ export function ActionModeSelector({ reviewId, onModeContent }: ActionModeSelect
 interface ActionModeContentProps {
   content: string;
   mode: ActionModeKey;
+  reviewId: number;
 }
 
-export function ActionModeContent({ content, mode }: ActionModeContentProps) {
+export function ActionModeContent({ content, mode, reviewId }: ActionModeContentProps) {
   const modeConfig = ACTION_MODES[mode];
+  const [exporting, setExporting] = useState(false);
+
+  const exportMut = trpc.review.exportActionModePdf.useMutation({
+    onSuccess: (data) => {
+      setExporting(false);
+      window.open(data.url, "_blank");
+      toast.success(`${modeConfig.label} exported — opening in new tab`);
+    },
+    onError: (err) => {
+      setExporting(false);
+      toast.error(err.message || "Export failed");
+    },
+  });
+
+  const handleExport = () => {
+    setExporting(true);
+    exportMut.mutate({ reviewId, mode });
+  };
 
   return (
     <Card className={`border ${MODE_ACTIVE_COLORS[mode].replace("ring-1", "").trim()}`}>
@@ -182,9 +201,23 @@ export function ActionModeContent({ content, mode }: ActionModeContentProps) {
         <div className="flex items-center gap-2">
           <span className="text-lg">{modeConfig.icon}</span>
           <CardTitle className="text-base">{modeConfig.label}</CardTitle>
-          <Badge variant="outline" className={`text-xs ml-auto ${MODE_BADGE_COLORS[mode]}`}>
+          <Badge variant="outline" className={`text-xs ${MODE_BADGE_COLORS[mode]}`}>
             AI-reshaped
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-7 text-xs gap-1.5"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Download className="h-3 w-3" />
+            )}
+            Export
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">{modeConfig.description}</p>
       </CardHeader>

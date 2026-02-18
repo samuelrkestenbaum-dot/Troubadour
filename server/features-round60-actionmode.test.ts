@@ -88,6 +88,8 @@ vi.mock("./db", () => {
     getTopTracks: vi.fn().mockResolvedValue([]),
     getTrackCountsByProjects: vi.fn().mockResolvedValue(new Map()),
     softDeleteUser: vi.fn().mockResolvedValue(undefined),
+    getCachedActionMode: vi.fn().mockResolvedValue(null),
+    setCachedActionMode: vi.fn().mockResolvedValue(undefined),
   };
 });
 

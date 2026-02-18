@@ -1,6 +1,6 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2175,4 +2175,36 @@ export async function getUserPreferredPersona(userId: number): Promise<string> {
   if (!db) return "full";
   const [user] = await db.select({ preferredPersona: users.preferredPersona }).from(users).where(eq(users.id, userId));
   return user?.preferredPersona ?? "full";
+}
+
+
+// ── Action Mode Cache ──
+
+export async function getCachedActionMode(reviewId: number, mode: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(actionModeCache)
+    .where(and(eq(actionModeCache.reviewId, reviewId), eq(actionModeCache.mode, mode)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function setCachedActionMode(reviewId: number, userId: number, mode: string, content: string) {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert: insert or update on duplicate key
+  await db.insert(actionModeCache).values({
+    reviewId,
+    userId,
+    mode,
+    content,
+  }).onDuplicateKeyUpdate({
+    set: { content, createdAt: sql`NOW()` },
+  });
+}
+
+export async function invalidateActionModeCache(reviewId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(actionModeCache).where(eq(actionModeCache.reviewId, reviewId));
 }

@@ -6,7 +6,8 @@ import * as db from "../db";
 import { assertFeatureAllowed } from "../guards";
 import archiver from "archiver";
 import { storagePut } from "../storage";
-import { reshapeReview, type ActionModeKey } from "../services/actionModes";
+import { reshapeReview, ACTION_MODES, type ActionModeKey } from "../services/actionModes";
+import { exportReviewPdf } from "../services/pdfExport";
 
 export const reviewRouter = router({
   get: protectedProcedure
@@ -599,6 +600,16 @@ export const reviewRouter = router({
         };
       }
 
+      // Check cache first
+      const cached = await db.getCachedActionMode(input.reviewId, input.mode);
+      if (cached) {
+        return {
+          mode: input.mode,
+          content: cached.content,
+          cached: true,
+        };
+      }
+
       const scores = review.scoresJson as Record<string, number> | null;
       const reshaped = await reshapeReview(
         review.reviewMarkdown,
@@ -607,10 +618,77 @@ export const reviewRouter = router({
         input.mode as ActionModeKey,
       );
 
+      // Cache the result for future requests
+      await db.setCachedActionMode(input.reviewId, ctx.user.id, input.mode, reshaped);
+
       return {
         mode: input.mode,
         content: reshaped,
         cached: false,
       };
+    }),
+
+  exportActionModePdf: protectedProcedure
+    .input(z.object({
+      reviewId: z.number(),
+      mode: z.enum(["session-prep", "pitch-ready", "rewrite-focus", "remix-focus", "full-picture"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const review = await db.getReviewById(input.reviewId);
+      if (!review || review.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+      }
+      const user = await db.getUserById(ctx.user.id);
+      // PDF export for action modes is available on all plans
+
+      // Get the content — either from cache, original review, or generate fresh
+      let content: string;
+      const modeConfig = ACTION_MODES[input.mode as ActionModeKey];
+
+      if (input.mode === "full-picture") {
+        content = review.reviewMarkdown;
+      } else {
+        const cached = await db.getCachedActionMode(input.reviewId, input.mode);
+        if (cached) {
+          content = cached.content;
+        } else {
+          const scores = review.scoresJson as Record<string, number> | null;
+          content = await reshapeReview(
+            review.reviewMarkdown,
+            review.quickTake,
+            scores,
+            input.mode as ActionModeKey,
+          );
+          await db.setCachedActionMode(input.reviewId, ctx.user.id, input.mode, content);
+        }
+      }
+
+      // Get track info for the filename and metadata
+      let trackName = "Unknown Track";
+      let genre: string | undefined;
+      if (review.trackId) {
+        const track = await db.getTrackById(review.trackId);
+        if (track) {
+          trackName = track.originalFilename;
+          genre = track.detectedGenre || undefined;
+        }
+      }
+
+      const scores = review.scoresJson as Record<string, number> | null;
+
+      const result = await exportReviewPdf({
+        trackName,
+        genre,
+        quickTake: input.mode === "full-picture" ? review.quickTake : null,
+        scores: input.mode === "full-picture" ? scores : null,
+        content,
+        mode: input.mode,
+        modeLabel: modeConfig.label,
+        date: new Date(review.createdAt),
+        userId: ctx.user.id,
+        reviewId: input.reviewId,
+      });
+
+      return result;
     }),
 });

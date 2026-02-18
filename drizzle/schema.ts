@@ -525,3 +525,23 @@ export const trackNotes = mysqlTable("trackNotes", {
 
 export type TrackNote = typeof trackNotes.$inferSelect;
 export type InsertTrackNote = typeof trackNotes.$inferInsert;
+
+
+// ── Action Mode Cache ──
+
+export const actionModeCache = mysqlTable("actionModeCache", {
+  id: int("id").autoincrement().primaryKey(),
+  reviewId: int("reviewId").notNull(),
+  userId: int("userId").notNull(),
+  mode: varchar("mode", { length: 50 }).notNull(),
+  content: mediumtext("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_actionModeCache_reviewId_mode").on(t.reviewId, t.mode),
+  index("idx_actionModeCache_reviewId").on(t.reviewId),
+  foreignKey({ columns: [t.reviewId], foreignColumns: [reviews.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+
+export type ActionModeCache = typeof actionModeCache.$inferSelect;
+export type InsertActionModeCache = typeof actionModeCache.$inferInsert;

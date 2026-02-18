@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM projects WHERE title LIKE '%Test%' OR title LIKE '%test%'; SELECT COUNT(*) as total_projects FROM projects;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute SELECT COUNT(*) as cnt FROM projects WHERE title LIKE '%Test%' OR title LIKE '%test%'; SELECT COUNT(*) as total_projects FROM projects;",
+  "rows": [
+    {
+      "cnt": "40"
+    },
+    {
+      "cnt": "total_projects"
+    },
+    {
+      "cnt": "53"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n40\ntotal_projects\n53\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

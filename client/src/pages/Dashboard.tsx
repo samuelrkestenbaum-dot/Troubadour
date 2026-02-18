@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3, Activity, ChevronDown, ChevronUp, Tag, X as XIcon } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3, Activity, ChevronDown, ChevronUp, Tag, X as XIcon, Trash2, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,42 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Bulk select/delete state
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
+  const utils = trpc.useUtils();
+  const bulkDeleteMut = trpc.project.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deleted ${data.deleted} project${data.deleted !== 1 ? 's' : ''}`);
+      utils.project.list.invalidate();
+      utils.analytics.quickStats.invalidate();
+      setSelectedProjectIds(new Set());
+      setSelectMode(false);
+    },
+    onError: (err) => toast.error(err.message || "Failed to delete projects"),
+  });
+
+  const toggleProjectSelection = (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedProjectIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (!filteredProjects) return;
+    setSelectedProjectIds(new Set(filteredProjects.map(p => p.id)));
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedProjectIds.size === 0) return;
+    if (!confirm(`Delete ${selectedProjectIds.size} project${selectedProjectIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    bulkDeleteMut.mutate({ ids: Array.from(selectedProjectIds) });
+  };
 
   // Fetch all user tags for filtering
   const { data: allTags } = trpc.tags.listAll.useQuery(undefined, { staleTime: 60_000 });
@@ -241,10 +278,22 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground text-sm mt-1">Your music projects and album reviews</p>
         </div>
-        <Button onClick={() => setLocation("/projects/new")} className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
+        <div className="flex items-center gap-2">
+          {projects && projects.length > 0 && (
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => { setSelectMode(!selectMode); setSelectedProjectIds(new Set()); }}
+            >
+              {selectMode ? <XIcon className="h-4 w-4 mr-1" /> : <CheckSquare className="h-4 w-4 mr-1" />}
+              {selectMode ? "Cancel" : "Select"}
+            </Button>
+          )}
+          <Button onClick={() => setLocation("/projects/new")} className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats Widgets */}
@@ -503,22 +552,33 @@ export default function Dashboard() {
                 const isProcessing = project.status === "processing";
                 const progress = project.trackCount > 0 ? (project.reviewedCount / project.trackCount) * 100 : 0;
 
+                const isSelected = selectedProjectIds.has(project.id);
+
                 return (
                   <Card
                     key={project.id}
                     className={cn(
                       "cursor-pointer border-border/40 hover:border-primary/40 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 hover:bg-card/80 group relative overflow-hidden",
-                      isProcessing && "animate-pulse-border-glow"
+                      isProcessing && "animate-pulse-border-glow",
+                      selectMode && isSelected && "border-destructive/50 bg-destructive/5"
                     )}
-                    onClick={() => setLocation(`/projects/${project.id}`)}
+                    onClick={() => selectMode ? toggleProjectSelection(project.id) : setLocation(`/projects/${project.id}`)}
                     role="link"
                     tabIndex={0}
-                    aria-label={`Open project: ${project.title}`}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocation(`/projects/${project.id}`); } }}
+                    aria-label={selectMode ? `Select project: ${project.title}` : `Open project: ${project.title}`}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMode ? toggleProjectSelection(project.id) : setLocation(`/projects/${project.id}`); } }}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3 min-w-0">
+                          {selectMode && (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleProjectSelection(project.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="shrink-0"
+                            />
+                          )}
                           {project.coverImageUrl ? (
                             <img src={project.coverImageUrl} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0 border border-border" />
                           ) : (
@@ -577,6 +637,31 @@ export default function Dashboard() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+
+          {/* Bulk action floating toolbar */}
+          {selectMode && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-xl shadow-2xl shadow-black/30 px-5 py-3 flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                {selectedProjectIds.size} selected
+              </span>
+              <Button variant="outline" size="sm" onClick={selectAll}>
+                Select All ({filteredProjects.length})
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={selectedProjectIds.size === 0 || bulkDeleteMut.isPending}
+              >
+                {bulkDeleteMut.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-1" />
+                )}
+                Delete Selected
+              </Button>
             </div>
           )}
         </>

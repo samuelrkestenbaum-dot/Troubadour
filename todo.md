@@ -1510,3 +1510,14 @@
 - [x] Write vitest tests for Action Mode backend and UI (14 tests, all pass)
 - [x] Run Gravito governance audit on Action Mode copy — enforcement 100/100, perception: professional tone, 70 trust, 0.85 clarity, abstraction 0.6 (acceptable)
 - [x] Browser test all Action Mode flows — Session Prep tested, LLM reshaping works, structured output with Priority Fixes, Technical Notes, Arrangement Changes, Performance Notes
+
+## Round 61 - Action Mode Caching, PDF Export, Test Cleanup
+
+- [x] Cache Action Mode reshaped results in DB (new table: actionModeCache with reviewId, mode, content, createdAt)
+- [x] Serve cached results on repeat clicks instead of calling LLM (DB cache + client-side cache)
+- [x] Add PDF export per action mode (downloadable one-pager)
+- [x] Build server-side PDF generation endpoint (HTML-based, uploaded to S3)
+- [x] Add export button to Action Mode UI
+- [x] Clean up test projects from dashboard (bulk select/delete UI with checkboxes, floating toolbar, Select All, Delete Selected)
+- [x] Write vitest tests for caching and PDF export (14 new tests in features-round61-cache-export.test.ts, all 783 pass)
+- [x] Browser test all new features (bulk select/delete UI, Action Mode Session Prep, PDF export to S3, caching verified with 33ms cache hit)
