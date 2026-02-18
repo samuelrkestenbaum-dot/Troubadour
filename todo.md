@@ -1499,3 +1499,14 @@
 - [x] Update tests to reflect removal of persona system (removed 3 persona test files, added features-round59-comprehensive.test.ts, all 754 tests pass)
 - [x] Run Gravito governance audit on updated copy — 3/3 claims verified, 0.75 clarity, 65 trust, professional tone, no blocks
 - [x] Browser test all flows — landing page, new project, templates gallery all confirmed persona-free
+
+## Round 60 - Post-Review Action Modes
+- [ ] Save pending checkpoint from Round 59 persona removal
+- [ ] Audit current review page code (TrackReview.tsx, review display, chat)
+- [ ] Design Action Mode data model (modes: session-prep, pitch-ready, rewrite-focus, remix-focus, full-picture)
+- [ ] Build backend tRPC procedure for Action Mode reshaping (LLM-powered, takes review + mode → reshaped summary)
+- [ ] Build Action Mode UI selector on review page (appears after review is complete)
+- [ ] Build reshaped view component that displays goal-oriented summary
+- [ ] Write vitest tests for Action Mode backend and UI
+- [ ] Run Gravito governance audit on Action Mode copy
+- [ ] Browser test all Action Mode flows
