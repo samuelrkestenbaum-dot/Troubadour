@@ -17,6 +17,8 @@ interface TourStep {
   targetSelector?: string;
   route?: string;
   position?: "top" | "bottom" | "left" | "right" | "center";
+  deepLink?: string;
+  deepLinkLabel?: string;
 }
 
 const tourSteps: TourStep[] = [
@@ -62,7 +64,10 @@ const tourSteps: TourStep[] = [
     title: "Intelligence Suite",
     description: "Six powerful tools beyond reviews: track your Skill Progression over time, benchmark against your genre, check Release Readiness with traffic-light scoring, maintain Creative Streaks, discover your Artist DNA fingerprint, and explore Genre Intelligence. Find them all in the sidebar.",
     icon: <Brain className="h-6 w-6 text-cyan-400" />,
+    route: "/skill-progression",
     position: "center",
+    deepLink: "/skill-progression",
+    deepLinkLabel: "Explore Skill Progression",
   },
   {
     id: "explore",
@@ -189,6 +194,18 @@ export function OnboardingTour({ forceShow = false, onComplete }: OnboardingTour
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                 {step.description}
               </p>
+              {step.deepLink && step.deepLinkLabel && (
+                <button
+                  onClick={() => {
+                    setLocation(step.deepLink!);
+                    completeTour();
+                  }}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-sm font-medium hover:bg-cyan-500/25 transition-colors"
+                >
+                  <Compass className="h-3.5 w-3.5" />
+                  {step.deepLinkLabel}
+                </button>
+              )}
             </div>
 
             {/* Step indicator */}

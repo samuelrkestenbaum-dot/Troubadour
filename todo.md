@@ -2079,4 +2079,31 @@
 ### Verification
 - [x] TypeScript clean (tsc --noEmit, only pre-existing BatchActionsToolbar phantom errors)
 - [x] All tests pass (54 files, 1368 tests)
+- [x] Push to GitHub
+
+## Round 80 - Micro-Interactions, Weekly Digest, Onboarding Deep-Links (Claude 4.5 + Gravito)
+
+### Feature: Animated Micro-Interactions for Intelligence Suite Cards
+- [x] Add hover animations (subtle chart/icon animations) to the 6 strategic feature cards on landing page
+- [x] Add entrance animations (staggered fade-in on scroll) for the "Beyond Reviews" section
+- [x] Keep animations performant (CSS transforms/opacity only, no layout thrash)
+
+### Feature: Weekly Email Digest via Postmark
+- [x] Create weeklyDigest service that aggregates streak, skill progression, and benchmark data per user
+- [x] Use Claude 4.5 to generate personalized digest summary text
+- [x] Build HTML email template for the weekly digest
+- [x] Create tRPC procedure to trigger digest (for testing) and scheduled job hook
+- [x] Wire Postmark email sending for the digest
+- [x] Add user preference for digest opt-in/opt-out (already built in prior round)
+
+### Feature: Onboarding Tour Deep-Link Routing
+- [x] Update Intelligence Suite tour step with "Explore" button that navigates to Skill Progression
+- [x] Ensure deep-link works even if user has no data yet (show empty state gracefully)
+
+### Quality & Governance
+- [x] Use Claude 4.5 for quality audit of all new code (no Critical issues found)
+- [x] Run Gravito governance review on email content (Gravito MCP unavailable — noted as pending)
+- [x] Write tests for digest service and animations (33 tests in features-round80.test.ts)
+- [x] TypeScript clean (tsc --noEmit, only pre-existing BatchActionsToolbar phantom errors)
+- [x] All tests pass (55 files, 1401 tests)
 - [ ] Push to GitHub (pending)
