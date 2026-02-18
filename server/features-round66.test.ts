@@ -7,9 +7,9 @@ import path from "path";
 describe("Round 66 — Admin User Management", () => {
   // ── Backend: Admin Procedures ──
 
-  describe("Admin user management procedures in routers.ts", () => {
+  describe("Admin user management procedures in adminRouter.ts", () => {
     const routersContent = fs.readFileSync(
-      path.resolve(__dirname, "routers.ts"),
+      path.resolve(__dirname, "routers/adminRouter.ts"),
       "utf-8"
     );
 
@@ -38,10 +38,9 @@ describe("Round 66 — Admin User Management", () => {
     });
 
     it("all admin procedures require admin role", () => {
-      // Count occurrences of admin check in the admin router section
-      const adminChecks = routersContent.match(/ctx\.user\.role !== "admin"/g);
+      // Count occurrences of admin check in the admin router (uses assertAdmin helper)
+      const adminChecks = routersContent.match(/ctx\.user\.role !== "admin"|assertAdmin/g);
       expect(adminChecks).toBeTruthy();
-      // Should have at least 7 admin checks (3 original + 4 new)
       expect(adminChecks!.length).toBeGreaterThanOrEqual(7);
     });
 
@@ -190,16 +189,13 @@ describe("Round 66 — Admin User Management", () => {
 
   describe("Governance checks", () => {
     const routersContent = fs.readFileSync(
-      path.resolve(__dirname, "routers.ts"),
+      path.resolve(__dirname, "routers/adminRouter.ts"),
       "utf-8"
     );
 
     it("admin procedures are properly role-gated", () => {
-      // Every admin procedure should check for admin role
-      const adminSection = routersContent.slice(routersContent.indexOf("admin: router({"));
-      const procedureCount = (adminSection.match(/protectedProcedure/g) || []).length;
-      const adminChecks = (adminSection.match(/ctx\.user\.role !== "admin"/g) || []).length;
-      // Every procedure should have an admin check
+      const procedureCount = (routersContent.match(/protectedProcedure/g) || []).length;
+      const adminChecks = (routersContent.match(/ctx\.user\.role !== "admin"|assertAdmin/g) || []).length;
       expect(adminChecks).toBeGreaterThanOrEqual(procedureCount);
     });
 

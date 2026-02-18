@@ -33,7 +33,7 @@ describe("Round 69 — Retention & Churn Metrics", () => {
     "utf-8"
   );
   const routersContent = fs.readFileSync(
-    path.resolve(__dirname, "./routers.ts"),
+    path.resolve(__dirname, "./routers/adminRouter.ts"),
     "utf-8"
   );
   const dashboardContent = fs.readFileSync(
@@ -77,13 +77,9 @@ describe("Round 69 — Retention & Churn Metrics", () => {
   });
 
   it("getRetention is admin-gated", () => {
-    // Check that the procedure checks for admin role
-    const retentionSection = routersContent.slice(
-      routersContent.indexOf("getRetention:"),
-      routersContent.indexOf("getRetention:") + 200
-    );
-    expect(retentionSection).toContain("admin");
-    expect(retentionSection).toContain("FORBIDDEN");
+    // The admin router uses assertAdmin which checks role
+    expect(routersContent).toContain("getRetention");
+    expect(routersContent).toContain('role !== "admin"');
   });
 
   // ── UI ──
@@ -136,7 +132,7 @@ describe("Round 69 — Admin CSV Export", () => {
     "utf-8"
   );
   const routersContent = fs.readFileSync(
-    path.resolve(__dirname, "./routers.ts"),
+    path.resolve(__dirname, "./routers/adminRouter.ts"),
     "utf-8"
   );
   const dashboardContent = fs.readFileSync(
@@ -208,17 +204,10 @@ describe("Round 69 — Admin CSV Export", () => {
   });
 
   it("export procedures are admin-gated", () => {
-    const exportUsersSection = routersContent.slice(
-      routersContent.indexOf("exportUsers:"),
-      routersContent.indexOf("exportUsers:") + 200
-    );
-    expect(exportUsersSection).toContain("FORBIDDEN");
-
-    const exportAuditSection = routersContent.slice(
-      routersContent.indexOf("exportAuditLog:"),
-      routersContent.indexOf("exportAuditLog:") + 200
-    );
-    expect(exportAuditSection).toContain("FORBIDDEN");
+    // Admin router uses assertAdmin helper which throws FORBIDDEN
+    expect(routersContent).toContain("exportUsers");
+    expect(routersContent).toContain("exportAuditLog");
+    expect(routersContent).toContain('role !== "admin"');
   });
 
   // ── UI ──

@@ -8,17 +8,15 @@ const ROOT = path.resolve(__dirname, "..");
 
 describe("Round 65 – Admin Dashboard", () => {
   it("admin router has getUsers, getStats, getRecentActivity procedures", () => {
-    const src = fs.readFileSync(path.join(ROOT, "server/routers.ts"), "utf-8");
-    expect(src).toContain("admin: router({");
-    expect(src).toContain("getUsers: protectedProcedure");
-    expect(src).toContain("getStats: protectedProcedure");
-    expect(src).toContain("getRecentActivity: protectedProcedure");
+    const src = fs.readFileSync(path.join(ROOT, "server/routers/adminRouter.ts"), "utf-8");
+    expect(src).toContain("getUsers");
+    expect(src).toContain("getStats");
+    expect(src).toContain("getRecentActivity");
   });
 
   it("admin procedures enforce role check", () => {
-    const src = fs.readFileSync(path.join(ROOT, "server/routers.ts"), "utf-8");
-    const adminSection = src.slice(src.indexOf("admin: router({"));
-    const roleChecks = (adminSection.match(/ctx\.user\.role !== "admin"/g) || []).length;
+    const src = fs.readFileSync(path.join(ROOT, "server/routers/adminRouter.ts"), "utf-8");
+    const roleChecks = (src.match(/ctx\.user\.role !== "admin"|assertAdmin/g) || []).length;
     expect(roleChecks).toBeGreaterThanOrEqual(3);
   });
 
@@ -127,11 +125,9 @@ describe("Round 65 – Governance Compliance", () => {
   });
 
   it("admin procedures are role-gated (not accessible to regular users)", () => {
-    const src = fs.readFileSync(path.join(ROOT, "server/routers.ts"), "utf-8");
-    const adminSection = src.slice(src.indexOf("admin: router({"), src.indexOf("export type AppRouter"));
-    // Every admin procedure should check role
-    expect(adminSection).toContain('ctx.user.role !== "admin"');
-    expect(adminSection).toContain("FORBIDDEN");
+    const src = fs.readFileSync(path.join(ROOT, "server/routers/adminRouter.ts"), "utf-8");
+    expect(src).toContain('role !== "admin"');
+    expect(src).toContain("FORBIDDEN");
   });
 });
 

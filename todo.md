@@ -1727,3 +1727,33 @@
 - [x] Fixed round58 test threshold (1200→1300) for growing admin router
 - [x] All 1,029 tests passing (43 test files)
 - [x] TypeScript clean (tsc --noEmit exit 0)
+
+## Round 70 - Extract Admin Router, Churn Alert Digest, Cohort Analysis (Claude 4.5 + Gravito)
+
+### Extract Admin Router
+- [x] Extracted all admin procedures to server/routers/adminRouter.ts with assertAdmin helper
+- [x] Import and wire adminRouter in routers.ts (routers.ts dropped from 1213 to 1110 lines)
+- [x] Updated all existing tests (rounds 65-69) to reference adminRouter.ts instead of routers.ts
+- [x] Fixed 34 broken tests across 5 test files from router extraction
+
+### Churn Alert Email Digest
+- [x] Add sendChurnAlert procedure with configurable threshold (0-100) and notifyOwner integration
+- [x] Churn alert creates audit log entry (action: send_churn_alert)
+- [x] Returns isAlert flag based on retentionRate vs threshold comparison
+- [x] Build ChurnAlertButton component with threshold input and Send Churn Digest button
+- [x] Integrated into Revenue tab above RetentionCard
+
+### User Cohort Analysis
+- [x] Add getCohortData db helper with DATE_FORMAT grouping by signup month, 30d/60d/90d retention windows
+- [x] Add admin.getCohortAnalysis tRPC procedure with optional months param (3-24)
+- [x] Build CohortAnalysis component with color-coded retention table (emerald/amber/red heat map)
+- [x] Integrated into Revenue tab between RetentionCard and GrowthChart
+
+### Gravito Governance
+- [x] Gravito service unavailable (connection timeout); manual assessment: no regulated content, all admin-only internal tools
+
+### Tests & Quality
+- [x] Write 36 tests in features-round70.test.ts (router extraction, churn alerts, cohort analysis, integration)
+- [x] Fixed 34 tests across rounds 65-69 for adminRouter.ts path changes
+- [x] All 1,065 tests passing (44 test files)
+- [x] TypeScript clean (tsc --noEmit exit 0)

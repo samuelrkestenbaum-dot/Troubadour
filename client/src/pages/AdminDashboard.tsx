@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity } from "lucide-react";
+import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity, Bell, Grid3X3, Send } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState, useMemo } from "react";
@@ -275,8 +275,17 @@ function RevenueTab({ isAdmin, users: userData }: { isAdmin: boolean; users: Arr
         </CardContent>
       </Card>
 
-      {/* Retention Metrics */}
-      <RetentionCard isAdmin={isAdmin} />
+      {/* Retention Metrics + Churn Alert */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-muted-foreground">Retention & Churn Monitoring</h3>
+          <ChurnAlertButton isAdmin={isAdmin} />
+        </div>
+        <RetentionCard isAdmin={isAdmin} />
+      </div>
+
+      {/* Cohort Analysis */}
+      <CohortAnalysis isAdmin={isAdmin} />
 
       {/* User & Review Growth Chart */}
       <GrowthChart isAdmin={isAdmin} />
@@ -414,6 +423,134 @@ function ExportButton({ type, isAdmin }: { type: "users" | "auditLog"; isAdmin: 
       <Download className="h-3.5 w-3.5 mr-1" />
       {isExporting ? "Exporting..." : "Export CSV"}
     </Button>
+  );
+}
+
+function ChurnAlertButton({ isAdmin }: { isAdmin: boolean }) {
+  const [threshold, setThreshold] = useState(50);
+  const sendAlert = trpc.admin.sendChurnAlert.useMutation({
+    onSuccess: (data) => {
+      if (data.isAlert) {
+        toast.warning(`Churn alert sent! Retention at ${data.metrics.retentionRate}%`);
+      } else {
+        toast.success(`Retention healthy at ${data.metrics.retentionRate}%. Notification sent.`);
+      }
+    },
+    onError: () => toast.error("Failed to send churn alert"),
+  });
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-muted-foreground whitespace-nowrap">Alert threshold:</label>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={threshold}
+          onChange={(e) => setThreshold(Number(e.target.value))}
+          className="w-16 h-7 text-xs px-2 rounded-md border border-border bg-background text-foreground"
+        />
+        <span className="text-xs text-muted-foreground">%</span>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs"
+        onClick={() => sendAlert.mutate({ threshold })}
+        disabled={sendAlert.isPending || !isAdmin}
+      >
+        <Send className="h-3.5 w-3.5 mr-1" />
+        {sendAlert.isPending ? "Sending..." : "Send Churn Digest"}
+      </Button>
+    </div>
+  );
+}
+
+function CohortAnalysis({ isAdmin }: { isAdmin: boolean }) {
+  const cohorts = trpc.admin.getCohortAnalysis.useQuery(undefined, { enabled: isAdmin });
+
+  if (cohorts.isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!cohorts.data || cohorts.data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Grid3X3 className="h-4 w-4" /> Cohort Retention Analysis
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center py-8">Not enough data for cohort analysis yet</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getRetentionColor = (rate: number) => {
+    if (rate >= 80) return "bg-emerald-500 text-white";
+    if (rate >= 60) return "bg-emerald-500/70 text-white";
+    if (rate >= 40) return "bg-amber-500/70 text-white";
+    if (rate >= 20) return "bg-amber-500/40 text-foreground";
+    if (rate > 0) return "bg-red-400/40 text-foreground";
+    return "bg-muted/30 text-muted-foreground";
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Grid3X3 className="h-4 w-4" /> Cohort Retention Analysis
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-3 font-medium text-muted-foreground">Cohort</th>
+                <th className="text-center py-2 px-3 font-medium text-muted-foreground">Signups</th>
+                <th className="text-center py-2 px-3 font-medium text-muted-foreground">30d Retained</th>
+                <th className="text-center py-2 px-3 font-medium text-muted-foreground">60d Retained</th>
+                <th className="text-center py-2 px-3 font-medium text-muted-foreground">90d Retained</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cohorts.data.map((cohort) => (
+                <tr key={cohort.cohortMonth} className="border-b border-border/50">
+                  <td className="py-2 px-3 font-medium">{cohort.cohortMonth}</td>
+                  <td className="py-2 px-3 text-center font-mono">{cohort.signupCount}</td>
+                  <td className="py-2 px-3 text-center">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getRetentionColor(cohort.retentionRate30d)}`}>
+                      {cohort.retentionRate30d}% ({cohort.retainedAt30d})
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getRetentionColor(cohort.retentionRate60d)}`}>
+                      {cohort.retentionRate60d}% ({cohort.retainedAt60d})
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getRetentionColor(cohort.retentionRate90d)}`}>
+                      {cohort.retentionRate90d}% ({cohort.retainedAt90d})
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">Retention rates show the percentage of users from each signup cohort who remained active at 30, 60, and 90 day intervals.</p>
+      </CardContent>
+    </Card>
   );
 }
 

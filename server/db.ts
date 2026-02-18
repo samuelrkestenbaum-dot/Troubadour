@@ -2611,3 +2611,75 @@ function escapeCSV(value: string): string {
   }
   return value;
 }
+
+// ── Cohort Analysis ──
+export async function getCohortData(months = 12) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get signup cohorts by month
+  const cohortRows = await db.execute(sql`
+    SELECT
+      DATE_FORMAT(createdAt, '%Y-%m') AS cohortMonth,
+      COUNT(*) AS signupCount
+    FROM users
+    WHERE createdAt >= DATE_SUB(CURDATE(), INTERVAL ${months} MONTH)
+      AND deletedAt IS NULL
+    GROUP BY cohortMonth
+    ORDER BY cohortMonth ASC
+  `);
+
+  const cohorts: Array<{
+    cohortMonth: string;
+    signupCount: number;
+    retainedAt30d: number;
+    retainedAt60d: number;
+    retainedAt90d: number;
+    retentionRate30d: number;
+    retentionRate60d: number;
+    retentionRate90d: number;
+  }> = [];
+
+  for (const row of (cohortRows as any)[0] || []) {
+    const cohortMonth = row.cohortMonth as string;
+    const signupCount = Number(row.signupCount);
+
+    // For each cohort, check how many are still active at 30d, 60d, 90d intervals
+    const retentionRows = await db.execute(sql`
+      SELECT
+        SUM(CASE WHEN lastSignedIn >= DATE_ADD(
+          STR_TO_DATE(CONCAT(${cohortMonth}, '-01'), '%Y-%m-%d'),
+          INTERVAL 30 DAY
+        ) THEN 1 ELSE 0 END) AS retained30,
+        SUM(CASE WHEN lastSignedIn >= DATE_ADD(
+          STR_TO_DATE(CONCAT(${cohortMonth}, '-01'), '%Y-%m-%d'),
+          INTERVAL 60 DAY
+        ) THEN 1 ELSE 0 END) AS retained60,
+        SUM(CASE WHEN lastSignedIn >= DATE_ADD(
+          STR_TO_DATE(CONCAT(${cohortMonth}, '-01'), '%Y-%m-%d'),
+          INTERVAL 90 DAY
+        ) THEN 1 ELSE 0 END) AS retained90
+      FROM users
+      WHERE DATE_FORMAT(createdAt, '%Y-%m') = ${cohortMonth}
+        AND deletedAt IS NULL
+    `);
+
+    const retRow = ((retentionRows as any)[0] || [])[0] || {};
+    const retained30 = Number(retRow.retained30 || 0);
+    const retained60 = Number(retRow.retained60 || 0);
+    const retained90 = Number(retRow.retained90 || 0);
+
+    cohorts.push({
+      cohortMonth,
+      signupCount,
+      retainedAt30d: retained30,
+      retainedAt60d: retained60,
+      retainedAt90d: retained90,
+      retentionRate30d: signupCount > 0 ? Math.round((retained30 / signupCount) * 100) : 0,
+      retentionRate60d: signupCount > 0 ? Math.round((retained60 / signupCount) * 100) : 0,
+      retentionRate90d: signupCount > 0 ? Math.round((retained90 / signupCount) * 100) : 0,
+    });
+  }
+
+  return cohorts;
+}

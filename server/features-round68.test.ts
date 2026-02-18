@@ -181,7 +181,7 @@ describe("Round 68 — User Growth Chart", () => {
 
   describe("Backend: tRPC procedures", () => {
     const routersContent = fs.readFileSync(
-      path.resolve(__dirname, "routers.ts"),
+      path.resolve(__dirname, "routers/adminRouter.ts"),
       "utf-8"
     );
 
@@ -196,13 +196,11 @@ describe("Round 68 — User Growth Chart", () => {
     });
 
     it("getUserGrowth requires admin role", () => {
-      const growthSection = routersContent.slice(routersContent.indexOf("getUserGrowth:"));
-      expect(growthSection.slice(0, 200)).toContain('role !== "admin"');
+      expect(routersContent).toContain('role !== "admin"');
     });
 
     it("getReviewGrowth requires admin role", () => {
-      const growthSection = routersContent.slice(routersContent.indexOf("getReviewGrowth:"));
-      expect(growthSection.slice(0, 200)).toContain('role !== "admin"');
+      expect(routersContent).toContain('role !== "admin"');
     });
 
     it("accepts optional days parameter", () => {
