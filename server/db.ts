@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -2395,4 +2395,61 @@ export async function adminResetUserMonthlyCount(userId: number) {
   if (!db) return false;
   await db.update(users).set({ monthlyReviewCount: 0, monthlyResetAt: new Date() }).where(eq(users.id, userId));
   return true;
+}
+
+
+// ── Admin Audit Log Helpers ──
+
+export async function createAuditLogEntry(data: {
+  adminUserId: number;
+  action: string;
+  targetUserId?: number;
+  details?: Record<string, unknown>;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(adminAuditLog).values({
+    adminUserId: data.adminUserId,
+    action: data.action,
+    targetUserId: data.targetUserId ?? null,
+    details: data.details ?? null,
+  });
+  return result.insertId;
+}
+
+export async function getAuditLog(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: adminAuditLog.id,
+    adminUserId: adminAuditLog.adminUserId,
+    adminName: users.name,
+    action: adminAuditLog.action,
+    targetUserId: adminAuditLog.targetUserId,
+    details: adminAuditLog.details,
+    createdAt: adminAuditLog.createdAt,
+  })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(adminAuditLog.adminUserId, users.id))
+    .orderBy(desc(adminAuditLog.createdAt))
+    .limit(limit);
+}
+
+export async function getAuditLogByUser(targetUserId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: adminAuditLog.id,
+    adminUserId: adminAuditLog.adminUserId,
+    adminName: users.name,
+    action: adminAuditLog.action,
+    targetUserId: adminAuditLog.targetUserId,
+    details: adminAuditLog.details,
+    createdAt: adminAuditLog.createdAt,
+  })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(adminAuditLog.adminUserId, users.id))
+    .where(eq(adminAuditLog.targetUserId, targetUserId))
+    .orderBy(desc(adminAuditLog.createdAt))
+    .limit(limit);
 }

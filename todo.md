@@ -1644,3 +1644,28 @@
 - [x] All 892 tests passing
 - [x] TypeScript clean (tsc --noEmit exit 0)
 - [x] Browser test: Admin Dashboard stat cards, user table, Manage button, UserDetailModal with all actions verified
+
+## Round 67 - Admin Audit Log + Revenue Analytics (Claude 4.5 + Gravito)
+
+### Admin Audit Log
+- [x] Create adminAuditLog table in schema (id, adminUserId, action, targetUserId, details JSON, createdAt) with indexes and FK
+- [x] Table already pushed to DB (confirmed via SHOW TABLES)
+- [x] Create createAuditLogEntry, getAuditLog, getAuditLogByUser db helpers with user name joins
+- [x] Wire audit logging into all admin mutations: updateRole, updateTier, resetMonthlyCount (captures old/new values)
+- [x] Add admin.getAuditLog and admin.getUserAuditLog tRPC procedures with limit params
+- [x] Build Audit Log tab in AdminDashboard with ActionBadge, admin name, target user, details, timestamps
+
+### Revenue Analytics Dashboard
+- [x] Build RevenueTab component with estimated MRR/ARR from tier pricing ($7.99 artist, $14.99 pro)
+- [x] Add conversion rate, ARPU, growth metrics (7d/30d new users), reviews per user
+- [x] Add conversion funnel visualization (Free → Artist → Pro with progress bars)
+- [x] Add Stripe dashboard link disclaimer for authoritative revenue data
+- [x] Reorganize AdminDashboard into 4 tabs: Users, Audit Log, Revenue, Activity
+
+### Gravito Governance
+- [x] Run Gravito presGovFullAudit: 38 pages, 92/100 avg, 0 failures, admin dashboard 99/100
+
+### Tests & Quality
+- [x] Write 47 tests in features-round67.test.ts (audit log schema/helpers/procedures/wiring/UI, revenue analytics, tabbed layout)
+- [x] All 939 tests passing (40 test files)
+- [x] TypeScript clean (tsc --noEmit exit 0, BatchActionsToolbar errors are stale LSP cache)

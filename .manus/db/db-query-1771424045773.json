@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `adminAuditLog` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `adminUserId` int NOT NULL,\n  `action` varchar(100) NOT NULL,\n  `targetUserId` int,\n  `details` json,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `adminAuditLog_id` PRIMARY KEY(`id`),\n  INDEX `idx_auditLog_adminUserId` (`adminUserId`),\n  INDEX `idx_auditLog_action` (`action`),\n  INDEX `idx_auditLog_createdAt` (`createdAt`),\n  CONSTRAINT `adminAuditLog_adminUserId_users_id_fk` FOREIGN KEY (`adminUserId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE IF NOT EXISTS `adminAuditLog` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `adminUserId` int NOT NULL,\n  `action` varchar(100) NOT NULL,\n  `targetUserId` int,\n  `details` json,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `adminAuditLog_id` PRIMARY KEY(`id`),\n  INDEX `idx_auditLog_adminUserId` (`adminUserId`),\n  INDEX `idx_auditLog_action` (`action`),\n  INDEX `idx_auditLog_createdAt` (`createdAt`),\n  CONSTRAINT `adminAuditLog_adminUserId_users_id_fk` FOREIGN KEY (`adminUserId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 380
+}

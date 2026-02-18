@@ -1129,22 +1129,55 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot change your own role" });
+        const targetUser = await db.getAdminUserDetail(input.userId);
         await db.adminUpdateUserRole(input.userId, input.role);
+        await db.createAuditLogEntry({
+          adminUserId: ctx.user.id,
+          action: "update_role",
+          targetUserId: input.userId,
+          details: { previousRole: targetUser?.role, newRole: input.role },
+        });
         return { success: true };
       }),
     updateTier: protectedProcedure
       .input(z.object({ userId: z.number(), tier: z.enum(["free", "artist", "pro"]) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        const targetUser = await db.getAdminUserDetail(input.userId);
         await db.adminUpdateUserTier(input.userId, input.tier);
+        await db.createAuditLogEntry({
+          adminUserId: ctx.user.id,
+          action: "update_tier",
+          targetUserId: input.userId,
+          details: { previousTier: targetUser?.tier, newTier: input.tier },
+        });
         return { success: true };
       }),
     resetMonthlyCount: protectedProcedure
       .input(z.object({ userId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        const targetUser = await db.getAdminUserDetail(input.userId);
         await db.adminResetUserMonthlyCount(input.userId);
+        await db.createAuditLogEntry({
+          adminUserId: ctx.user.id,
+          action: "reset_monthly_count",
+          targetUserId: input.userId,
+          details: { previousCount: targetUser?.monthlyReviewCount },
+        });
         return { success: true };
+      }),
+    getAuditLog: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(500).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return db.getAuditLog(input?.limit ?? 100);
+      }),
+    getUserAuditLog: protectedProcedure
+      .input(z.object({ userId: z.number(), limit: z.number().min(1).max(200).optional() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return db.getAuditLogByUser(input.userId, input.limit ?? 50);
       }),
   }),
 

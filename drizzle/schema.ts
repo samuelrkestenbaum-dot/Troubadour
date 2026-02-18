@@ -545,3 +545,20 @@ export const actionModeCache = mysqlTable("actionModeCache", {
 
 export type ActionModeCache = typeof actionModeCache.$inferSelect;
 export type InsertActionModeCache = typeof actionModeCache.$inferInsert;
+
+// ── Admin Audit Log ──
+export const adminAuditLog = mysqlTable("adminAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  adminUserId: int("adminUserId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(),
+  targetUserId: int("targetUserId"),
+  details: json("details").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_auditLog_adminUserId").on(t.adminUserId),
+  index("idx_auditLog_action").on(t.action),
+  index("idx_auditLog_createdAt").on(t.createdAt),
+  foreignKey({ columns: [t.adminUserId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
