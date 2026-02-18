@@ -2208,3 +2208,22 @@ export async function invalidateActionModeCache(reviewId: number) {
   if (!db) return;
   await db.delete(actionModeCache).where(eq(actionModeCache.reviewId, reviewId));
 }
+
+
+// ── Platform Stats (public, for landing page) ──
+export async function getPlatformStats() {
+  const db = await getDb();
+  if (!db) return { totalReviews: 0, totalTracks: 0, totalProjects: 0, totalUsers: 0 };
+
+  const [reviewCount] = await db.select({ count: count() }).from(reviews);
+  const [trackCount] = await db.select({ count: count() }).from(tracks);
+  const [projectCount] = await db.select({ count: count() }).from(projects);
+  const [userCount] = await db.select({ count: count() }).from(users);
+
+  return {
+    totalReviews: reviewCount?.count ?? 0,
+    totalTracks: trackCount?.count ?? 0,
+    totalProjects: projectCount?.count ?? 0,
+    totalUsers: userCount?.count ?? 0,
+  };
+}

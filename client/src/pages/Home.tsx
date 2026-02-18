@@ -6,7 +6,8 @@ import {
   Music, Headphones, BarChart3, GitCompare, FileText, Zap, ArrowRight,
   PenLine, Sliders, Layers, Mic, TrendingUp, Star, Target, MessageCircle, Sparkles
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
 
 // ── Review Dimensions — every review covers all of these ──
 const dimensions = [
@@ -170,6 +171,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Social Proof Stats Bar */}
+      <SocialProofBar />
 
       {/* What Your Review Covers — Dimension Carousel */}
       <section className="py-24 border-t border-border/30">
@@ -362,6 +366,7 @@ export default function Home() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="/pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
                 <li><a href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</a></li>
+                <li><a href="/support" className="hover:text-foreground transition-colors">Support</a></li>
               </ul>
             </div>
 
@@ -371,6 +376,7 @@ export default function Home() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a></li>
                 <li><a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
+                <li><a href="/support" className="hover:text-foreground transition-colors">Help & Support</a></li>
               </ul>
             </div>
           </div>
@@ -386,5 +392,99 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/** Animated counter for social proof stats */
+function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (target <= 0) return;
+    const duration = 1500;
+    const steps = 40;
+    const increment = target / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [target]);
+
+  const formatted = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
+  return <span>{formatted}{suffix}</span>;
+}
+
+/** Social proof bar showing platform stats */
+function SocialProofBar() {
+  const { data: stats } = trpc.platform.stats.useQuery(undefined, {
+    staleTime: 60_000, // Cache for 1 minute
+    refetchOnWindowFocus: false,
+  });
+
+  // Only show if there's meaningful data
+  const hasData = stats && (stats.totalReviews > 0 || stats.totalTracks > 0);
+
+  // Minimum display values for social proof (show real data or reasonable minimums)
+  const displayReviews = Math.max(stats?.totalReviews ?? 0, 0);
+  const displayTracks = Math.max(stats?.totalTracks ?? 0, 0);
+  const displayProjects = Math.max(stats?.totalProjects ?? 0, 0);
+
+  return (
+    <section className="py-8 border-t border-b border-border/20 bg-muted/20">
+      <div className="container">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+              {hasData ? <AnimatedCounter target={displayReviews} /> : <span className="text-muted-foreground/40">&mdash;</span>}
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Reviews Generated</p>
+          </div>
+          <div>
+            <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+              {hasData ? <AnimatedCounter target={displayTracks} /> : <span className="text-muted-foreground/40">&mdash;</span>}
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Tracks Analyzed</p>
+          </div>
+          <div>
+            <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+              {hasData ? <AnimatedCounter target={displayProjects} /> : <span className="text-muted-foreground/40">&mdash;</span>}
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Projects Created</p>
+          </div>
+          <div>
+            <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+              5
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Review Dimensions</p>
+          </div>
+        </div>
+
+        {/* Trust signals */}
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mt-6 pt-6 border-t border-border/10">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Secure & Private
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Stripe Payments
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            Free Tier Available
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
+            AI-Powered Analysis
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

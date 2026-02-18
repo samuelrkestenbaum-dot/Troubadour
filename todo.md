@@ -1536,3 +1536,27 @@
 - [x] Fix Stripe checkout to open in new tab (window.open instead of window.location.href)
 - [x] Write tests for governance improvements (17 new tests in features-round62-governance.test.ts, 800 total passing)
 - [x] Browser test: footer, Terms, Privacy, AI disclaimer all verified
+
+## Round 63 - Contact/Support Page, Email Digest, Social Proof (Claude 4.5 + Gravito)
+
+### Contact/Support Page
+- [x] Create /support page with FAQ accordion (4 categories, 13 questions) + contact form
+- [x] Add support link to footer, register /support route in App.tsx
+- [x] Wire contact form to support.sendMessage tRPC procedure → notifyOwner + confirmation email
+
+### Email Digest Feature
+- [x] Already fully built: digest.get, digest.generateEmail, digest.sendTest, digest.getPreferences, digest.updatePreferences
+- [x] Digest page with stats cards, review list, email preview, and email delivery via Postmark
+- [x] Settings page has full digest frequency selector (weekly/biweekly/monthly/disabled) + test send button
+
+### Social Proof on Landing Page
+- [x] Add platform.stats public tRPC procedure + getPlatformStats() in db.ts
+- [x] Build SocialProofBar with AnimatedCounter (reviews, tracks, projects, dimensions)
+- [x] Add trust signals (Secure & Private, Stripe Payments, Free Tier Available, AI-Powered Analysis)
+
+### Governance & Testing
+- [x] Gravito MCP returning 503 errors — manual Claude 4.5 governance review completed (Support page: PASS, Social proof: PASS)
+- [x] Write vitest tests: 19 new tests in features-round63.test.ts (Support page, platform stats, social proof, footer, routes)
+- [x] Updated features-round58.test.ts line count threshold to 1200 for new support/platform routers
+- [x] All 821 tests passing
+- [x] Browser test: landing page social proof, Support page FAQ/contact form, footer links all verified

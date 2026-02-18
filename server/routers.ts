@@ -1050,5 +1050,57 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
   }),
 
 
+  // ── Support / Contact ──
+  support: router({
+    sendMessage: protectedProcedure
+      .input(z.object({
+        subject: z.string().min(1).max(200),
+        message: z.string().min(1).max(5000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+        // Send to owner via platform notification
+        const { notifyOwner } = await import("./_core/notification");
+        const sent = await notifyOwner({
+          title: `[Support] ${input.subject}`,
+          content: `From: ${user.name || 'Unknown'} (${user.email || 'no email'})\nUser ID: ${user.id}\n\n${input.message}`,
+        });
+
+        // Also send email notification if configured
+        try {
+          const { sendEmail } = await import("./services/emailService");
+          await sendEmail({
+            to: user.email || "",
+            subject: `[Troubadour Support] We received your message: ${input.subject}`,
+            htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+              <h2 style="color:#c8102e;">We received your message</h2>
+              <p>Hi ${user.name || 'there'},</p>
+              <p>Thanks for reaching out. We've received your support request and will get back to you soon.</p>
+              <div style="background:#f5f5f5;padding:16px;border-radius:8px;margin:16px 0;">
+                <p style="margin:0 0 8px;font-weight:600;">Subject: ${input.subject}</p>
+                <p style="margin:0;color:#666;">${input.message.substring(0, 500)}${input.message.length > 500 ? '...' : ''}</p>
+              </div>
+              <p style="color:#888;font-size:0.85em;">— The Troubadour Team</p>
+            </div>`,
+            tag: "support",
+          });
+        } catch (e) {
+          console.warn("[Support] Confirmation email failed:", e);
+        }
+
+        return { success: sent };
+      }),
+  }),
+
+  // ── Platform Stats (public, for landing page social proof) ──
+  platform: router({
+    stats: publicProcedure.query(async () => {
+      const stats = await db.getPlatformStats();
+      return stats;
+    }),
+  }),
+
 });
 export type AppRouter = typeof appRouter;
