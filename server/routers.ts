@@ -1191,6 +1191,21 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         return db.getReviewGrowthData(input?.days ?? 90);
       }),
+    getRetention: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return db.getRetentionMetrics();
+      }),
+    exportUsers: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return { csv: await db.exportUsersCSV() };
+      }),
+    exportAuditLog: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        return { csv: await db.exportAuditLogCSV() };
+      }),
   }),
 
 });

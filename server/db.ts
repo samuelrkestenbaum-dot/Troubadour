@@ -2508,3 +2508,106 @@ export async function getTierTransitionData() {
     withStripe: stripeCount?.count ?? 0,
   };
 }
+
+
+// ── Retention / Churn Metrics ──
+
+export async function getRetentionMetrics() {
+  const db = await getDb();
+  if (!db) return { totalUsers: 0, activeUsers: 0, inactiveUsers: 0, retentionRate: 0, avgDaysSinceLogin: 0 };
+
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [total] = await db.select({ count: count() }).from(users);
+  const [active] = await db.select({ count: count() }).from(users)
+    .where(gte(users.lastSignedIn, thirtyDaysAgo));
+  
+  const totalUsers = total?.count ?? 0;
+  const activeUsers = active?.count ?? 0;
+  const inactiveUsers = totalUsers - activeUsers;
+  const retentionRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 10000) / 100 : 0;
+
+  // Average days since last login for all users
+  const avgResult = await db.select({
+    avgDays: sql<number>`AVG(DATEDIFF(NOW(), ${users.lastSignedIn}))`.as("avgDays"),
+  }).from(users).where(sql`${users.lastSignedIn} IS NOT NULL`);
+  const avgDaysSinceLogin = Math.round(avgResult[0]?.avgDays ?? 0);
+
+  return { totalUsers, activeUsers, inactiveUsers, retentionRate, avgDaysSinceLogin };
+}
+
+// ── Admin CSV Export Helpers ──
+
+export async function exportUsersCSV() {
+  const db = await getDb();
+  if (!db) return "";
+
+  const allUsers = await db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    tier: users.tier,
+    monthlyReviewCount: users.monthlyReviewCount,
+    stripeCustomerId: users.stripeCustomerId,
+    stripeSubscriptionId: users.stripeSubscriptionId,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  }).from(users).orderBy(desc(users.createdAt));
+
+  const headers = ["ID", "Name", "Email", "Role", "Tier", "Monthly Reviews", "Stripe Customer", "Stripe Subscription", "Created At", "Last Login"];
+  const rows = allUsers.map(u => [
+    u.id,
+    escapeCSV(u.name ?? ""),
+    escapeCSV(u.email ?? ""),
+    u.role,
+    u.tier,
+    u.monthlyReviewCount ?? 0,
+    u.stripeCustomerId ?? "",
+    u.stripeSubscriptionId ?? "",
+    u.createdAt ? new Date(u.createdAt).toISOString() : "",
+    u.lastSignedIn ? new Date(u.lastSignedIn).toISOString() : "",
+  ].join(","));
+
+  return [headers.join(","), ...rows].join("\n");
+}
+
+export async function exportAuditLogCSV() {
+  const db = await getDb();
+  if (!db) return "";
+
+  const entries = await db.select({
+    id: adminAuditLog.id,
+    action: adminAuditLog.action,
+    adminName: sql<string>`admin_user.name`.as("adminName"),
+    targetName: sql<string>`target_user.name`.as("targetName"),
+    details: adminAuditLog.details,
+    createdAt: adminAuditLog.createdAt,
+  })
+    .from(adminAuditLog)
+    .leftJoin(sql`${users} AS admin_user`, sql`admin_user.id = ${adminAuditLog.adminUserId}`)
+    .leftJoin(sql`${users} AS target_user`, sql`target_user.id = ${adminAuditLog.targetUserId}`)
+    .orderBy(desc(adminAuditLog.createdAt))
+    .limit(5000);
+
+  const headers = ["ID", "Action", "Admin", "Target User", "Details", "Created At"];
+  const rows = entries.map(e => [
+    e.id,
+    e.action,
+    escapeCSV(e.adminName ?? ""),
+    escapeCSV(e.targetName ?? ""),
+    escapeCSV(typeof e.details === "string" ? e.details : JSON.stringify(e.details ?? {})),
+    e.createdAt ? new Date(e.createdAt).toISOString() : "",
+  ].join(","));
+
+  return [headers.join(","), ...rows].join("\n");
+}
+
+function escapeCSV(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}

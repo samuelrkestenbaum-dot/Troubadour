@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
+import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity } from "lucide-react";
+import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState, useMemo } from "react";
 import { UserDetailModal } from "@/components/UserDetailModal";
@@ -274,6 +275,9 @@ function RevenueTab({ isAdmin, users: userData }: { isAdmin: boolean; users: Arr
         </CardContent>
       </Card>
 
+      {/* Retention Metrics */}
+      <RetentionCard isAdmin={isAdmin} />
+
       {/* User & Review Growth Chart */}
       <GrowthChart isAdmin={isAdmin} />
 
@@ -285,6 +289,131 @@ function RevenueTab({ isAdmin, users: userData }: { isAdmin: boolean; users: Arr
         </a>.
       </p>
     </div>
+  );
+}
+
+function RetentionCard({ isAdmin }: { isAdmin: boolean }) {
+  const retention = trpc.admin.getRetention.useQuery(undefined, { enabled: isAdmin });
+
+  if (retention.isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!retention.data) return null;
+
+  const { totalUsers, activeUsers, inactiveUsers, retentionRate, avgDaysSinceLogin } = retention.data;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Activity className="h-4 w-4" /> Retention & Churn (30-day window)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="space-y-1 p-3 rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <UserCheck className="h-4 w-4 text-emerald-500" /> Active Users
+            </div>
+            <p className="text-2xl font-bold text-emerald-500">{activeUsers}</p>
+            <p className="text-xs text-muted-foreground">Logged in within 30 days</p>
+          </div>
+          <div className="space-y-1 p-3 rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <UserX className="h-4 w-4 text-red-400" /> Inactive Users
+            </div>
+            <p className="text-2xl font-bold text-red-400">{inactiveUsers}</p>
+            <p className="text-xs text-muted-foreground">No login in 30+ days</p>
+          </div>
+          <div className="space-y-1 p-3 rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4 text-primary" /> Retention Rate
+            </div>
+            <p className={`text-2xl font-bold ${retentionRate >= 70 ? "text-emerald-500" : retentionRate >= 40 ? "text-amber-500" : "text-red-400"}`}>
+              {retentionRate}%
+            </p>
+            <p className="text-xs text-muted-foreground">{activeUsers} of {totalUsers} users retained</p>
+          </div>
+          <div className="space-y-1 p-3 rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <BarChart3 className="h-4 w-4" /> Avg Days Since Login
+            </div>
+            <p className="text-2xl font-bold">{avgDaysSinceLogin}</p>
+            <p className="text-xs text-muted-foreground">Across all users</p>
+          </div>
+        </div>
+        {/* Retention bar */}
+        <div className="mt-4 space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Active ({activeUsers})</span>
+            <span>Inactive ({inactiveUsers})</span>
+          </div>
+          <div className="h-3 bg-red-400/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-full transition-all"
+              style={{ width: `${retentionRate}%` }}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExportButton({ type, isAdmin }: { type: "users" | "auditLog"; isAdmin: boolean }) {
+  const [isExporting, setIsExporting] = useState(false);
+  const utils = trpc.useUtils();
+
+  const handleExport = async () => {
+    if (!isAdmin) return;
+    setIsExporting(true);
+    try {
+      const result = type === "users"
+        ? await utils.admin.exportUsers.fetch()
+        : await utils.admin.exportAuditLog.fetch();
+      
+      if (!result.csv) {
+        toast.error("No data to export");
+        return;
+      }
+
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${type === "users" ? "users" : "audit-log"}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`${type === "users" ? "Users" : "Audit log"} exported successfully`);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-7 text-xs"
+      onClick={handleExport}
+      disabled={isExporting || !isAdmin}
+    >
+      <Download className="h-3.5 w-3.5 mr-1" />
+      {isExporting ? "Exporting..." : "Export CSV"}
+    </Button>
   );
 }
 
@@ -582,10 +711,11 @@ export default function AdminDashboard() {
 
           {/* User Table */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4" /> All Users ({usersQuery.data?.length ?? 0})
               </CardTitle>
+              <ExportButton type="users" isAdmin={isAdmin} />
             </CardHeader>
             <CardContent>
               {usersQuery.isLoading ? (
@@ -658,10 +788,11 @@ export default function AdminDashboard() {
         {/* Audit Log Tab */}
         <TabsContent value="audit">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" /> Admin Audit Log
               </CardTitle>
+              <ExportButton type="auditLog" isAdmin={isAdmin} />
             </CardHeader>
             <CardContent>
               <AuditLogTab isAdmin={isAdmin} />
