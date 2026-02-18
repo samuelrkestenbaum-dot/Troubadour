@@ -13,6 +13,7 @@
 
 import { ENV } from "../_core/env";
 import { logger } from "../logger";
+import * as db from "../db";
 
 // ── Types ──
 
@@ -59,6 +60,17 @@ async function sendSlackMessage(message: SlackMessage): Promise<{ success: boole
       text: message.text,
     });
     return { success: true }; // Graceful degradation
+  }
+
+  // Check admin preference — if any admin has slackEnabled=false, skip
+  try {
+    const adminsWithSlackOff = await db.getAdminsWithPref("slackEnabled", false);
+    if (adminsWithSlackOff.length > 0) {
+      logger.info("[Slack] Disabled by admin preference — skipping", { text: message.text.slice(0, 80) });
+      return { success: true };
+    }
+  } catch {
+    // If pref check fails, proceed with sending (fail open)
   }
 
   try {

@@ -1,3 +1,4 @@
+// BatchActionsToolbar - batch operations for selected tracks
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";

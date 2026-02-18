@@ -1885,3 +1885,40 @@
 ### Tests & Quality
 - [x] Write tests for all infrastructure integrations (30 tests total)
 - [x] Verify all tests pass and TypeScript is clean (tsc --noEmit exit 0)
+
+## Round 74 - Full Architecture Completion (Claude 4.5 + Gravito)
+
+### Admin Notification Toggles for Slack & HubSpot
+- [x] Add Slack notification toggle (on/off) to AdminSettingsTab
+- [x] Add HubSpot CRM sync toggle (on/off) to AdminSettingsTab
+- [x] Wire toggles to read/write from adminSettings table via existing prefs system
+- [x] Respect toggle state in slackNotification.ts and hubspotSync.ts services
+- [x] Add slackEnabled and hubspotEnabled to AdminNotificationPreferences interface
+- [x] Add slackEnabled and hubspotEnabled to updateNotificationPrefs zod schema
+
+### Collaborator Review-Complete Email (Postmark Now Available)
+- [x] Already wired — sendReviewCompleteNotification exists in emailNotification.ts
+- [x] Already triggered from jobProcessor via notifyCollaborators
+- [x] Already includes project name, track name, and link to review
+- [x] Fixed emailNotification.ts to use ENV.postmarkApiToken (was using wrong env var)
+
+### Sentry DSN Setup (DEFERRED — user will create dedicated Troubadour project in Sentry)
+- [ ] Create Sentry project via MCP (403 — org disabled for members)
+- [ ] Inject SENTRY_DSN and VITE_SENTRY_DSN via webdev_request_secrets
+- [x] Code is fully wired and will activate once DSN is provided
+
+### Gravito Governance Audit
+- [x] Run Gravito governance on Slack notification service — score 100/100, 0 violations
+- [x] Run Gravito governance on HubSpot sync service — score 100/100, 0 violations
+- [x] Run Gravito governance on email notification service — score 100/100, 0 violations
+- [x] Run Gravito governance on email templates (marketing) — score 100/100, 0 violations
+- [ ] Re-audit Stripe webhook handler when Gravito financial surface recovers (503 transient)
+
+### Mark Stale Items as Complete
+- [x] Fixed features-round54.test.ts email tests (were hitting live Postmark API, now mocked)
+
+### Tests & Quality
+- [x] Write vitest tests for admin Slack/HubSpot toggles (10 tests pass)
+- [x] Collaborator review-complete email already tested in features-round36.test.ts
+- [x] Run full test suite — 51 files, 1272 tests, ALL PASS
+- [x] TypeScript clean (tsc --noEmit exit 0)

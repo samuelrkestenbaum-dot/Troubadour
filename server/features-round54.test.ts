@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 // ── Sanitization Tests ──
 describe("Input Sanitization", () => {
@@ -53,8 +53,13 @@ describe("Input Sanitization", () => {
 });
 
 // ── Email Service Tests ──
+// These tests mock the ENV to simulate Postmark being unconfigured,
+// since the real POSTMARK_API_TOKEN is now set in the environment.
 describe("Email Service", () => {
   it("sendEmail returns success when Postmark is not configured", async () => {
+    vi.doMock("./_core/env", () => ({
+      ENV: { postmarkApiToken: "", postmarkFromEmail: "" },
+    }));
     const { sendEmail } = await import("./services/emailService");
     const result = await sendEmail({
       to: "test@example.com",
@@ -63,9 +68,13 @@ describe("Email Service", () => {
     });
     expect(result.success).toBe(true);
     expect(result.messageId).toMatch(/^local-/);
+    vi.doUnmock("./_core/env");
   });
 
   it("sendDigestEmail returns success when Postmark is not configured", async () => {
+    vi.doMock("./_core/env", () => ({
+      ENV: { postmarkApiToken: "", postmarkFromEmail: "" },
+    }));
     const { sendDigestEmail } = await import("./services/emailService");
     const result = await sendDigestEmail({
       to: "test@example.com",
@@ -74,9 +83,13 @@ describe("Email Service", () => {
       periodLabel: "This Week",
     });
     expect(result.success).toBe(true);
+    vi.doUnmock("./_core/env");
   });
 
   it("sendNotificationEmail wraps content in branded template", async () => {
+    vi.doMock("./_core/env", () => ({
+      ENV: { postmarkApiToken: "", postmarkFromEmail: "" },
+    }));
     const { sendNotificationEmail } = await import("./services/emailService");
     const result = await sendNotificationEmail({
       to: "test@example.com",
@@ -85,6 +98,7 @@ describe("Email Service", () => {
       bodyHtml: "<p>Check it out</p>",
     });
     expect(result.success).toBe(true);
+    vi.doUnmock("./_core/env");
   });
 });
 

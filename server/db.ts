@@ -2722,6 +2722,8 @@ export interface AdminNotificationPreferences {
   paymentEvents: boolean;
   churnThreshold: number;
   digestFrequency: "realtime" | "daily" | "weekly" | "off";
+  slackEnabled: boolean;
+  hubspotEnabled: boolean;
 }
 
 const DEFAULT_ADMIN_NOTIF_PREFS: AdminNotificationPreferences = {
@@ -2730,6 +2732,8 @@ const DEFAULT_ADMIN_NOTIF_PREFS: AdminNotificationPreferences = {
   paymentEvents: true,
   churnThreshold: 50,
   digestFrequency: "daily",
+  slackEnabled: true,
+  hubspotEnabled: true,
 };
 
 export async function getAdminNotificationPrefs(adminUserId: number): Promise<AdminNotificationPreferences> {

@@ -182,6 +182,8 @@ export const adminRouter = router({
       paymentEvents: z.boolean().optional(),
       churnThreshold: z.number().min(0).max(100).optional(),
       digestFrequency: z.enum(["realtime", "daily", "weekly", "off"]).optional(),
+      slackEnabled: z.boolean().optional(),
+      hubspotEnabled: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       assertAdmin(ctx.user.role);

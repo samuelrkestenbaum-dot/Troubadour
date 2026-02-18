@@ -1226,6 +1226,8 @@ function AdminSettingsTab({ isAdmin }: { isAdmin: boolean }) {
     paymentEvents: boolean;
     churnThreshold: number;
     digestFrequency: "realtime" | "daily" | "weekly" | "off";
+    slackEnabled: boolean;
+    hubspotEnabled: boolean;
   } | null>(null);
 
   const currentPrefs = localPrefs || prefs.data;
@@ -1281,6 +1283,29 @@ function AdminSettingsTab({ isAdmin }: { isAdmin: boolean }) {
                 </Button>
               </div>
             ))}
+
+            <div className="border-t border-border pt-4 mt-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Integrations</p>
+              {[
+                { key: "slackEnabled", label: "Slack Notifications", desc: "Send admin alerts to Slack via webhook (requires SLACK_WEBHOOK_URL)" },
+                { key: "hubspotEnabled", label: "HubSpot CRM Sync", desc: "Sync paying subscribers to HubSpot contacts (requires HUBSPOT_ACCESS_TOKEN)" },
+              ].map(({ key, label, desc }) => (
+                <div key={key} className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                  <Button
+                    variant={currentPrefs[key as keyof typeof currentPrefs] ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 w-16"
+                    onClick={() => handleToggle(key, !currentPrefs[key as keyof typeof currentPrefs])}
+                  >
+                    {currentPrefs[key as keyof typeof currentPrefs] ? "On" : "Off"}
+                  </Button>
+                </div>
+              ))}
+            </div>
 
             <div className="flex items-center justify-between py-2 border-t border-border pt-4">
               <div>

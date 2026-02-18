@@ -16,6 +16,7 @@
 
 import { ENV } from "../_core/env";
 import { logger } from "../logger";
+import * as db from "../db";
 
 // ── Types ──
 
@@ -54,6 +55,17 @@ async function hubspotFetch<T>(
   if (!token) {
     logger.info("[HubSpot] Not configured — skipping API call", { path });
     return { success: true }; // Graceful degradation
+  }
+
+  // Check admin preference — if any admin has hubspotEnabled=false, skip
+  try {
+    const adminsWithHubspotOff = await db.getAdminsWithPref("hubspotEnabled", false);
+    if (adminsWithHubspotOff.length > 0) {
+      logger.info("[HubSpot] Disabled by admin preference — skipping", { path });
+      return { success: true };
+    }
+  } catch {
+    // If pref check fails, proceed with sending (fail open)
   }
 
   try {
