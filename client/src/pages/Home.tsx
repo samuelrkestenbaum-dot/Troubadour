@@ -4,7 +4,8 @@ import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import {
   Music, Headphones, BarChart3, GitCompare, FileText, Zap, ArrowRight,
-  PenLine, Sliders, Layers, Mic, TrendingUp, Star, Target, MessageCircle, Sparkles
+  PenLine, Sliders, Layers, Mic, TrendingUp, Star, Target, MessageCircle, Sparkles,
+  GraduationCap, Swords, Rocket, Flame, Dna, Database, ChevronRight
 } from "lucide-react";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
@@ -321,6 +322,153 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Strategic Platform Features ── */}
+      <section className="py-24 border-t border-border/30 relative overflow-hidden">
+        <div className="absolute top-1/3 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-0 w-64 h-64 bg-violet-500/5 rounded-full blur-3xl" />
+        <div className="container max-w-5xl mx-auto relative">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm font-medium mb-6 shadow-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Beyond Reviews
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+              Your music career,{" "}
+              <span className="bg-gradient-to-r from-emerald-400 to-sky-400 bg-clip-text text-transparent">measured and mapped</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg leading-relaxed">
+              Troubadour doesn't just review tracks — it tracks your growth, benchmarks you against your genre, and tells you when you're ready to release.
+            </p>
+          </div>
+
+          {/* Feature Showcase Cards */}
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {/* Skill Progression */}
+            <div className="group p-7 rounded-2xl border-2 border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent hover:border-amber-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-11 w-11 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                  <GraduationCap className="h-5.5 w-5.5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Skill Progression</h3>
+                  <span className="text-xs text-amber-400 font-medium">Longitudinal Tracking</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                Watch your songwriting, production, and performance scores evolve over time. AI-powered trend analysis tells you exactly where you're improving and what needs focused practice.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-amber-400 font-medium group-hover:gap-3 transition-all">
+                <span>Track your growth</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
+
+            {/* Competitive Benchmarking */}
+            <div className="group p-7 rounded-2xl border-2 border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-transparent hover:border-sky-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-11 w-11 rounded-xl bg-sky-500/15 flex items-center justify-center">
+                  <Swords className="h-5.5 w-5.5 text-sky-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Competitive Benchmarking</h3>
+                  <span className="text-xs text-sky-400 font-medium">Genre Percentiles</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                See where your tracks rank against others in your genre. Percentile gauges across every dimension show you exactly how your chorus energy, mix quality, and hook strength compare.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-sky-400 font-medium group-hover:gap-3 transition-all">
+                <span>See your percentiles</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
+
+            {/* Release Readiness */}
+            <div className="group p-7 rounded-2xl border-2 border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent hover:border-emerald-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-11 w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                  <Rocket className="h-5.5 w-5.5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Release Readiness</h3>
+                  <span className="text-xs text-emerald-400 font-medium">Go / No-Go Scoring</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                A traffic-light system that tells you if your track is ready to ship. Green, yellow, or red across every dimension — with specific blockers listed so you know exactly what to fix.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-emerald-400 font-medium group-hover:gap-3 transition-all">
+                <span>Check release readiness</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
+
+            {/* Streak & Retention */}
+            <div className="group p-7 rounded-2xl border-2 border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-orange-500/5 to-transparent hover:border-orange-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-11 w-11 rounded-xl bg-orange-500/15 flex items-center justify-center">
+                  <Flame className="h-5.5 w-5.5 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Creative Streaks</h3>
+                  <span className="text-xs text-orange-400 font-medium">Retention Engine</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                Build momentum with upload streaks, weekly goals, and milestone badges. The engine tracks your creative cadence and nudges you when you've been away too long.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-orange-400 font-medium group-hover:gap-3 transition-all">
+                <span>Build your streak</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom row: Artist DNA + Data Flywheel */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Artist DNA */}
+            <div className="group p-7 rounded-2xl border-2 border-violet-500/20 bg-gradient-to-br from-violet-500/10 via-violet-500/5 to-transparent hover:border-violet-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-11 w-11 rounded-xl bg-violet-500/15 flex items-center justify-center">
+                  <Dna className="h-5.5 w-5.5 text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Artist DNA</h3>
+                  <span className="text-xs text-violet-400 font-medium">Identity Fingerprint</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                A living profile of your artistic identity — harmonic tendencies, melodic contour, rhythmic density, and emotional arc. See how your sound evolves and where you're drifting.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-violet-400 font-medium group-hover:gap-3 transition-all">
+                <span>Discover your DNA</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
+
+            {/* Data Flywheel */}
+            <div className="group p-7 rounded-2xl border-2 border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent hover:border-rose-500/30 transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-11 w-11 rounded-xl bg-rose-500/15 flex items-center justify-center">
+                  <Database className="h-5.5 w-5.5 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Genre Intelligence</h3>
+                  <span className="text-xs text-rose-400 font-medium">Data Flywheel</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                See where you sit in the genre landscape. AI-powered clustering maps your archetype against the broader community — every review makes the intelligence sharper.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-rose-400 font-medium group-hover:gap-3 transition-all">
+                <span>Explore the landscape</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3, Activity, ChevronDown, ChevronUp, Tag, X as XIcon, Trash2, CheckSquare, Square } from "lucide-react";
+import { Plus, Music, Clock, CheckCircle2, AlertCircle, Loader2, Sliders, Sparkles, ArrowRight, UploadCloud, Search, Star, Users, BarChart3, TrendingUp, Disc3, Activity, ChevronDown, ChevronUp, Tag, X as XIcon, Trash2, CheckSquare, Square, GraduationCap, Swords, Rocket, Flame, Dna, Database, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useEffect, useRef, useState, useMemo } from "react";
@@ -301,6 +301,9 @@ export default function Dashboard() {
 
       {/* Recent Activity Feed */}
       <RecentActivityFeed />
+
+      {/* Strategic Feature Quick Access */}
+      <FeatureQuickAccess />
 
       {/* Search / Filter / Sort bar */}
       {showSearchBar && (
@@ -869,5 +872,96 @@ function RecentActivityFeed() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+
+function FeatureQuickAccess() {
+  const [, setLocation] = useLocation();
+
+  const features = [
+    {
+      icon: GraduationCap,
+      title: "Skill Growth",
+      desc: "Track your progression across all dimensions",
+      path: "/skill-progression",
+      color: "text-amber-400",
+      bg: "bg-amber-500/10 border-amber-500/20 hover:border-amber-500/30",
+      iconBg: "bg-amber-500/15",
+    },
+    {
+      icon: Swords,
+      title: "Benchmarks",
+      desc: "See how you rank in your genre",
+      path: "/competitive-benchmarks",
+      color: "text-sky-400",
+      bg: "bg-sky-500/10 border-sky-500/20 hover:border-sky-500/30",
+      iconBg: "bg-sky-500/15",
+    },
+    {
+      icon: Rocket,
+      title: "Release Ready",
+      desc: "Go/no-go scoring for your tracks",
+      path: "/release-readiness",
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/30",
+      iconBg: "bg-emerald-500/15",
+    },
+    {
+      icon: Flame,
+      title: "Streak",
+      desc: "Build creative momentum",
+      path: "/streak",
+      color: "text-orange-400",
+      bg: "bg-orange-500/10 border-orange-500/20 hover:border-orange-500/30",
+      iconBg: "bg-orange-500/15",
+    },
+    {
+      icon: Dna,
+      title: "Artist DNA",
+      desc: "Your unique artistic fingerprint",
+      path: "/artist-dna",
+      color: "text-violet-400",
+      bg: "bg-violet-500/10 border-violet-500/20 hover:border-violet-500/30",
+      iconBg: "bg-violet-500/15",
+    },
+    {
+      icon: Database,
+      title: "Flywheel",
+      desc: "Genre landscape & archetype",
+      path: "/flywheel",
+      color: "text-rose-400",
+      bg: "bg-rose-500/10 border-rose-500/20 hover:border-rose-500/30",
+      iconBg: "bg-rose-500/15",
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-muted-foreground">Intelligence Suite</h3>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {features.map((f) => (
+          <button
+            key={f.title}
+            onClick={() => setLocation(f.path)}
+            className={cn(
+              "group flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all text-center",
+              f.bg
+            )}
+          >
+            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", f.iconBg)}>
+              <f.icon className={cn("h-5 w-5", f.color)} />
+            </div>
+            <div>
+              <p className="text-sm font-medium">{f.title}</p>
+              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{f.desc}</p>
+            </div>
+            <ChevronRight className={cn("h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity", f.color)} />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -2038,3 +2038,20 @@
 - [x] Run Gravito governance audit on all new services
 - [x] Run full test suite and verify all pass
 - [x] TypeScript clean (tsc --noEmit exit 0, only pre-existing BatchActionsToolbar phantom errors remain)
+## Round 78 - Site Updates for New Product Builds
+
+### Landing Page Updates
+- [x] Add new feature showcase section for the 6 strategic features on landing page
+- [x] Update value proposition copy to reflect platform transformation capabilities
+- [x] Add feature cards/sections for Skill Tracking, Benchmarking, Release Readiness, Streaks, Artist DNA, Data Flywheel
+
+### Dashboard Updates
+- [x] Add quick-access cards/widgets on dashboard for new features (Intelligence Suite grid)
+- [x] Surface streak status and skill progression summary on main dashboard
+
+### Navigation & Discovery
+- [x] Verify all 6 sidebar nav items are properly visible and accessible
+- [x] Ensure feature pages have clear back-navigation and cross-links
+
+### GitHub
+- [x] Push complete codebase to Troubadour GitHub repo
