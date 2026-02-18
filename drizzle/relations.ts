@@ -1,5 +1,62 @@
 import { relations } from "drizzle-orm/relations";
-import { projects, artworkConcepts, users, tracks, audioFeatures, chatSessions, chatMessages, reviews, conversationMessages, favorites, jobs, lyrics, masteringChecklists, mixReports, notifications, projectInsights, referenceTracks, reviewComments, structureAnalyses, trackNotes, waveformAnnotations } from "./schema";
+import { reviews, actionModeCache, users, adminAuditLog, projects, artworkConcepts, tracks, audioFeatures, chatSessions, chatMessages, conversationMessages, favorites, jobs, lyrics, masteringChecklists, mixReports, notifications, projectInsights, referenceTracks, reviewComments, structureAnalyses, trackNotes, waveformAnnotations } from "./schema";
+
+export const actionModeCacheRelations = relations(actionModeCache, ({one}) => ({
+	review: one(reviews, {
+		fields: [actionModeCache.reviewId],
+		references: [reviews.id]
+	}),
+	user: one(users, {
+		fields: [actionModeCache.userId],
+		references: [users.id]
+	}),
+}));
+
+export const reviewsRelations = relations(reviews, ({one, many}) => ({
+	actionModeCaches: many(actionModeCache),
+	conversationMessages: many(conversationMessages),
+	reviewComments: many(reviewComments),
+	project: one(projects, {
+		fields: [reviews.projectId],
+		references: [projects.id]
+	}),
+	user: one(users, {
+		fields: [reviews.userId],
+		references: [users.id]
+	}),
+	track: one(tracks, {
+		fields: [reviews.comparedTrackId],
+		references: [tracks.id]
+	}),
+}));
+
+export const usersRelations = relations(users, ({many}) => ({
+	actionModeCaches: many(actionModeCache),
+	adminAuditLogs: many(adminAuditLog),
+	artworkConcepts: many(artworkConcepts),
+	chatSessions: many(chatSessions),
+	conversationMessages: many(conversationMessages),
+	favorites: many(favorites),
+	jobs: many(jobs),
+	masteringChecklists: many(masteringChecklists),
+	mixReports: many(mixReports),
+	notifications: many(notifications),
+	projectInsights: many(projectInsights),
+	projects: many(projects),
+	referenceTracks: many(referenceTracks),
+	reviewComments: many(reviewComments),
+	reviews: many(reviews),
+	trackNotes: many(trackNotes),
+	tracks: many(tracks),
+	waveformAnnotations: many(waveformAnnotations),
+}));
+
+export const adminAuditLogRelations = relations(adminAuditLog, ({one}) => ({
+	user: one(users, {
+		fields: [adminAuditLog.adminUserId],
+		references: [users.id]
+	}),
+}));
 
 export const artworkConceptsRelations = relations(artworkConcepts, ({one}) => ({
 	project: one(projects, {
@@ -22,25 +79,6 @@ export const projectsRelations = relations(projects, ({one, many}) => ({
 	}),
 	reviews: many(reviews),
 	tracks: many(tracks),
-}));
-
-export const usersRelations = relations(users, ({many}) => ({
-	artworkConcepts: many(artworkConcepts),
-	chatSessions: many(chatSessions),
-	conversationMessages: many(conversationMessages),
-	favorites: many(favorites),
-	jobs: many(jobs),
-	masteringChecklists: many(masteringChecklists),
-	mixReports: many(mixReports),
-	notifications: many(notifications),
-	projectInsights: many(projectInsights),
-	projects: many(projects),
-	referenceTracks: many(referenceTracks),
-	reviewComments: many(reviewComments),
-	reviews: many(reviews),
-	trackNotes: many(trackNotes),
-	tracks: many(tracks),
-	waveformAnnotations: many(waveformAnnotations),
 }));
 
 export const audioFeaturesRelations = relations(audioFeatures, ({one}) => ({
@@ -102,23 +140,6 @@ export const conversationMessagesRelations = relations(conversationMessages, ({o
 	user: one(users, {
 		fields: [conversationMessages.userId],
 		references: [users.id]
-	}),
-}));
-
-export const reviewsRelations = relations(reviews, ({one, many}) => ({
-	conversationMessages: many(conversationMessages),
-	reviewComments: many(reviewComments),
-	project: one(projects, {
-		fields: [reviews.projectId],
-		references: [projects.id]
-	}),
-	user: one(users, {
-		fields: [reviews.userId],
-		references: [users.id]
-	}),
-	track: one(tracks, {
-		fields: [reviews.comparedTrackId],
-		references: [tracks.id]
 	}),
 }));
 

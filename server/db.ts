@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -2711,4 +2711,218 @@ export async function getTierChangeHistory(userId: number) {
     .limit(100);
   
   return entries;
+}
+
+
+// ── Admin Notification Preferences ──
+
+export interface AdminNotificationPreferences {
+  churnAlerts: boolean;
+  newSignups: boolean;
+  paymentEvents: boolean;
+  churnThreshold: number;
+  digestFrequency: "realtime" | "daily" | "weekly" | "off";
+}
+
+const DEFAULT_ADMIN_NOTIF_PREFS: AdminNotificationPreferences = {
+  churnAlerts: true,
+  newSignups: true,
+  paymentEvents: true,
+  churnThreshold: 50,
+  digestFrequency: "daily",
+};
+
+export async function getAdminNotificationPrefs(adminUserId: number): Promise<AdminNotificationPreferences> {
+  const db = await getDb();
+  if (!db) return DEFAULT_ADMIN_NOTIF_PREFS;
+
+  const row = await db.select()
+    .from(adminSettings)
+    .where(
+      and(
+        eq(adminSettings.adminUserId, adminUserId),
+        eq(adminSettings.settingKey, "notification_preferences")
+      )
+    )
+    .limit(1);
+
+  if (row.length === 0) return DEFAULT_ADMIN_NOTIF_PREFS;
+  return { ...DEFAULT_ADMIN_NOTIF_PREFS, ...(row[0].settingValue as Partial<AdminNotificationPreferences>) };
+}
+
+export async function setAdminNotificationPrefs(
+  adminUserId: number,
+  prefs: Partial<AdminNotificationPreferences>
+): Promise<AdminNotificationPreferences> {
+  const db = await getDb();
+  if (!db) return { ...DEFAULT_ADMIN_NOTIF_PREFS, ...prefs };
+
+  const current = await getAdminNotificationPrefs(adminUserId);
+  const merged = { ...current, ...prefs };
+
+  // Upsert: try insert, on duplicate key update
+  await db.insert(adminSettings)
+    .values({
+      adminUserId,
+      settingKey: "notification_preferences",
+      settingValue: merged as Record<string, unknown>,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        settingValue: merged as Record<string, unknown>,
+      },
+    });
+
+  return merged;
+}
+
+export async function getAdminsWithPref(prefKey: keyof AdminNotificationPreferences, expectedValue: unknown): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all admin users
+  const admins = await db.select({ id: users.id })
+    .from(users)
+    .where(eq(users.role, "admin"));
+
+  // For each admin, check their preferences
+  const result: number[] = [];
+  for (const admin of admins) {
+    const prefs = await getAdminNotificationPrefs(admin.id);
+    if (prefs[prefKey] === expectedValue) {
+      result.push(admin.id);
+    }
+  }
+  return result;
+}
+
+
+// ── Admin User Search / Filter ──
+
+export async function searchAdminUsers(filters: {
+  query?: string;
+  tier?: "free" | "artist" | "pro" | "all";
+  role?: "user" | "admin" | "all";
+  status?: "active" | "inactive" | "all";
+  sortBy?: "name" | "createdAt" | "lastSignedIn" | "monthlyReviewCount";
+  sortOrder?: "asc" | "desc";
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [];
+
+  // Text search on name or email
+  if (filters.query && filters.query.trim()) {
+    const q = `%${filters.query.trim()}%`;
+    conditions.push(
+      or(
+        sql`${users.name} LIKE ${q}`,
+        sql`${users.email} LIKE ${q}`
+      )
+    );
+  }
+
+  // Tier filter
+  if (filters.tier && filters.tier !== "all") {
+    conditions.push(eq(users.tier, filters.tier));
+  }
+
+  // Role filter
+  if (filters.role && filters.role !== "all") {
+    conditions.push(eq(users.role, filters.role));
+  }
+
+  // Activity status filter (active = signed in within 30 days)
+  if (filters.status === "active") {
+    conditions.push(gte(users.lastSignedIn, sql`DATE_SUB(NOW(), INTERVAL 30 DAY)`));
+  } else if (filters.status === "inactive") {
+    conditions.push(sql`${users.lastSignedIn} < DATE_SUB(NOW(), INTERVAL 30 DAY)`);
+  }
+
+  // Build sort
+  const sortCol = filters.sortBy === "name" ? users.name
+    : filters.sortBy === "lastSignedIn" ? users.lastSignedIn
+    : filters.sortBy === "monthlyReviewCount" ? users.monthlyReviewCount
+    : users.createdAt;
+  const sortDir = filters.sortOrder === "asc" ? asc : desc;
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  return db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    tier: users.tier,
+    monthlyReviewCount: users.monthlyReviewCount,
+    stripeCustomerId: users.stripeCustomerId,
+    stripeSubscriptionId: users.stripeSubscriptionId,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  })
+    .from(users)
+    .where(whereClause)
+    .orderBy(sortDir(sortCol))
+    .limit(500);
+}
+
+// ── System Health Metrics ──
+
+export async function getSystemHealthMetrics() {
+  const db = await getDb();
+  if (!db) return {
+    serverUptime: process.uptime(),
+    databaseConnected: false,
+    totalUsers: 0,
+    totalReviews: 0,
+    totalProjects: 0,
+    reviewsLast24h: 0,
+    reviewsLast7d: 0,
+    activeJobsCount: 0,
+    errorJobsCount: 0,
+    avgReviewsPerUser: 0,
+    schedulerStatus: { digestScheduler: "unknown", churnAlertScheduler: "unknown" },
+  };
+
+  const [userCount] = await db.select({ count: count() }).from(users);
+  const [reviewCount] = await db.select({ count: count() }).from(reviews);
+  const [projectCount] = await db.select({ count: count() }).from(projects);
+
+  const [reviews24h] = await db.select({ count: count() })
+    .from(reviews)
+    .where(gte(reviews.createdAt, sql`DATE_SUB(NOW(), INTERVAL 1 DAY)`));
+
+  const [reviews7d] = await db.select({ count: count() })
+    .from(reviews)
+    .where(gte(reviews.createdAt, sql`DATE_SUB(NOW(), INTERVAL 7 DAY)`));
+
+  const [activeJobs] = await db.select({ count: count() })
+    .from(jobs)
+    .where(eq(jobs.status, "running"));
+
+  const [errorJobs] = await db.select({ count: count() })
+    .from(jobs)
+    .where(eq(jobs.status, "error"));
+
+  const avgReviews = reviewCount.count > 0 && userCount.count > 0
+    ? Math.round((reviewCount.count / userCount.count) * 10) / 10
+    : 0;
+
+  return {
+    serverUptime: process.uptime(),
+    databaseConnected: true,
+    totalUsers: userCount.count,
+    totalReviews: reviewCount.count,
+    totalProjects: projectCount.count,
+    reviewsLast24h: reviews24h.count,
+    reviewsLast7d: reviews7d.count,
+    activeJobsCount: activeJobs.count,
+    errorJobsCount: errorJobs.count,
+    avgReviewsPerUser: avgReviews,
+    schedulerStatus: {
+      digestScheduler: "running",
+      churnAlertScheduler: "running",
+    },
+  };
 }

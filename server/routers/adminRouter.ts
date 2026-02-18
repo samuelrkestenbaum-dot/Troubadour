@@ -168,4 +168,52 @@ export const adminRouter = router({
       assertAdmin(ctx.user.role);
       return db.getCohortData(input?.months ?? 12);
     }),
+
+  // ── Admin Notification Preferences ──
+  getNotificationPrefs: protectedProcedure
+    .query(async ({ ctx }) => {
+      assertAdmin(ctx.user.role);
+      return db.getAdminNotificationPrefs(ctx.user.id);
+    }),
+  updateNotificationPrefs: protectedProcedure
+    .input(z.object({
+      churnAlerts: z.boolean().optional(),
+      newSignups: z.boolean().optional(),
+      paymentEvents: z.boolean().optional(),
+      churnThreshold: z.number().min(0).max(100).optional(),
+      digestFrequency: z.enum(["realtime", "daily", "weekly", "off"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      const updated = await db.setAdminNotificationPrefs(ctx.user.id, input);
+      await db.createAuditLogEntry({
+        adminUserId: ctx.user.id,
+        action: "update_notification_prefs",
+        targetUserId: undefined,
+        details: { updated: input },
+      });
+      return updated;
+    }),
+
+  // ── User Search / Filter ──
+  searchUsers: protectedProcedure
+    .input(z.object({
+      query: z.string().optional(),
+      tier: z.enum(["free", "artist", "pro", "all"]).optional(),
+      role: z.enum(["user", "admin", "all"]).optional(),
+      status: z.enum(["active", "inactive", "all"]).optional(),
+      sortBy: z.enum(["name", "createdAt", "lastSignedIn", "monthlyReviewCount"]).optional(),
+      sortOrder: z.enum(["asc", "desc"]).optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      return db.searchAdminUsers(input ?? {});
+    }),
+
+  // ── System Health ──
+  getSystemHealth: protectedProcedure
+    .query(async ({ ctx }) => {
+      assertAdmin(ctx.user.role);
+      return db.getSystemHealthMetrics();
+    }),
 });

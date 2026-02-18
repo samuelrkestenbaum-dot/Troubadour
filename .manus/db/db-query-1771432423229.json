@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `adminSettings` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `adminUserId` int NOT NULL,\n  `settingKey` varchar(100) NOT NULL,\n  `settingValue` json NOT NULL,\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `adminSettings_id` PRIMARY KEY(`id`),\n  CONSTRAINT `uq_adminSettings_user_key` UNIQUE(`adminUserId`, `settingKey`),\n  INDEX `idx_adminSettings_adminUserId` (`adminUserId`),\n  CONSTRAINT `adminSettings_adminUserId_users_id_fk` FOREIGN KEY (`adminUserId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE `adminSettings` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `adminUserId` int NOT NULL,\n  `settingKey` varchar(100) NOT NULL,\n  `settingValue` json NOT NULL,\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `adminSettings_id` PRIMARY KEY(`id`),\n  CONSTRAINT `uq_adminSettings_user_key` UNIQUE(`adminUserId`, `settingKey`),\n  INDEX `idx_adminSettings_adminUserId` (`adminUserId`),\n  CONSTRAINT `adminSettings_adminUserId_users_id_fk` FOREIGN KEY (`adminUserId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 377
+}

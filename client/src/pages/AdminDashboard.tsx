@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity, Bell, Grid3X3, Send } from "lucide-react";
+import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity, Bell, Grid3X3, Send, Search, Settings, Server, RefreshCw, Clock, Database, Zap, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { UserDetailModal } from "@/components/UserDetailModal";
 
 function StatCard({ title, value, icon: Icon, description }: { title: string; value: string | number; icon: React.ElementType; description?: string }) {
@@ -741,6 +743,359 @@ function GrowthChart({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+function UserSearchBar({ isAdmin, onSelectUser }: { isAdmin: boolean; onSelectUser: (id: number) => void }) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
+
+  const searchQuery = trpc.admin.searchUsers.useQuery(
+    {
+      query: searchTerm || undefined,
+      tier: (tierFilter !== "all" ? tierFilter : undefined) as "free" | "artist" | "pro" | undefined,
+      role: (roleFilter !== "all" ? roleFilter : undefined) as "admin" | "user" | undefined,
+      status: (activityFilter !== "all" ? activityFilter : undefined) as "active" | "inactive" | "all" | undefined,
+    },
+    { enabled: isAdmin && (searchTerm.length > 0 || tierFilter !== "all" || roleFilter !== "all" || activityFilter !== "all") }
+  );
+
+  const hasFilters = searchTerm.length > 0 || tierFilter !== "all" || roleFilter !== "all" || activityFilter !== "all";
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Search className="h-4 w-4" /> Search & Filter Users
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-3 mb-3">
+          <div className="flex-1 min-w-[200px]">
+            <Input
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-9"
+            />
+          </div>
+          <Select value={tierFilter} onValueChange={setTierFilter}>
+            <SelectTrigger className="w-[130px] h-9">
+              <SelectValue placeholder="Tier" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tiers</SelectItem>
+              <SelectItem value="free">Free</SelectItem>
+              <SelectItem value="artist">Artist</SelectItem>
+              <SelectItem value="pro">Pro</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[130px] h-9">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={activityFilter} onValueChange={setActivityFilter}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Activity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Activity</SelectItem>
+              <SelectItem value="active">Active (30d)</SelectItem>
+              <SelectItem value="inactive">Inactive (30d+)</SelectItem>
+            </SelectContent>
+          </Select>
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchTerm(""); setTierFilter("all"); setRoleFilter("all"); setActivityFilter("all"); }}>
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {hasFilters && (
+          <div>
+            {searchQuery.isLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+              </div>
+            ) : searchQuery.data && searchQuery.data.length > 0 ? (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground mb-2">{searchQuery.data.length} result{searchQuery.data.length !== 1 ? "s" : ""}</p>
+                {searchQuery.data.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onSelectUser(u.id)}>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <span className="text-sm font-medium">{u.name || "Unnamed"}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{u.email || "No email"}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RoleBadge role={u.role} />
+                      <TierBadge tier={u.tier} />
+                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        <Eye className="h-3.5 w-3.5 mr-1" /> View
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4 text-sm">No users match your filters</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SystemHealthTab({ isAdmin }: { isAdmin: boolean }) {
+  const health = trpc.admin.getSystemHealth.useQuery(undefined, { enabled: isAdmin, refetchInterval: 30000 });
+
+  const formatUptime = (seconds: number) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (days > 0) return `${days}d ${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  };
+
+  if (health.isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[...Array(4)].map((_, i) => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-20 w-full" /></CardContent></Card>)}
+      </div>
+    );
+  }
+
+  if (!health.data) return <p className="text-muted-foreground text-center py-8">Unable to load health data</p>;
+
+  const d = health.data;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold flex items-center gap-2"><Server className="h-4 w-4" /> System Health</h3>
+        <Button variant="ghost" size="sm" onClick={() => health.refetch()} className="h-8 text-xs">
+          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className={`h-3 w-3 rounded-full ${d.databaseConnected ? "bg-emerald-500" : "bg-red-500"} animate-pulse`} />
+              <div>
+                <p className="text-sm font-medium">Database</p>
+                <p className="text-xs text-muted-foreground">{d.databaseConnected ? "Connected" : "Disconnected"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Server Uptime</p>
+                <p className="text-xs text-muted-foreground">{formatUptime(d.serverUptime)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <Zap className="h-5 w-5 text-amber-500" />
+              <div>
+                <p className="text-sm font-medium">Active Jobs</p>
+                <p className="text-xs text-muted-foreground">{d.activeJobsCount} running</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className={`h-5 w-5 ${d.errorJobsCount > 0 ? "text-red-500" : "text-muted-foreground"}`} />
+              <div>
+                <p className="text-sm font-medium">Error Jobs</p>
+                <p className="text-xs text-muted-foreground">{d.errorJobsCount} errors</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Platform Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Users</span>
+                <span className="text-sm font-mono font-medium">{d.totalUsers}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Reviews</span>
+                <span className="text-sm font-mono font-medium">{d.totalReviews}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Reviews (7d)</span>
+                <span className="text-sm font-mono font-medium">{d.reviewsLast7d}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Avg Reviews/User</span>
+                <span className="text-sm font-mono font-medium">{d.avgReviewsPerUser}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Scheduler Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <div>
+                  <p className="text-sm">Digest Scheduler</p>
+                  <p className="text-xs text-muted-foreground">Runs daily at configured time</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <div>
+                  <p className="text-sm">Churn Alert Scheduler</p>
+                  <p className="text-xs text-muted-foreground">Checks hourly, alerts at 9 AM UTC</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function AdminSettingsTab({ isAdmin }: { isAdmin: boolean }) {
+  const prefs = trpc.admin.getNotificationPrefs.useQuery(undefined, { enabled: isAdmin });
+  const updatePrefs = trpc.admin.updateNotificationPrefs.useMutation({
+    onSuccess: () => {
+      toast.success("Notification preferences saved");
+      prefs.refetch();
+    },
+    onError: () => toast.error("Failed to save preferences"),
+  });
+
+  const [localPrefs, setLocalPrefs] = useState<{
+    churnAlerts: boolean;
+    newSignups: boolean;
+    paymentEvents: boolean;
+    churnThreshold: number;
+    digestFrequency: "realtime" | "daily" | "weekly" | "off";
+  } | null>(null);
+
+  const currentPrefs = localPrefs || prefs.data;
+
+  const handleToggle = (key: string, value: boolean) => {
+    const updated = { ...currentPrefs!, [key]: value };
+    setLocalPrefs(updated);
+  };
+
+  const handleSave = () => {
+    if (!currentPrefs) return;
+    updatePrefs.mutate(currentPrefs);
+    setLocalPrefs(null);
+  };
+
+  if (prefs.isLoading) {
+    return (
+      <Card><CardContent className="pt-6"><Skeleton className="h-40 w-full" /></CardContent></Card>
+    );
+  }
+
+  if (!currentPrefs) return <p className="text-muted-foreground text-center py-8">Unable to load settings</p>;
+
+  const hasChanges = localPrefs !== null;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4" /> Notification Preferences
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[
+              { key: "churnAlerts", label: "Churn Alerts", desc: "Get notified when retention drops below threshold" },
+              { key: "newSignups", label: "New Signup Alerts", desc: "Get notified when new users register" },
+              { key: "paymentEvents", label: "Payment Alerts", desc: "Get notified on payment events (subscriptions, cancellations)" },
+            ].map(({ key, label, desc }) => (
+              <div key={key} className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium">{label}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+                <Button
+                  variant={currentPrefs[key as keyof typeof currentPrefs] ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 w-16"
+                  onClick={() => handleToggle(key, !currentPrefs[key as keyof typeof currentPrefs])}
+                >
+                  {currentPrefs[key as keyof typeof currentPrefs] ? "On" : "Off"}
+                </Button>
+              </div>
+            ))}
+
+            <div className="flex items-center justify-between py-2 border-t border-border pt-4">
+              <div>
+                <p className="text-sm font-medium">Churn Alert Threshold</p>
+                <p className="text-xs text-muted-foreground">Alert when retention rate drops below this percentage</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={currentPrefs.churnThreshold}
+                  onChange={(e) => handleToggle("churnThreshold", Number(e.target.value) as any)}
+                  className="w-20 h-8 text-center"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            </div>
+
+            {hasChanges && (
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="ghost" size="sm" onClick={() => setLocalPrefs(null)}>Cancel</Button>
+                <Button size="sm" onClick={handleSave} disabled={updatePrefs.isPending}>
+                  {updatePrefs.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -808,6 +1163,12 @@ export default function AdminDashboard() {
           <TabsTrigger value="activity" className="flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" /> Activity
           </TabsTrigger>
+          <TabsTrigger value="health" className="flex items-center gap-1.5">
+            <Server className="h-3.5 w-3.5" /> Health
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-1.5">
+            <Settings className="h-3.5 w-3.5" /> Settings
+          </TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
@@ -845,6 +1206,9 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           )}
+
+          {/* User Search / Filter Bar */}
+          <UserSearchBar isAdmin={isAdmin} onSelectUser={openUserDetail} />
 
           {/* User Table */}
           <Card>
@@ -980,6 +1344,16 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* System Health Tab */}
+        <TabsContent value="health">
+          <SystemHealthTab isAdmin={isAdmin} />
+        </TabsContent>
+
+        {/* Admin Settings Tab */}
+        <TabsContent value="settings">
+          <AdminSettingsTab isAdmin={isAdmin} />
         </TabsContent>
       </Tabs>
 

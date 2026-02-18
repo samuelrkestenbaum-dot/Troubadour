@@ -562,3 +562,18 @@ export const adminAuditLog = mysqlTable("adminAuditLog", {
 ]);
 export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
 export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
+
+// ── Admin Settings ──
+export const adminSettings = mysqlTable("adminSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  adminUserId: int("adminUserId").notNull(),
+  settingKey: varchar("settingKey", { length: 100 }).notNull(),
+  settingValue: json("settingValue").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_adminSettings_user_key").on(t.adminUserId, t.settingKey),
+  index("idx_adminSettings_adminUserId").on(t.adminUserId),
+  foreignKey({ columns: [t.adminUserId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type AdminSetting = typeof adminSettings.$inferSelect;
+export type InsertAdminSetting = typeof adminSettings.$inferInsert;
