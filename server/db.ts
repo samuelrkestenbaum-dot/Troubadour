@@ -2926,3 +2926,108 @@ export async function getSystemHealthMetrics() {
     },
   };
 }
+
+
+// ── Bulk User Actions ──
+
+export async function bulkUpdateUserTier(userIds: number[], tier: "free" | "artist" | "pro") {
+  const db = await getDb();
+  if (!db || userIds.length === 0) return { updated: 0 };
+  const result = await db.update(users)
+    .set({ tier, updatedAt: new Date() })
+    .where(inArray(users.id, userIds));
+  return { updated: result[0]?.affectedRows ?? userIds.length };
+}
+
+export async function bulkUpdateUserRole(userIds: number[], role: "user" | "admin") {
+  const db = await getDb();
+  if (!db || userIds.length === 0) return { updated: 0 };
+  const result = await db.update(users)
+    .set({ role, updatedAt: new Date() })
+    .where(inArray(users.id, userIds));
+  return { updated: result[0]?.affectedRows ?? userIds.length };
+}
+
+export async function bulkExportUsersCSV(userIds: number[]): Promise<string> {
+  const db = await getDb();
+  if (!db || userIds.length === 0) return "id,name,email,role,tier,createdAt\n";
+  const rows = await db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    tier: users.tier,
+    monthlyReviewCount: users.monthlyReviewCount,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  }).from(users).where(inArray(users.id, userIds));
+
+  const esc = (v: unknown) => {
+    const s = String(v ?? "");
+    return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = "id,name,email,role,tier,monthlyReviewCount,createdAt,lastSignedIn";
+  const lines = rows.map(r =>
+    `${r.id},${esc(r.name)},${esc(r.email)},${r.role},${r.tier},${r.monthlyReviewCount},${r.createdAt?.toISOString() ?? ""},${r.lastSignedIn?.toISOString() ?? ""}`
+  );
+  return [header, ...lines].join("\n");
+}
+
+// ── Webhook Event Log (enhanced) ──
+
+export async function getWebhookEventLog(options: {
+  limit?: number;
+  eventType?: string;
+} = {}): Promise<Array<{
+  id: number;
+  eventId: string;
+  eventType: string;
+  processedAt: Date;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  const limit = options.limit ?? 100;
+  const conditions = [];
+  if (options.eventType && options.eventType !== "all") {
+    conditions.push(eq(processedWebhookEvents.eventType, options.eventType));
+  }
+  const query = db.select({
+    id: processedWebhookEvents.id,
+    eventId: processedWebhookEvents.eventId,
+    eventType: processedWebhookEvents.eventType,
+    processedAt: processedWebhookEvents.processedAt,
+  }).from(processedWebhookEvents);
+
+  if (conditions.length > 0) {
+    return query.where(and(...conditions)).orderBy(desc(processedWebhookEvents.processedAt)).limit(limit);
+  }
+  return query.orderBy(desc(processedWebhookEvents.processedAt)).limit(limit);
+}
+
+export async function getWebhookEventStats(): Promise<{
+  total: number;
+  last24h: number;
+  byType: Array<{ eventType: string; count: number }>;
+}> {
+  const db = await getDb();
+  if (!db) return { total: 0, last24h: 0, byType: [] };
+
+  const [totalResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(processedWebhookEvents);
+  const total = totalResult?.count ?? 0;
+
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [last24hResult] = await db.select({ count: sql<number>`COUNT(*)` })
+    .from(processedWebhookEvents)
+    .where(sql`${processedWebhookEvents.processedAt} >= ${oneDayAgo}`);
+  const last24h = last24hResult?.count ?? 0;
+
+  const byType = await db.select({
+    eventType: processedWebhookEvents.eventType,
+    count: sql<number>`COUNT(*)`,
+  }).from(processedWebhookEvents)
+    .groupBy(processedWebhookEvents.eventType)
+    .orderBy(desc(sql`COUNT(*)`))
+    .limit(20);
+
+  return { total, last24h, byType };
+}

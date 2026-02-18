@@ -216,4 +216,66 @@ export const adminRouter = router({
       assertAdmin(ctx.user.role);
       return db.getSystemHealthMetrics();
     }),
+
+  // ── Bulk User Actions ──
+  bulkUpdateTier: protectedProcedure
+    .input(z.object({
+      userIds: z.array(z.number()).min(1).max(500),
+      tier: z.enum(["free", "artist", "pro"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      const result = await db.bulkUpdateUserTier(input.userIds, input.tier);
+      await db.createAuditLogEntry({
+        adminUserId: ctx.user.id,
+        action: "bulk_update_tier",
+        targetUserId: undefined,
+        details: { userIds: input.userIds, tier: input.tier, updated: result.updated },
+      });
+      return result;
+    }),
+  bulkUpdateRole: protectedProcedure
+    .input(z.object({
+      userIds: z.array(z.number()).min(1).max(500),
+      role: z.enum(["user", "admin"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      // Prevent self-role change in bulk
+      const filteredIds = input.userIds.filter(id => id !== ctx.user.id);
+      if (filteredIds.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot change your own role" });
+      const result = await db.bulkUpdateUserRole(filteredIds, input.role);
+      await db.createAuditLogEntry({
+        adminUserId: ctx.user.id,
+        action: "bulk_update_role",
+        targetUserId: undefined,
+        details: { userIds: filteredIds, role: input.role, updated: result.updated },
+      });
+      return result;
+    }),
+  bulkExportUsers: protectedProcedure
+    .input(z.object({ userIds: z.array(z.number()).min(1).max(500) }))
+    .query(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      return { csv: await db.bulkExportUsersCSV(input.userIds) };
+    }),
+
+  // ── Webhook Event Log ──
+  getWebhookEvents: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(500).optional(),
+      eventType: z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      assertAdmin(ctx.user.role);
+      return db.getWebhookEventLog({
+        limit: input?.limit ?? 100,
+        eventType: input?.eventType,
+      });
+    }),
+  getWebhookStats: protectedProcedure
+    .query(async ({ ctx }) => {
+      assertAdmin(ctx.user.role);
+      return db.getWebhookEventStats();
+    }),
 });

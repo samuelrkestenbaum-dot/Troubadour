@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity, Bell, Grid3X3, Send, Search, Settings, Server, RefreshCw, Clock, Database, Zap, AlertTriangle } from "lucide-react";
+import { Users, CreditCard, FileText, FolderOpen, Shield, TrendingUp, Eye, ClipboardList, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3, Download, UserCheck, UserX, Activity, Bell, Grid3X3, Send, Search, Settings, Server, RefreshCw, Clock, Database, Zap, AlertTriangle, CheckSquare, Square, Webhook } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -743,6 +743,225 @@ function GrowthChart({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+function BulkActionToolbar({ selectedIds, isAdmin, onClear }: { selectedIds: Set<number>; isAdmin: boolean; onClear: () => void }) {
+  const utils = trpc.useUtils();
+  const [bulkTier, setBulkTier] = useState<string>("");
+  const [bulkRole, setBulkRole] = useState<string>("");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const bulkUpdateTier = trpc.admin.bulkUpdateTier.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Updated ${data.updated} users to ${bulkTier} tier`);
+      utils.admin.getUsers.invalidate();
+      utils.admin.getStats.invalidate();
+      utils.admin.getAuditLog.invalidate();
+      onClear();
+      setBulkTier("");
+    },
+    onError: () => toast.error("Bulk tier update failed"),
+  });
+
+  const bulkUpdateRole = trpc.admin.bulkUpdateRole.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Updated ${data.updated} users to ${bulkRole} role`);
+      utils.admin.getUsers.invalidate();
+      utils.admin.getAuditLog.invalidate();
+      onClear();
+      setBulkRole("");
+    },
+    onError: (err) => toast.error(err.message || "Bulk role update failed"),
+  });
+
+  const handleBulkExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await utils.admin.bulkExportUsers.fetch({ userIds: Array.from(selectedIds) });
+      if (!result.csv) { toast.error("No data"); return; }
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `selected-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${selectedIds.size} users`);
+    } catch { toast.error("Export failed"); }
+    finally { setIsExporting(false); }
+  };
+
+  if (selectedIds.size === 0) return null;
+
+  return (
+    <Card className="mb-4 border-primary/30 bg-primary/5">
+      <CardContent className="py-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <Select value={bulkTier} onValueChange={setBulkTier}>
+              <SelectTrigger className="h-7 w-[120px] text-xs">
+                <SelectValue placeholder="Set Tier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="free">Free</SelectItem>
+                <SelectItem value="artist">Artist</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline" size="sm" className="h-7 text-xs"
+              disabled={!bulkTier || bulkUpdateTier.isPending}
+              onClick={() => bulkUpdateTier.mutate({ userIds: Array.from(selectedIds), tier: bulkTier as "free" | "artist" | "pro" })}
+            >
+              {bulkUpdateTier.isPending ? "Updating..." : "Apply Tier"}
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={bulkRole} onValueChange={setBulkRole}>
+              <SelectTrigger className="h-7 w-[100px] text-xs">
+                <SelectValue placeholder="Set Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline" size="sm" className="h-7 text-xs"
+              disabled={!bulkRole || bulkUpdateRole.isPending}
+              onClick={() => bulkUpdateRole.mutate({ userIds: Array.from(selectedIds), role: bulkRole as "user" | "admin" })}
+            >
+              {bulkUpdateRole.isPending ? "Updating..." : "Apply Role"}
+            </Button>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleBulkExport} disabled={isExporting}>
+            <Download className="h-3.5 w-3.5 mr-1" />
+            {isExporting ? "Exporting..." : "Export Selected"}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={onClear}>
+            Clear
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WebhookEventsTab({ isAdmin }: { isAdmin: boolean }) {
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+  const events = trpc.admin.getWebhookEvents.useQuery(
+    { limit: 100, eventType: eventTypeFilter === "all" ? undefined : eventTypeFilter },
+    { enabled: isAdmin, refetchInterval: 30000 }
+  );
+  const stats = trpc.admin.getWebhookStats.useQuery(undefined, { enabled: isAdmin, refetchInterval: 30000 });
+
+  const eventTypeStyles: Record<string, string> = {
+    "checkout.session.completed": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    "customer.subscription.updated": "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    "customer.subscription.deleted": "bg-red-500/10 text-red-400 border-red-500/20",
+    "invoice.paid": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    "invoice.payment_failed": "bg-red-500/10 text-red-400 border-red-500/20",
+  };
+
+  const uniqueTypes = useMemo(() => {
+    if (!stats.data?.byType) return [];
+    return stats.data.byType.map(t => t.eventType);
+  }, [stats.data]);
+
+  return (
+    <div className="space-y-4">
+      {/* Stats Cards */}
+      {stats.data && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard title="Total Events" value={stats.data.total} icon={Webhook} description="All-time webhook events" />
+          <StatCard title="Last 24 Hours" value={stats.data.last24h} icon={Clock} description="Events in the last day" />
+          <StatCard title="Event Types" value={stats.data.byType.length} icon={Grid3X3} description="Distinct event types" />
+        </div>
+      )}
+
+      {/* Event Type Breakdown */}
+      {stats.data && stats.data.byType.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" /> Event Type Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.data.byType.map(({ eventType, count }) => {
+                const pct = stats.data!.total > 0 ? Math.round((count / stats.data!.total) * 100) : 0;
+                return (
+                  <div key={eventType} className="flex items-center gap-3">
+                    <Badge variant="outline" className={`text-xs min-w-[200px] justify-center ${eventTypeStyles[eventType] || ""}`}>
+                      {eventType}
+                    </Badge>
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground w-16 text-right">{count} ({pct}%)</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Event Log */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Webhook className="h-4 w-4" /> Webhook Event Log
+          </CardTitle>
+          <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+            <SelectTrigger className="h-7 w-[220px] text-xs">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Events</SelectItem>
+              {uniqueTypes.map(t => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          {events.isLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : events.data && events.data.length > 0 ? (
+            <div className="space-y-2">
+              {events.data.map((evt) => (
+                <div key={evt.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className={`text-xs ${eventTypeStyles[evt.eventType] || ""}`}>
+                      {evt.eventType}
+                    </Badge>
+                    <span className="text-xs font-mono text-muted-foreground">{evt.eventId}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(evt.processedAt), { addSuffix: true })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">No webhook events recorded yet</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function UserSearchBar({ isAdmin, onSelectUser }: { isAdmin: boolean; onSelectUser: (id: number) => void }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
@@ -1105,6 +1324,24 @@ export default function AdminDashboard() {
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showUserDetail, setShowUserDetail] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+
+  const toggleUserSelection = useCallback((userId: number) => {
+    setSelectedUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!usersQuery.data) return;
+    setSelectedUserIds(prev => {
+      if (prev.size === usersQuery.data!.length) return new Set();
+      return new Set(usersQuery.data!.map(u => u.id));
+    });
+  }, [usersQuery.data]);
 
   if (!isAdmin) {
     return (
@@ -1166,6 +1403,9 @@ export default function AdminDashboard() {
           <TabsTrigger value="health" className="flex items-center gap-1.5">
             <Server className="h-3.5 w-3.5" /> Health
           </TabsTrigger>
+          <TabsTrigger value="webhooks" className="flex items-center gap-1.5">
+            <Webhook className="h-3.5 w-3.5" /> Webhooks
+          </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-1.5">
             <Settings className="h-3.5 w-3.5" /> Settings
           </TabsTrigger>
@@ -1210,6 +1450,9 @@ export default function AdminDashboard() {
           {/* User Search / Filter Bar */}
           <UserSearchBar isAdmin={isAdmin} onSelectUser={openUserDetail} />
 
+          {/* Bulk Action Toolbar */}
+          <BulkActionToolbar selectedIds={selectedUserIds} isAdmin={isAdmin} onClear={() => setSelectedUserIds(new Set())} />
+
           {/* User Table */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -1228,6 +1471,15 @@ export default function AdminDashboard() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
+                        <th className="py-3 px-2 w-8">
+                          <button onClick={toggleSelectAll} className="flex items-center justify-center">
+                            {selectedUserIds.size === usersQuery.data.length ? (
+                              <CheckSquare className="h-4 w-4 text-primary" />
+                            ) : (
+                              <Square className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </th>
                         <th className="text-left py-3 px-2 font-medium text-muted-foreground">User</th>
                         <th className="text-left py-3 px-2 font-medium text-muted-foreground">Role</th>
                         <th className="text-left py-3 px-2 font-medium text-muted-foreground">Tier</th>
@@ -1240,7 +1492,16 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {usersQuery.data.map((u) => (
-                        <tr key={u.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                        <tr key={u.id} className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${selectedUserIds.has(u.id) ? "bg-primary/5" : ""}`}>
+                          <td className="py-3 px-2">
+                            <button onClick={() => toggleUserSelection(u.id)} className="flex items-center justify-center">
+                              {selectedUserIds.has(u.id) ? (
+                                <CheckSquare className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </button>
+                          </td>
                           <td className="py-3 px-2">
                             <div>
                               <div className="font-medium">{u.name || "Unnamed"}</div>
@@ -1344,6 +1605,11 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Webhook Events Tab */}
+        <TabsContent value="webhooks">
+          <WebhookEventsTab isAdmin={isAdmin} />
         </TabsContent>
 
         {/* System Health Tab */}
