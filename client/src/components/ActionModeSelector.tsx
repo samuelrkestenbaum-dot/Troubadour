@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ArrowLeft, Sparkles, Download } from "lucide-react";
 import { toast } from "sonner";
+import { trackActionModeUsed, trackActionModeExported } from "@/lib/analytics";
 import { Streamdown } from "streamdown";
 
 type ActionModeKey = "session-prep" | "pitch-ready" | "rewrite-focus" | "remix-focus" | "full-picture";
@@ -87,6 +88,7 @@ export function ActionModeSelector({ reviewId, onModeContent }: ActionModeSelect
 
   const handleModeSelect = (mode: ActionModeKey) => {
     if (mode === activeMode) return;
+    trackActionModeUsed(reviewId, mode);
 
     // Full picture is instant — just reset
     if (mode === "full-picture") {
@@ -192,6 +194,7 @@ export function ActionModeContent({ content, mode, reviewId }: ActionModeContent
 
   const handleExport = () => {
     setExporting(true);
+    trackActionModeExported(reviewId, mode);
     exportMut.mutate({ reviewId, mode });
   };
 

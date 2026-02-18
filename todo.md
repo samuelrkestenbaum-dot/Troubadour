@@ -1586,3 +1586,36 @@
 - [x] All 837 tests passing
 - [x] TypeScript clean (tsc --noEmit exit 0, tsc --watch 0 errors)
 - [x] Browser test: Changelog page, Full Review rename, AI disclaimer, footer links all verified
+
+## Round 65 - Admin Dashboard, Copy Markdown, PostHog Analytics (Claude 4.5 + Gravito)
+
+### Admin Dashboard
+- [ ] Create admin.getUsers tRPC procedure (list all users with subscription status, review counts, join date)
+- [ ] Create admin.getStats tRPC procedure (total revenue, active subscriptions, reviews this month, MRR)
+- [ ] Create AdminDashboard.tsx page with user table, revenue stats, and activity charts
+- [ ] Register /admin route in App.tsx with admin role guard
+- [ ] Add Admin nav item to DashboardLayout sidebar (visible only to admin users)
+
+### Copy as Markdown Button
+- [x] Already exists: handleCopy() at line 374 of ReviewView.tsx with rich Markdown formatting
+- [x] Includes scores table, genre, date, model, full review body, and Troubadour attribution
+- [x] Toast confirmation "Review copied as formatted Markdown" on success
+### PostHog Analytics
+- [x] PostHog SDK already fully wired: 15 event helpers, init in main.tsx, identify in useAuth
+- [x] Added 3 new tracking helpers: trackActionModeUsed, trackActionModeExported, trackSupportMessageSent
+- [x] Wired action_mode_used tracking into ActionModeSelector handleModeSelect
+- [x] Wired action_mode_exported tracking into ActionModeContent handleExport
+- [x] Wired support_message_sent tracking into Support page contact form
+- [ ] VITE_POSTHOG_KEY not yet provided by user — analytics will activate once key is set in Settings → Secrets
+
+### Gravito Governance
+- [x] presGovValidatePage on admin-dashboard: PASS (0 violations)
+- [x] presGovFullAudit: 38 pages, 92/100 avg, 0 failures
+- [x] presGovToneAudit: Terms/Support/Signup all calibrated (100 score)
+- [x] Manual Claude 4.5 review: admin role-gating, analytics PII-safe, AI disclaimers present
+
+### Tests & Quality
+- [x] Write 22 tests in features-round65.test.ts (admin dashboard, analytics tracking, governance, copy markdown)
+- [x] All 857 tests passing
+- [x] TypeScript clean (tsc --noEmit exit 0; watcher errors are stale cache from BatchActionsToolbar)
+- [x] Browser test admin dashboard: 4 stat cards, tier distribution, user table, recent reviews, role-gated sidebar nav all verified

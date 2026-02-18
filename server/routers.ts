@@ -1102,5 +1102,21 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
     }),
   }),
 
+  // ── Admin Dashboard ──
+  admin: router({
+    getUsers: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      return db.getAdminUserList();
+    }),
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      return db.getAdminStats();
+    }),
+    getRecentActivity: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      return db.getAdminRecentActivity();
+    }),
+  }),
+
 });
 export type AppRouter = typeof appRouter;

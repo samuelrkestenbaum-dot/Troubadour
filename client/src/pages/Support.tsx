@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trackSupportMessageSent } from "@/lib/analytics";
 import {
   HelpCircle, MessageSquare, Music, ChevronDown, ChevronUp,
   Send, Loader2, ArrowLeft, Shield, Zap, FileText, CreditCard,
@@ -120,6 +121,7 @@ export default function Support() {
       return;
     }
     setSending(true);
+    trackSupportMessageSent();
     contactMutation.mutate({ subject: subject.trim(), message: message.trim() });
   };
 

@@ -32,6 +32,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import Changelog from "./pages/Changelog";
+import AdminDashboard from "./pages/AdminDashboard";
 import { OnboardingTour } from "./components/OnboardingTour";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
@@ -91,6 +92,7 @@ function DashboardRoutes() {
         <Route path="/digest" component={Digest} />
         <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />
+        <Route path="/admin" component={AdminDashboard} />
         <Route component={NotFound} />
       </Switch>
     </DashboardLayout>

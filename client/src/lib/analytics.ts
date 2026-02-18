@@ -94,6 +94,18 @@ export function trackCheckoutStarted(tier: string) {
   trackEvent("checkout_started", { tier });
 }
 
+export function trackActionModeUsed(reviewId: number, mode: string) {
+  trackEvent("action_mode_used", { reviewId, mode });
+}
+
+export function trackActionModeExported(reviewId: number, mode: string) {
+  trackEvent("action_mode_exported", { reviewId, mode });
+}
+
+export function trackSupportMessageSent() {
+  trackEvent("support_message_sent");
+}
+
 export function trackPageView(page: string) {
   trackEvent("$pageview", { page });
 }

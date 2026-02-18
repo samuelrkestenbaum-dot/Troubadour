@@ -2227,3 +2227,77 @@ export async function getPlatformStats() {
     totalUsers: userCount?.count ?? 0,
   };
 }
+
+// ── Admin Dashboard Helpers ──
+export async function getAdminUserList() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      tier: users.tier,
+      stripeCustomerId: users.stripeCustomerId,
+      stripeSubscriptionId: users.stripeSubscriptionId,
+      monthlyReviewCount: users.monthlyReviewCount,
+      createdAt: users.createdAt,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .where(isNull(users.deletedAt))
+    .orderBy(desc(users.createdAt));
+  return result;
+}
+
+export async function getAdminStats() {
+  const db = await getDb();
+  if (!db) return { totalUsers: 0, activeSubscriptions: 0, reviewsThisMonth: 0, totalProjects: 0, tierBreakdown: { free: 0, artist: 0, pro: 0 } };
+
+  const [userCount] = await db.select({ count: count() }).from(users).where(isNull(users.deletedAt));
+  const [subCount] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), sql`${users.stripeSubscriptionId} IS NOT NULL`));
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const [recentReviews] = await db.select({ count: count() }).from(reviews).where(gte(reviews.createdAt, thirtyDaysAgo));
+  const [projectCount] = await db.select({ count: count() }).from(projects);
+
+  // Tier breakdown
+  const [freeCount] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.tier, "free")));
+  const [artistCount] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.tier, "artist")));
+  const [proCount] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.tier, "pro")));
+
+  return {
+    totalUsers: userCount?.count ?? 0,
+    activeSubscriptions: subCount?.count ?? 0,
+    reviewsThisMonth: recentReviews?.count ?? 0,
+    totalProjects: projectCount?.count ?? 0,
+    tierBreakdown: {
+      free: freeCount?.count ?? 0,
+      artist: artistCount?.count ?? 0,
+      pro: proCount?.count ?? 0,
+    },
+  };
+}
+
+export async function getAdminRecentActivity() {
+  const db = await getDb();
+  if (!db) return [];
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const recentReviews = await db
+    .select({
+      id: reviews.id,
+      trackId: reviews.trackId,
+      reviewType: reviews.reviewType,
+      modelUsed: reviews.modelUsed,
+      createdAt: reviews.createdAt,
+    })
+    .from(reviews)
+    .where(gte(reviews.createdAt, sevenDaysAgo))
+    .orderBy(desc(reviews.createdAt))
+    .limit(20);
+  return recentReviews;
+}
