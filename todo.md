@@ -1922,3 +1922,25 @@
 - [x] Collaborator review-complete email already tested in features-round36.test.ts
 - [x] Run full test suite — 51 files, 1272 tests, ALL PASS
 - [x] TypeScript clean (tsc --noEmit exit 0)
+
+## Round 75 - AI Instrumentation Advisor
+
+### Core Feature: Instrumentation Advisor
+- [x] Audit existing track/review data model and AI critique system
+- [x] Design instrumentation advisor: data model, LLM prompt structure, and tRPC API
+- [x] Build server-side service (instrumentationAdvisor.ts) with Claude 4.5 structured JSON response
+- [x] Build tRPC procedures: instrumentation.targetStates (query) + instrumentation.generate (mutation)
+- [x] Build frontend InstrumentationAdvisorView component with target state selection UI
+- [x] Section-by-section breakdown with current instruments vs. suggested additions
+- [x] 6 target states: Fuller, Stripped-Back, Radio-Ready, Cinematic, Live-Ready, Electronic
+- [x] Priority levels (essential/recommended/optional) with expandable reasoning and technique hints
+- [x] Global suggestions, arrangement arc, and key takeaway sections
+- [x] Artist notes input for personalized advice
+- [x] Tempo marked as FIXED in system prompt (never suggests tempo changes)
+- [x] Added Instrumentation tab to TrackView.tsx
+- [x] Gated to Artist+ tier (assertFeatureAllowed)
+- [x] Rate-limited via aiAnalysisProcedure
+- [x] Write vitest tests — 16 tests pass (target states, Claude mock, fallback, all 6 targets)
+- [x] Run full test suite — 52 files, 1288 tests, ALL PASS
+- [x] TypeScript clean (tsc --noEmit exit 0)
+- [ ] Gravito governance audit deferred (Gravito temporarily unavailable — timeout)

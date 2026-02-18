@@ -36,6 +36,7 @@ import { SentimentHeatmap } from "@/components/SentimentHeatmap";
 import { MasteringChecklist } from "@/components/MasteringChecklist";
 import { ABReviewComparison } from "@/components/ABReviewComparison";
 import { TrackNotes } from "@/components/TrackNotes";
+import { InstrumentationAdvisorView } from "@/components/InstrumentationAdvisorView";
 
 // ── Mix Report Tab Wrapper ──
 function MixReportTab({ trackId }: { trackId: number }) {
@@ -79,6 +80,11 @@ function StructureTab({ trackId }: { trackId: number }) {
     suggestions: existingData.suggestions as any,
   } : null);
   return <StructureAnalysisView data={data} isGenerating={generateMutation.isPending} onGenerate={() => generateMutation.mutate({ trackId })} />;
+}
+
+// ── Instrumentation Advisor Tab Wrapper ──
+function InstrumentationAdvisorTab({ trackId }: { trackId: number }) {
+  return <InstrumentationAdvisorView trackId={trackId} />;
 }
 
 // ── Mood/Energy Tab Wrapper ──
@@ -1002,6 +1008,7 @@ export default function TrackView({ id }: { id: number }) {
           <TabsTrigger value="mix-report">Mix Report</TabsTrigger>
           <TabsTrigger value="structure">Structure</TabsTrigger>
           <TabsTrigger value="mood">Mood/Energy</TabsTrigger>
+          <TabsTrigger value="instrumentation">Instrumentation</TabsTrigger>
           <TabsTrigger value="annotations">Notes</TabsTrigger>
           {reviews.length >= 2 && <TabsTrigger value="compare">Compare</TabsTrigger>}
         </TabsList>
@@ -1319,6 +1326,11 @@ export default function TrackView({ id }: { id: number }) {
         {/* Mood/Energy Tab */}
         <TabsContent value="mood">
           <MoodEnergyTab trackId={id} />
+        </TabsContent>
+
+        {/* Instrumentation Advisor Tab */}
+        <TabsContent value="instrumentation">
+          <InstrumentationAdvisorTab trackId={id} />
         </TabsContent>
 
         {/* Annotations Tab */}

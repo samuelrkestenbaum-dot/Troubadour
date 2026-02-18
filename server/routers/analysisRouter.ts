@@ -4,6 +4,7 @@ import { router, protectedProcedure, aiAnalysisProcedure, exportProcedure } from
 import * as db from "../db";
 import { assertFeatureAllowed } from "../guards";
 import { generateMixReport, generateStructureAnalysis, generateDAWSessionNotes, aggregateGenreBenchmarks, generateProjectInsights } from "../services/analysisService";
+import { generateInstrumentationAdvice, TARGET_STATES, type TargetState } from "../services/instrumentationAdvisor";
 
 export const analysisRouter = {
   // ── Mix Report (Feature 3) ──
@@ -388,6 +389,54 @@ export const analysisRouter = {
           csv: csvRows.join("\n"),
           filename: `${project.title.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}-scores.csv`,
         };
+      }),
+  }),
+
+  // ── Instrumentation Advisor (AI-powered instrument/part suggestions per section) ──
+  instrumentation: router({
+    targetStates: protectedProcedure
+      .query(() => {
+        return Object.entries(TARGET_STATES).map(([key, val]) => ({
+          key: key as TargetState,
+          label: val.label,
+          description: val.description,
+          icon: val.icon,
+        }));
+      }),
+
+    generate: aiAnalysisProcedure
+      .input(z.object({
+        trackId: z.number(),
+        targetState: z.enum(["fuller", "stripped", "radioReady", "cinematic", "liveReady", "electronic"]),
+        artistNotes: z.string().max(1000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertFeatureAllowed(ctx.user.tier, "version_comparison"); // Artist+ feature
+        
+        const track = await db.getTrackById(input.trackId);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        
+        const features = await db.getAudioFeaturesByTrack(input.trackId);
+        if (!features?.geminiAnalysisJson) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Track needs audio analysis first. Run a review to generate analysis.",
+          });
+        }
+        
+        const analysis = features.geminiAnalysisJson as any;
+        const lyricsRow = await db.getLyricsByTrack(input.trackId);
+        
+        const advice = await generateInstrumentationAdvice({
+          trackTitle: track.originalFilename,
+          genre: track.detectedGenre || analysis.genre?.primary || "Unknown",
+          targetState: input.targetState,
+          audioAnalysis: analysis,
+          lyrics: lyricsRow?.[0]?.text || undefined,
+          artistNotes: input.artistNotes,
+        });
+        
+        return advice;
       }),
   }),
 };
