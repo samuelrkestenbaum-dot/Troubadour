@@ -1,11 +1,10 @@
 /**
  * Email Notification Service
- * Uses Postmark for transactional emails.
- * Gracefully degrades when POSTMARK_API_KEY is not configured — logs instead of sending.
+ * Uses Postmark for transactional emails (collaboration invites, review complete notifications).
+ * Gracefully degrades when POSTMARK_API_TOKEN is not configured — logs instead of sending.
  */
 
-const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY;
-const FROM_EMAIL = "noreply@troubadour.app"; // Will need to be verified in Postmark
+import { ENV } from "../_core/env";
 
 interface EmailPayload {
   to: string;
@@ -15,7 +14,9 @@ interface EmailPayload {
 }
 
 async function sendEmail(payload: EmailPayload): Promise<boolean> {
-  if (!POSTMARK_API_KEY) {
+  const apiToken = ENV.postmarkApiToken;
+
+  if (!apiToken) {
     console.log(`[Email] Postmark not configured — would have sent to ${payload.to}: "${payload.subject}"`);
     return false;
   }
@@ -26,10 +27,10 @@ async function sendEmail(payload: EmailPayload): Promise<boolean> {
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "X-Postmark-Server-Token": POSTMARK_API_KEY,
+        "X-Postmark-Server-Token": apiToken,
       },
       body: JSON.stringify({
-        From: FROM_EMAIL,
+        From: ENV.postmarkFromEmail || "noreply@troubadour.app",
         To: payload.to,
         Subject: payload.subject,
         HtmlBody: payload.htmlBody,

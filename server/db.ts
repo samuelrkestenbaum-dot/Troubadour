@@ -3031,3 +3031,12 @@ export async function getWebhookEventStats(): Promise<{
 
   return { total, last24h, byType };
 }
+
+
+// ── Total User Count (for signup numbering) ──
+export async function getTotalUserCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: sql<number>`COUNT(*)` }).from(users).where(isNull(users.deletedAt));
+  return result[0]?.count ?? 0;
+}

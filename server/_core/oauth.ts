@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { sendNewSignupAlert } from "../services/slackNotification";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -28,6 +29,10 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      // Check if this is a new user (not existing)
+      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      const isNewUser = !existingUser;
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
@@ -35,6 +40,17 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+
+      // Slack: notify about new signups (fire-and-forget)
+      if (isNewUser) {
+        const totalUsers = await db.getTotalUserCount().catch(() => 0);
+        sendNewSignupAlert({
+          userName: userInfo.name || "Anonymous",
+          userEmail: userInfo.email ?? undefined,
+          tier: "free",
+          signupNumber: totalUsers,
+        }).catch(() => {});
+      }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",

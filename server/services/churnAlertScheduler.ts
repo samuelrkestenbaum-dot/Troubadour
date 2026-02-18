@@ -79,6 +79,21 @@ async function runChurnCheck(): Promise<void> {
         logger.warn("[ChurnAlertScheduler] Failed to notify owner", { error: String(notifyErr) });
       }
 
+      // Send Slack alert (parallel, non-blocking)
+      try {
+        const { sendChurnAlert } = await import("./slackNotification");
+        await sendChurnAlert({
+          retentionRate: metrics.retentionRate,
+          threshold: currentThreshold,
+          totalUsers: metrics.totalUsers,
+          activeUsers: metrics.activeUsers,
+          inactiveUsers: metrics.inactiveUsers,
+          avgDaysSinceLogin: metrics.avgDaysSinceLogin,
+        });
+      } catch (slackErr) {
+        logger.warn("[ChurnAlertScheduler] Failed to send Slack alert", { error: String(slackErr) });
+      }
+
       // Log in audit log (system action, no admin user)
       try {
         await db.createAuditLogEntry({

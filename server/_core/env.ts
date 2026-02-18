@@ -14,4 +14,6 @@ export const ENV = {
   sentryDsn: process.env.SENTRY_DSN ?? "",
   postmarkApiToken: process.env.POSTMARK_API_TOKEN ?? "",
   postmarkFromEmail: process.env.POSTMARK_FROM_EMAIL ?? "noreply@troubadour.app",
+  slackWebhookUrl: process.env.SLACK_WEBHOOK_URL ?? "",
+  hubspotAccessToken: process.env.HUBSPOT_ACCESS_TOKEN ?? "",
 };

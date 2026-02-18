@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { constructWebhookEvent, getStripe } from "./stripe";
 import { PLANS } from "./products";
 import * as db from "../db";
+import { sendPaymentAlert, sendSubscriptionChangeAlert } from "../services/slackNotification";
+import { syncSubscriberToHubSpot, updateSubscriberTier, logSubscriptionEvent } from "../services/hubspotSync";
 
 /**
  * Map a Stripe Price ID to our tier.
@@ -70,6 +72,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       audioMinutesLimit: plan.audioMinutesLimit,
     });
     console.log(`[Webhook] User ${userId} upgraded to ${tier}`);
+
+    // Slack: notify about new checkout
+    const user = await db.getUserById(userId);
+    sendPaymentAlert({
+      eventType: "checkout.session.completed",
+      userName: user?.name || `User #${userId}`,
+      amount: session.amount_total ?? undefined,
+      currency: session.currency ?? undefined,
+      tier,
+      description: `New ${tier} subscription`,
+    }).catch(() => {});
+
+    // HubSpot: sync new subscriber
+    if (user?.email) {
+      syncSubscriberToHubSpot({
+        userId,
+        email: user.email,
+        name: user.name || undefined,
+        tier,
+        signupDate: user.createdAt ? new Date(user.createdAt) : undefined,
+      }).catch(() => {});
+    }
   }
 }
 
@@ -93,14 +117,41 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     const tier = priceId ? await tierFromPriceId(priceId) : "artist";
     if (tier !== "free") {
       const plan = PLANS[tier];
+      const previousTier = user.tier || "free";
       await db.updateUserSubscription(user.id, {
         tier,
         stripeSubscriptionId: subscription.id,
         audioMinutesLimit: plan.audioMinutesLimit,
       });
       console.log(`[Webhook] User ${user.id} subscription updated to ${tier}`);
+
+      // Slack: notify about subscription change
+      if (previousTier !== tier) {
+        const changeType = PLANS[tier].priceMonthly > (PLANS[previousTier as keyof typeof PLANS]?.priceMonthly ?? 0) ? "upgrade" : "downgrade";
+        sendSubscriptionChangeAlert({
+          userName: user.name || `User #${user.id}`,
+          previousTier,
+          newTier: tier,
+          changeType: changeType as "upgrade" | "downgrade",
+        }).catch(() => {});
+
+        // HubSpot: update tier
+        updateSubscriberTier({
+          userId: user.id,
+          email: user.email || undefined,
+          newTier: tier,
+          previousTier,
+        }).catch(() => {});
+        logSubscriptionEvent({
+          userId: user.id,
+          email: user.email || undefined,
+          eventType: changeType as "upgrade" | "downgrade",
+          details: `${previousTier} → ${tier}`,
+        }).catch(() => {});
+      }
     }
   } else if (status === "canceled" || status === "unpaid" || status === "past_due") {
+    const previousTier = user.tier || "free";
     // Downgrade to free
     await db.updateUserSubscription(user.id, {
       tier: "free",
@@ -108,6 +159,28 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       audioMinutesLimit: PLANS.free.audioMinutesLimit,
     });
     console.log(`[Webhook] User ${user.id} downgraded to free (status: ${status})`);
+
+    // Slack: notify about cancellation/downgrade
+    sendSubscriptionChangeAlert({
+      userName: user.name || `User #${user.id}`,
+      previousTier,
+      newTier: "free",
+      changeType: status === "canceled" ? "cancel" : "downgrade",
+    }).catch(() => {});
+
+    // HubSpot: update tier to free
+    updateSubscriberTier({
+      userId: user.id,
+      email: user.email || undefined,
+      newTier: "free",
+      previousTier,
+    }).catch(() => {});
+    logSubscriptionEvent({
+      userId: user.id,
+      email: user.email || undefined,
+      eventType: status === "canceled" ? "cancel" : "downgrade",
+      details: `${previousTier} → free (${status})`,
+    }).catch(() => {});
   }
 }
 
@@ -121,12 +194,35 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const user = await db.getUserByStripeCustomerId(customerId);
   if (!user) return;
 
+  const previousTier = user.tier || "free";
   await db.updateUserSubscription(user.id, {
     tier: "free",
     stripeSubscriptionId: null,
     audioMinutesLimit: PLANS.free.audioMinutesLimit,
   });
   console.log(`[Webhook] User ${user.id} subscription deleted, downgraded to free`);
+
+  // Slack: notify about subscription deletion
+  sendSubscriptionChangeAlert({
+    userName: user.name || `User #${user.id}`,
+    previousTier,
+    newTier: "free",
+    changeType: "cancel",
+  }).catch(() => {});
+
+  // HubSpot: update tier to free on deletion
+  updateSubscriberTier({
+    userId: user.id,
+    email: user.email || undefined,
+    newTier: "free",
+    previousTier,
+  }).catch(() => {});
+  logSubscriptionEvent({
+    userId: user.id,
+    email: user.email || undefined,
+    eventType: "cancel",
+    details: `Subscription deleted (${previousTier} → free)`,
+  }).catch(() => {});
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
@@ -199,6 +295,13 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         break;
       case "invoice.payment_failed":
         await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+        // Slack: notify about payment failure
+        sendPaymentAlert({
+          eventType: "invoice.payment_failed",
+          amount: (event.data.object as any).amount_due,
+          currency: (event.data.object as any).currency,
+          description: `Payment failed (attempt ${(event.data.object as any).attempt_count ?? 1})`,
+        }).catch(() => {});
         break;
       default:
         console.log(`[Webhook] Unhandled event type: ${event.type}`);

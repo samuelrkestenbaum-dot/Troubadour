@@ -1844,3 +1844,44 @@
 - [x] Fixed round 70 test threshold (250→350) for growing adminRouter
 - [x] All 1,232 tests passing (47 test files)
 - [x] TypeScript clean (tsc --noEmit exit 0)
+
+## Round 73.5 - Infrastructure Gap Fixes
+
+### Sentry DSN Setup (DEFERRED — user will provide DSN later)
+- [ ] Create Sentry project via MCP or find existing project DSN
+- [ ] Inject SENTRY_DSN (server) and VITE_SENTRY_DSN (client) via webdev_request_secrets
+- [ ] Verify Sentry initialization works on both client and server
+- [ ] Write validation test for Sentry DSN
+
+### Postmark Token Mapping
+- [x] Map Postmark BYOK to POSTMARK_API_TOKEN via webdev_request_secrets
+- [x] Set POSTMARK_FROM_EMAIL to verified sender (default: noreply@troubadour.app)
+- [x] Verify email service connects successfully (server: "My First Server")
+- [x] Write validation test for Postmark token (4 tests pass)
+- [x] Fix emailNotification.ts to use ENV.postmarkApiToken instead of POSTMARK_API_KEY
+
+### Slack Admin Alerts
+- [x] Create Slack notification service (server/services/slackNotification.ts)
+- [x] Add SLACK_WEBHOOK_URL to env.ts (graceful degradation when not configured)
+- [x] Wire Slack alerts into churn scheduler (churnAlertScheduler.ts)
+- [x] Wire Slack alerts into Stripe webhook (checkout, subscription changes, payment failures)
+- [x] Wire Slack alerts into OAuth callback (new signup notifications)
+- [x] Write tests for Slack notification service (12 tests pass)
+- [ ] Add Slack notification toggle to admin notification preferences (deferred — UI enhancement)
+- [ ] Provide SLACK_WEBHOOK_URL via webdev_request_secrets when Troubadour Slack workspace is ready
+
+### HubSpot CRM Sync
+- [x] Create HubSpot sync service (server/services/hubspotSync.ts)
+- [x] Add HUBSPOT_ACCESS_TOKEN to env.ts (graceful degradation when not configured)
+- [x] Sync paying users as HubSpot contacts on checkout.session.completed
+- [x] Track tier changes on subscription.updated and subscription.deleted
+- [x] Log subscription events as HubSpot engagement notes
+- [x] Bulk sync function for initial reconciliation
+- [x] Custom property setup function (troubadour_tier, troubadour_user_id, troubadour_mrr, troubadour_signup_date)
+- [x] Write tests for HubSpot sync service (14 tests pass)
+- [ ] Add HubSpot sync toggle to admin settings (deferred — UI enhancement)
+- [ ] Provide HUBSPOT_ACCESS_TOKEN via webdev_request_secrets when HubSpot Private App is created
+
+### Tests & Quality
+- [x] Write tests for all infrastructure integrations (30 tests total)
+- [x] Verify all tests pass and TypeScript is clean (tsc --noEmit exit 0)
