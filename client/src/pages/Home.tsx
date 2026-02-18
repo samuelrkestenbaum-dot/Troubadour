@@ -155,15 +155,15 @@ export default function Home() {
         <div className="container max-w-4xl mx-auto text-center relative">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 shadow-sm shadow-primary/10">
             <Sparkles className="h-3.5 w-3.5" />
-            AI-Powered Music Intelligence
+            Real Music Analysis.
           </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
-            Master Your Music.{" "}
-            <span className="bg-gradient-to-r from-red-500 via-amber-400 to-red-500 bg-clip-text text-transparent">Grow</span>{" "}
-            Your Sound.
+            The AI That Actually{" "}
+            <span className="bg-gradient-to-r from-red-500 via-amber-400 to-red-500 bg-clip-text text-transparent">Listens</span>{" "}
+            to Your Music.
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Troubadour delivers more than just feedback. Get actionable insights, track your artistic evolution, and make data-driven decisions for every release.
+            Upload a track. Get a real critique. Not a vague pat on the back.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={handleGetStarted} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
@@ -180,9 +180,9 @@ export default function Home() {
       {/* What Your Review Covers — Dimension Carousel */}
       <section className="py-24 border-t border-border/30">
         <div className="container max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Beyond Basic Feedback</h2>
+          <h2 className="text-3xl font-bold text-center mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>What Your Review Covers</h2>
           <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-            Our AI dives deep into every aspect of your track, giving you a comprehensive breakdown.
+            Every review breaks down your track across these key areas.
           </p>
 
           {/* Dimension Selector Tabs */}
@@ -258,9 +258,9 @@ export default function Home() {
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-                { step: "01", title: "Upload Your Track", description: "Securely submit your audio file in seconds. We support all major formats.", icon: Upload, gradient: "from-amber-500/15 to-amber-500/5", iconColor: "text-amber-400" },
-              { step: "02", title: "Instant AI Analysis", description: "Our AI processes your music, dissecting its core elements and potential.", icon: Headphones, gradient: "from-violet-500/15 to-violet-500/5", iconColor: "text-violet-400" },
-              { step: "03", title: "Unlock Actionable Insights", description: "Receive a detailed report, skill tracking, and strategic intelligence for your next move.", icon: FileText, gradient: "from-emerald-500/15 to-emerald-500/5", iconColor: "text-emerald-400" },
+                { step: "01", title: "Upload Your Track", description: "Drop your MP3 or WAV. That's it.", icon: Upload, gradient: "from-amber-500/15 to-amber-500/5", iconColor: "text-amber-400" },
+              { step: "02", title: "AI Analyzes the Audio", description: "Our AI processes the actual audio waveform — not just metadata.", icon: Headphones, gradient: "from-violet-500/15 to-violet-500/5", iconColor: "text-violet-400" },
+              { step: "03", title: "Get Your Review", description: "Detailed critique in minutes. Scores, notes, and what to fix next.", icon: FileText, gradient: "from-emerald-500/15 to-emerald-500/5", iconColor: "text-emerald-400" },
             ].map((item) => (
               <div key={item.step} className="relative p-7 rounded-2xl border border-border/40 bg-card/80 hover:border-border/60 transition-all group">
                 <div className="text-xs font-mono text-muted-foreground/50 mb-4">{item.step}</div>
@@ -285,9 +285,9 @@ export default function Home() {
                   <BarChart3 className="h-5 w-5 text-violet-400" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-violet-400">AI Audio Reviews</span>
                 </div>
-                <h3 className="text-2xl font-bold mb-3" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Your Personal A&R, On Demand</h3>
+                <h3 className="text-2xl font-bold mb-3" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>This AI Listens.</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Stop guessing. Troubadour provides comprehensive, unbiased critiques across songwriting, production, arrangement, performance, and commercial potential. Understand exactly what works and what needs refinement, so you can craft your best music yet.
+                  Troubadour doesn't just read your metadata. It processes the actual audio waveform, identifying musical elements, structure, and dynamics to give you meaningful feedback across songwriting, production, arrangement, performance, and commercial potential.
                 </p>
               </div>
               <Button size="lg" onClick={handleGetStarted} className="bg-violet-500 hover:bg-violet-600 text-white shrink-0 shadow-lg shadow-violet-500/25">
@@ -302,7 +302,7 @@ export default function Home() {
       {/* Features Grid */}
       <section className="py-24 border-t border-border/30">
         <div className="container max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-16" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>What Troubadour Unlocks For You</h2>
+          <h2 className="text-3xl font-bold text-center mb-16" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>What You Get With Troubadour</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               { icon: BarChart3, title: "Multi-Dimensional Scoring", desc: "Every review scores across songwriting, production, arrangement, performance, and commercial potential — the full picture in one critique." },
@@ -336,9 +336,9 @@ export default function Home() {
       <section className="py-24 border-t border-border/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent" />
         <div className="container max-w-2xl mx-auto text-center relative">
-          <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Stop Guessing. Start Growing.</h2>
+          <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Get Your Track Reviewed.</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            The future of music feedback is here. Get the insights you need to refine your craft, understand your audience, and confidently release your best work.
+            Stop guessing if your mix is off or your arrangement works. Get actionable feedback that helps you improve your music, fast.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
             <Button size="lg" onClick={handleGetStarted} className="text-base px-8 h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
@@ -363,7 +363,7 @@ export default function Home() {
                 <span className="text-lg font-bold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Troubadour</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                Your AI co-pilot for creative growth. Actionable insights, skill tracking, and strategic intelligence for every release.
+                Real feedback for real music. Upload a track, get an honest critique, and know exactly what to fix.
               </p>
             </div>
 
@@ -394,7 +394,7 @@ export default function Home() {
               &copy; {new Date().getFullYear()} Troubadour. All reviews are AI-generated.
             </p>
             <p className="text-xs text-muted-foreground/60">
-              Your AI co-pilot for creative growth.
+              Real feedback for real music.
             </p>
           </div>
         </div>

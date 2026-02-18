@@ -2106,4 +2106,12 @@
 - [x] Write tests for digest service and animations (33 tests in features-round80.test.ts)
 - [x] TypeScript clean (tsc --noEmit, only pre-existing BatchActionsToolbar phantom errors)
 - [x] All tests pass (55 files, 1401 tests)
-- [ ] Push to GitHub (pending)
+- [x] Push to GitHub
+
+## Round 81 - Revert Landing Page Hero Copy to Original Voice
+
+- [x] Read current landing page hero copy (Claude 4.5 rewrite from Round 79)
+- [x] Find or reconstruct the original "AI that actually listens to your music" hero messaging
+- [x] Use Claude to refine the original-style copy while keeping it authentic
+- [x] Apply updated copy to Home.tsx hero section (all 15 copy sections updated)
+- [ ] Verify, checkpoint, push to GitHub (pending)
