@@ -447,6 +447,79 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+
+          {/* What to Expect — Preview of a Real Review */}
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">What you'll get</h2>
+            <Card className="border-border/40 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/40">
+                  {/* Left: Sample Review Snippet */}
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Music className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Sample Review Preview</p>
+                        <p className="text-xs text-muted-foreground">What a Troubadour critique looks like</p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 border border-border/30 p-4 space-y-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-muted-foreground">QUICK TAKE</span>
+                      </div>
+                      <p className="text-muted-foreground italic leading-relaxed">
+                        "Strong melodic instinct with a chorus that earns its payoff. The verse-to-chorus transition at 0:47 is the track's best moment — the energy lift feels natural. Production is clean but the low-mids are competing with the vocal around 1:22-1:45. The bridge feels like it's searching for a resolution it doesn't quite find."
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {["Songwriting: 7.8", "Production: 7.2", "Vocal: 8.1", "Arrangement: 7.5"].map(s => (
+                          <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Every review includes timestamped feedback, dimensional scores, and specific suggestions — not vague encouragement.
+                    </p>
+                  </div>
+
+                  {/* Right: What You'll Unlock */}
+                  <div className="p-6 space-y-4">
+                    <p className="text-sm font-semibold mb-3">As you upload more tracks, you'll unlock:</p>
+                    <div className="space-y-3">
+                      {[
+                        { icon: GraduationCap, color: "text-blue-400", label: "Skill Progression", desc: "Track how your songwriting, production, and performance improve over time" },
+                        { icon: Swords, color: "text-violet-400", label: "Competitive Benchmarks", desc: "See how your scores compare to genre percentiles" },
+                        { icon: Rocket, color: "text-emerald-400", label: "Release Readiness", desc: "Get a go/no-go signal before you release" },
+                        { icon: Flame, color: "text-orange-400", label: "Creative Streaks", desc: "Build momentum with upload streaks and milestones" },
+                        { icon: Dna, color: "text-pink-400", label: "Artist DNA", desc: "Discover your unique sonic fingerprint across all your music" },
+                      ].map(item => (
+                        <div key={item.label} className="flex items-start gap-3">
+                          <item.icon className={`h-4 w-4 mt-0.5 ${item.color} shrink-0`} />
+                          <div>
+                            <p className="text-sm font-medium">{item.label}</p>
+                            <p className="text-xs text-muted-foreground">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-2">
+                      <Button variant="outline" size="sm" onClick={() => setLocation("/projects/new")} className="w-full">
+                        <UploadCloud className="h-4 w-4 mr-2" />
+                        Upload Your First Track
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Time Expectation */}
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>First review typically takes 1-2 minutes. You'll see live progress while you wait.</span>
+          </div>
         </div>
       ) : (
         <>

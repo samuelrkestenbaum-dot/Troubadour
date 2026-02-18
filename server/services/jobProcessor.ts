@@ -287,7 +287,7 @@ async function processAnalyzeJob(jobId: number, job: any) {
   if (!track) throw new Error(`Track ${job.trackId} not found`);
 
   await db.updateTrackStatus(track.id, "analyzing");
-  await db.updateJob(jobId, { progress: 10, progressMessage: "Sending audio for analysis..." });
+  await db.updateJob(jobId, { progress: 10, progressMessage: "Sending your audio to our AI listener — this takes about 30 seconds..." });
 
   // Always use comprehensive "full" review — no persona filtering
   const project = await db.getProjectById(track.projectId);
@@ -296,7 +296,7 @@ async function processAnalyzeJob(jobId: number, job: any) {
   // Step 1: Gemini analyzes the audio (guided by reviewFocus)
   const geminiAnalysis = await analyzeAudioWithGemini(track.storageUrl, track.mimeType, reviewFocus);
 
-  await db.updateJob(jobId, { progress: 60, progressMessage: "Audio analysis complete. Saving features..." });
+  await db.updateJob(jobId, { progress: 60, progressMessage: "Audio analysis complete — mapping tempo, key, energy, sections, and production details..." });
 
   // Step 2: Save features to DB
   const duration = geminiAnalysis.estimatedDuration || track.duration || 0;
@@ -342,7 +342,7 @@ async function processAnalyzeJob(jobId: number, job: any) {
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,
-    progressMessage: "Audio analysis complete",
+    progressMessage: "Audio analysis complete — your track is ready for review",
     completedAt: new Date(),
   });
 
@@ -370,7 +370,7 @@ async function processReviewJob(jobId: number, job: any) {
   if (!project) throw new Error(`Project ${track.projectId} not found`);
 
   await db.updateTrackStatus(track.id, "reviewing");
-  await db.updateJob(jobId, { progress: 10, progressMessage: "Preparing review data..." });
+  await db.updateJob(jobId, { progress: 10, progressMessage: "Loading your track's audio fingerprint and analysis data..." });
 
   // Get audio features
   const features = await db.getAudioFeaturesByTrack(track.id);
@@ -411,7 +411,7 @@ async function processReviewJob(jobId: number, job: any) {
     console.log(`[JobQueue] Using template focus areas: ${templateFocusAreas.join(", ")}`);
   }
 
-  await db.updateJob(jobId, { progress: 20, progressMessage: "Checking for previous reviews..." });
+  await db.updateJob(jobId, { progress: 20, progressMessage: "Checking for previous reviews to build on your history..." });
 
   // Smart re-review: look for the current latest review on this track
   const existingReviews = await db.getReviewHistory(track.id);
@@ -439,7 +439,7 @@ async function processReviewJob(jobId: number, job: any) {
     }
   }
 
-  await db.updateJob(jobId, { progress: 30, progressMessage: previousReviewContext ? "Writing follow-up critique..." : "Writing your critique..." });
+  await db.updateJob(jobId, { progress: 30, progressMessage: previousReviewContext ? "Writing a follow-up critique — comparing against your last review..." : "Troubadour is listening and writing your critique — this is the longest step..." });
 
   // Use auto-detected genre from Gemini analysis, falling back to user-provided genre
   const geminiAnalysis = features.geminiAnalysisJson as GeminiAudioAnalysis;
@@ -464,7 +464,7 @@ async function processReviewJob(jobId: number, job: any) {
     templateSystemPrompt,
   });
 
-  await db.updateJob(jobId, { progress: 80, progressMessage: "Saving review..." });
+  await db.updateJob(jobId, { progress: 80, progressMessage: "Critique written — extracting scores and saving your review..." });
 
   // Save review
   const review = await db.createReview({
@@ -483,7 +483,7 @@ async function processReviewJob(jobId: number, job: any) {
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,
-    progressMessage: "Review complete",
+    progressMessage: "Review complete — your critique is ready to read",
     resultId: review.id,
     completedAt: new Date(),
   });
@@ -561,7 +561,7 @@ async function processAlbumReviewJob(jobId: number, job: any) {
   if (!project) throw new Error(`Project ${job.projectId} not found`);
 
   await db.updateProjectStatus(project.id, "processing");
-  await db.updateJob(jobId, { progress: 10, progressMessage: "Gathering track data for album review..." });
+  await db.updateJob(jobId, { progress: 10, progressMessage: "Gathering all track data and reviews for your album assessment..." });
 
   const projectTracks = await db.getTracksByProject(project.id);
   if (projectTracks.length === 0) throw new Error("No tracks found in project");
@@ -590,7 +590,7 @@ async function processAlbumReviewJob(jobId: number, job: any) {
     throw new Error("No analyzed tracks found. Please analyze individual tracks first.");
   }
 
-  await db.updateJob(jobId, { progress: 40, progressMessage: "Writing the album A&R memo..." });
+  await db.updateJob(jobId, { progress: 40, progressMessage: "Writing your album A&R memo — analyzing sequencing, arc, and cohesion..." });
 
   const albumResult = await generateAlbumReview({
     projectTitle: project.title,
@@ -602,7 +602,7 @@ async function processAlbumReviewJob(jobId: number, job: any) {
     trackReviews,
   });
 
-  await db.updateJob(jobId, { progress: 80, progressMessage: "Saving album review..." });
+  await db.updateJob(jobId, { progress: 80, progressMessage: "Album assessment written — saving your A&R memo..." });
 
   const review = await db.createReview({
     projectId: project.id,
@@ -620,7 +620,7 @@ async function processAlbumReviewJob(jobId: number, job: any) {
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,
-    progressMessage: "Album review complete",
+    progressMessage: "Album review complete — your A&R memo is ready",
     resultId: review.id,
     completedAt: new Date(),
   });
@@ -655,7 +655,7 @@ async function processCompareJob(jobId: number, job: any) {
   const v1Track = await db.getTrackById(v2Track.parentTrackId);
   if (!v1Track) throw new Error(`Parent track ${v2Track.parentTrackId} not found`);
 
-  await db.updateJob(jobId, { progress: 10, progressMessage: "Gathering version data..." });
+  await db.updateJob(jobId, { progress: 10, progressMessage: "Loading both versions for side-by-side comparison..." });
 
   const v1Features = await db.getAudioFeaturesByTrack(v1Track.id);
   const v2Features = await db.getAudioFeaturesByTrack(v2Track.id);
@@ -664,7 +664,7 @@ async function processCompareJob(jobId: number, job: any) {
     throw new Error("Both versions must be analyzed before comparison");
   }
 
-  await db.updateJob(jobId, { progress: 20, progressMessage: "Comparing both versions..." });
+  await db.updateJob(jobId, { progress: 20, progressMessage: "AI is listening to both versions back-to-back..." });
 
   // Gemini side-by-side comparison
   let geminiComparison = "";
@@ -677,7 +677,7 @@ async function processCompareJob(jobId: number, job: any) {
     console.warn("[JobQueue] Gemini comparison failed, proceeding with analysis data only:", e.message);
   }
 
-  await db.updateJob(jobId, { progress: 50, progressMessage: "Writing the comparison..." });
+  await db.updateJob(jobId, { progress: 50, progressMessage: "Writing your version comparison — identifying what changed and what improved..." });
 
   const v1Reviews = await db.getReviewsByTrack(v1Track.id);
   const v2Reviews = await db.getReviewsByTrack(v2Track.id);
@@ -709,7 +709,7 @@ async function processCompareJob(jobId: number, job: any) {
   await db.updateJob(jobId, {
     status: "done",
     progress: 100,
-    progressMessage: "Version comparison complete",
+    progressMessage: "Version comparison complete — see what changed",
     resultId: review.id,
     completedAt: new Date(),
   });

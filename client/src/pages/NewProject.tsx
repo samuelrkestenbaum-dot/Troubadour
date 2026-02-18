@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Music, X, FileAudio, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { trackProjectCreated } from "@/lib/analytics";
 import { DropZone } from "@/components/DropZone";
 
@@ -287,6 +287,22 @@ export default function NewProject() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* What to Expect — shown when files are queued */}
+            {trackedFiles.length > 0 && !isCreating && (
+              <div className="rounded-lg border border-primary/10 bg-primary/5 p-4 space-y-2">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  What happens next
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 ml-6">
+                  <li>Your audio is sent to our AI for deep listening (about 30 seconds per track)</li>
+                  <li>A full written critique is generated with timestamped feedback and scores</li>
+                  <li>You'll see live progress on the project page while you wait</li>
+                  <li>Total time: roughly 1-2 minutes per track</li>
+                </ul>
               </div>
             )}
 

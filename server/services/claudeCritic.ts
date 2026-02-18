@@ -291,14 +291,23 @@ CRITICAL FORMAT RULES:
 - Each bullet should be 1-2 sentences max. Concise and scannable.
 - Reference specific timestamps, sections, and musical elements from analysis data.
 - Tie observations to audio analysis (energy curve, sections, production data).
-- Score each dimension 1-10 with a brief justification.
 - Be specific: "kick at 1:23 is muddy around 200Hz" not "drums could be better."
-- Acknowledge what works before critiquing.
+- Acknowledge what works before critiquing — but don't soften real problems.
 - Your job is not just to observe — it's to SUGGEST. Tell them what to ADD, what to CHANGE, and HOW to bring it all together.
 - Think like a co-producer: suggest specific elements (instruments, textures, harmonies, effects, arrangement moves) that would elevate the track.
 - If something is missing, name it and describe what it should sound like.
+- When suggesting changes, be concrete enough that the artist can open their DAW and act on it immediately. "Add reverb" is too vague. "Add a plate reverb with 1.5s decay on the vocal, mixed at 15-20% wet, to create depth without washing out the consonants" is what we want.
 - Keep the review between ${config.wordRange} words.
 - DO NOT repeat sections. Write each section exactly once.
+
+SCORE CALIBRATION — READ THIS CAREFULLY:
+- Scores are 1-10 where 5 is competent but unremarkable, 7 is genuinely good, 9 is exceptional, 10 is virtually flawless.
+- Most independent/unsigned tracks should land between 4-7. A score of 8+ means this dimension is release-ready and competitive with professional releases.
+- DO NOT default to 6-7 across the board. If the production is rough, say 4. If the hook is unforgettable, say 9. Differentiate.
+- The Overall score should NOT be the average — it's your gut verdict on the track as a whole. Weight what matters most for this genre.
+- If you give a dimension below 5, you MUST explain specifically what's wrong and how to fix it.
+- If you give a dimension above 8, you MUST point to the specific moment or element that earns it.
+- Score each dimension 1-10 with a brief but honest justification. Resist the urge to be nice — artists come here for the truth.
 
 For the Scores table, use this EXACT format:
 
@@ -314,6 +323,12 @@ For the Scores table, use this EXACT format:
 | Originality | 6 | Brief reason |
 | Commercial Potential | 7 | Brief reason |
 | Overall | 7 | Brief reason |
+
+CRITIQUE DEPTH GUIDELINES:
+- For each "What's Working" bullet, explain WHY it works — not just that it does. "The chorus vocal melody works" is weak. "The chorus melody's descending 4th interval at 1:12 creates an earworm because it resolves the tension built by the pre-chorus climb" is strong.
+- For each "What Needs Work" or "What's Missing" bullet, provide a before/after vision. Describe what it sounds like now AND what it should sound like.
+- In "How to Bring It All Together," prioritize by impact. Lead with the change that would make the biggest difference. Number them if helpful.
+- If the track has a clear genre, reference 1-2 specific comparable tracks or artists to anchor your feedback. "Your verse melody has a similar contour to Frank Ocean's 'Thinkin Bout You' but lacks the harmonic tension underneath — try adding a suspended chord on beat 3."
 
 ${config.sections}
 

@@ -578,22 +578,63 @@ export default function ProjectView({ id }: { id: number }) {
       {activeJobs.length > 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="py-4">
-            <div className="space-y-3">
-              {activeJobs.map(job => (
-                <div key={job.id} className="flex items-center gap-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium capitalize">{job.type.replace("_", " ")}</span>
-                      <span className="text-muted-foreground">{job.progress}%</span>
+            <div className="space-y-4">
+              {activeJobs.map(job => {
+                // Estimate remaining time based on job type and progress
+                const estimateTime = (type: string, progress: number) => {
+                  const totalEstimates: Record<string, number> = {
+                    analyze: 45, review: 60, analyze_and_review: 90,
+                    album_review: 120, compare: 75,
+                  };
+                  const total = totalEstimates[type] || 60;
+                  const elapsed = (progress / 100) * total;
+                  const remaining = Math.max(0, total - elapsed);
+                  if (remaining < 10) return "Almost done...";
+                  if (remaining < 30) return "Less than 30s remaining";
+                  if (remaining < 60) return `~${Math.round(remaining)}s remaining`;
+                  return `~${Math.round(remaining / 60)}min remaining`;
+                };
+                // Phase indicator based on progress
+                const getPhase = (type: string, progress: number) => {
+                  if (type === "analyze_and_review" || type === "review") {
+                    if (progress < 15) return { label: "Preparing", icon: "\u2699\uFE0F" };
+                    if (progress < 25) return { label: "Checking history", icon: "\uD83D\uDCCB" };
+                    if (progress < 60) return { label: "AI is listening & writing", icon: "\uD83C\uDFA7" };
+                    if (progress < 85) return { label: "Saving your review", icon: "\uD83D\uDCBE" };
+                    return { label: "Finishing up", icon: "\u2728" };
+                  }
+                  if (type === "analyze") {
+                    if (progress < 15) return { label: "Uploading audio", icon: "\uD83C\uDFB5" };
+                    if (progress < 65) return { label: "AI is listening carefully", icon: "\uD83C\uDFA7" };
+                    return { label: "Processing results", icon: "\u2699\uFE0F" };
+                  }
+                  return { label: "Processing", icon: "\u2699\uFE0F" };
+                };
+                const phase = getPhase(job.type, job.progress);
+                return (
+                  <div key={job.id} className="rounded-lg border border-border/50 bg-card/50 p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium capitalize">{job.type.replace("_", " ")}</span>
+                          <span className="text-xs text-muted-foreground">{estimateTime(job.type, job.progress)}</span>
+                        </div>
+                        <Progress value={job.progress} className="h-1.5 mt-1.5" />
+                        <div className="flex items-center justify-between mt-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            <span className="mr-1">{phase.icon}</span>
+                            {job.progressMessage || phase.label}
+                          </p>
+                          <span className="text-xs font-medium text-primary tabular-nums">{job.progress}%</span>
+                        </div>
+                      </div>
                     </div>
-                    <Progress value={job.progress} className="h-1.5 mt-1" />
-                    {job.progressMessage && (
-                      <p className="text-xs text-muted-foreground mt-1">{job.progressMessage}</p>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

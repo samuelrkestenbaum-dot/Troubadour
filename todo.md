@@ -2114,4 +2114,31 @@
 - [x] Find or reconstruct the original "AI that actually listens to your music" hero messaging
 - [x] Use Claude to refine the original-style copy while keeping it authentic
 - [x] Apply updated copy to Home.tsx hero section (all 15 copy sections updated)
-- [ ] Verify, checkpoint, push to GitHub (pending)
+- [x] Verify, checkpoint, push to GitHub
+
+## Round 82 - Core Product Experience Improvements (Claude 4.5 + Gravito)
+
+### Review Quality
+- [x] Audit current Claude review prompts for specificity and actionability
+- [x] Enhance scoring calibration — SCORE CALIBRATION section with anchor examples
+- [x] Improve review output formatting for readability and scannability
+- [x] Add concrete examples and specific timestamps in review output
+
+### Upload-to-Results Flow
+- [x] Audit upload flow for friction points and error handling gaps
+- [x] Improve progress feedback with estimated time remaining and phase indicators
+- [x] Enhanced backend progress messages to be more descriptive and engaging
+- [x] Added phase icons (Headphones, Brain, FileText) to progress UI
+
+### Onboarding & First-Use Experience
+- [x] Audit first-time user experience from landing → signup → first upload
+- [x] Added "What you'll get" preview with sample review snippet to Dashboard empty state
+- [x] Added "What you'll unlock" Intelligence Suite features + time expectation footer
+- [x] Added "What happens next" callout to NewProject when files are queued
+
+### Quality & Governance
+- [x] Run Claude 4.5 quality audit on all changes (no Critical issues)
+- [x] Run Gravito governance review (503 Service Unavailable — noted as pending)
+- [x] Write tests for all improvements (29 tests in features-round82.test.ts)
+- [x] TypeScript clean, all tests pass (56 files, 1430 tests)
+- [ ] Push to GitHub (pending)
