@@ -27,7 +27,7 @@ export const PLANS = {
     audioMinutesLimit: 240,
     monthlyReviewLimit: 999,
     priceMonthly: 1900, // $19.00 in cents
-    stripePriceId: "", // Will be created dynamically or set via env
+    stripePriceId: process.env.STRIPE_ARTIST_PRICE_ID || "price_1T2UrXPbT3YQzJXSR4ou1XVL",
     features: [
       "Unlimited AI reviews",
       "All review focus modes",
@@ -46,7 +46,7 @@ export const PLANS = {
     audioMinutesLimit: 720,
     monthlyReviewLimit: 999,
     priceMonthly: 4900, // $49.00 in cents
-    stripePriceId: "", // Will be created dynamically or set via env
+    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || "price_1T2UrcPbT3YQzJXSOa8cQPv8",
     features: [
       "Everything in Artist",
       "480+ audio minutes/month",

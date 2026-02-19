@@ -2249,3 +2249,25 @@
 - [x] Write tests for all Round 87 features (33 tests in features-round87.test.ts)
 - [x] All tests pass (60 files, 1566 tests)
 - [ ] Push to GitHub (token expired - use Settings → GitHub to export)
+
+## Round 88 - SEO Crawling + Stripe + Gravito (Claude 4.5)
+
+### robots.txt and sitemap.xml
+- [x] Create robots.txt with proper crawl directives (allow 6 public pages, block 18 authenticated routes + /api/)
+- [x] Create sitemap.xml with 5 public routes and proper priorities (1.0 homepage, 0.9 pricing, 0.5 support, 0.3 legal)
+- [x] Add sitemap reference in robots.txt (relative /sitemap.xml)
+- [x] Verified both served correctly from dev server root
+
+### Stripe Sandbox Verification
+- [x] Check Stripe integration status (account acct_1SZO4ePbT3YQzJXS connected)
+- [x] Verified webhook endpoint returns 400 for missing signature (correct behavior)
+- [x] Created products: Troubadour Artist (prod_U0VtqSOBnijjVq) + Pro (prod_U0VtVGRHEFeHmK)
+- [x] Created prices: Artist $19/mo (price_1T2UrXPbT3YQzJXSR4ou1XVL) + Pro $49/mo (price_1T2UrcPbT3YQzJXSOa8cQPv8)
+- [x] Wired price IDs into products.ts with env var override supp### Gravito Governance Review
+- [x] Attempt Gravito reviewContent on landing page copy (tool list succeeded, but calls return 503)
+- [x] Attempt Gravito reviewContent on testimonial content (503 Service Unavailable)
+- [x] Attempt Gravito reviewContent on pricing/payment copy (503 Service Unavailable)
+- [x] Documented: Gravito tool discovery works (540 tools listed), but execution returns 503. Correct params: surface_type + artifact_type (not surface/channel)## Quality & Testing
+- [x] Write tests for robots.txt, sitemap.xml, Stripe config, SEO meta tags (22 tests in features-round88.test.ts)
+- [x] All tests pass (61 files, 1588 tests)
+- [ ] Push to GitHub (token expired - use Settings → GitHub to export)

@@ -1,14 +1,36 @@
+# Troubadour — AI-Powered Music Review & A&R Intelligence
+
 User-agent: *
+
+# Public pages
 Allow: /
 Allow: /pricing
+Allow: /terms
+Allow: /privacy
+Allow: /support
 Allow: /shared/
 
+# Block authenticated/private routes
 Disallow: /dashboard
-Disallow: /projects/
+Disallow: /projects
 Disallow: /reviews/
+Disallow: /tracks/
 Disallow: /analytics
 Disallow: /usage
 Disallow: /settings
+Disallow: /templates
+Disallow: /benchmarks
+Disallow: /tags
+Disallow: /digest
+Disallow: /skill-progression
+Disallow: /competitive-benchmarks
+Disallow: /release-readiness
+Disallow: /streak
+Disallow: /artist-dna
+Disallow: /flywheel
+Disallow: /admin
+
+# Block API endpoints
 Disallow: /api/
 
-Sitemap: https://firstspin.ai/sitemap.xml
+Sitemap: /sitemap.xml
