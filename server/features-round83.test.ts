@@ -65,10 +65,13 @@ describe("UpgradePrompt Component", () => {
     expect(promptSource).toContain('"upload"');
   });
 
-  it("shows contextual headlines based on trigger type", () => {
-    expect(promptSource).toContain("You've used your free review");
-    expect(promptSource).toContain("This feature requires an upgrade");
-    expect(promptSource).toContain("You've hit your upload limit");
+  it("shows contextual headlines based on trigger type via A/B variants", () => {
+    // Each variant has review, feature, upload copy sets
+    expect(promptSource).toContain("review:");
+    expect(promptSource).toContain("feature:");
+    expect(promptSource).toContain("upload:");
+    // Headlines are dynamic via copy.headline
+    expect(promptSource).toContain("copy.headline");
   });
 
   it("includes Artist and Pro tier options", () => {

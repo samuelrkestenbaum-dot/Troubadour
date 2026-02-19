@@ -2175,3 +2175,30 @@
 - [x] Write tests for all Round 84 features (34 new tests in features-round83.test.ts)
 - [x] All tests pass (57 files, 1464 tests)
 - [x] Push to GitHub
+
+## Round 85 - E2E Test + Notification Badges + A/B Copy (Claude 4.5 + Gravito)
+
+### End-to-End Pipeline Test
+- [x] Upload real audio file through the platform (2.93 MB MP3, ~2.6 min)
+- [x] Run Gemini audio analysis on the track (Indie Pop detected, 122 BPM)
+- [x] Run Claude 4.5 critique with score calibration (31s total pipeline)
+- [x] Verify review quality and score differentiation (avg 6.8, spread 2, anti-inflation ✅)
+- [x] Confirm streak recording fires on upload and review completion
+
+### Notification Badges on Sidebar Nav
+- [x] Add unread/new-activity badges to Intelligence Suite sidebar items (useNavBadges hook)
+- [x] Track last-viewed timestamps for each Intelligence Suite feature (localStorage)
+- [x] Show badge dot for new data since last visit (queries streak, skill, DNA, flywheel)
+- [x] Clear badge when user visits the feature page (markVisited + animated pulse)
+
+### Upgrade Prompt A/B Copy Variants
+- [x] Use Claude 4.5 to generate 4 copy variants (loss aversion, social proof, curiosity gap, value proposition)
+- [x] Implement A/B variant selection system (localStorage-persisted, random assignment)
+- [x] Track variant shown/dismissed/clicked via PostHog analytics
+- [x] Each variant has headline, subtitle, CTA for all 3 trigger contexts (review/feature/upload)
+
+### Quality & Governance
+- [ ] Run Gravito governance review on all new code (service 503 - unavailable)
+- [x] Write tests for notification badges and A/B copy (37 tests in features-round85.test.ts)
+- [x] All tests pass (58 files, 1501 tests)
+- [x] Push to GitHub

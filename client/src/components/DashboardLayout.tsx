@@ -31,6 +31,7 @@ import { ChatSidebar, ChatToggleButton } from "./ChatSidebar";
 import { NotificationBell } from "./NotificationBell";
 import { WhatsNewModal, useHasNewChangelog } from "./WhatsNew";
 import { GlobalSearch } from "./GlobalSearch";
+import { useNavBadges } from "@/hooks/useNavBadges";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -140,6 +141,12 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const hasNewChangelog = useHasNewChangelog();
+  const { badges, markVisited } = useNavBadges();
+
+  // Mark the current page as visited whenever location changes
+  useEffect(() => {
+    if (location) markVisited(location);
+  }, [location, markVisited]);
 
   useEffect(() => {
     if (isCollapsed) {
@@ -222,7 +229,10 @@ function DashboardLayoutContent({
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
-                      <span>{item.label}</span>
+                      <span className="flex-1">{item.label}</span>
+                      {badges[item.path] && !isActive && (
+                        <span className="h-2 w-2 rounded-full bg-primary shrink-0 animate-pulse" />
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
