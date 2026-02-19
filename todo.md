@@ -2202,3 +2202,28 @@
 - [x] Write tests for notification badges and A/B copy (37 tests in features-round85.test.ts)
 - [x] All tests pass (58 files, 1501 tests)
 - [x] Push to GitHub
+
+## Round 86 - Digest Test + Landing Page Conversion Optimization (Claude 4.5)
+
+### Weekly Digest Email Test
+- [x] Add "Send Test Digest" button to Settings page (already built in Round 84)
+- [x] Create tRPC procedure to trigger a test digest email (digest.sendTest already exists)
+- [x] Preview modal with iframe rendering of digest HTML (already built)
+- [x] Verify the digest email renders correctly by triggering a test send (already built)
+
+### Landing Page Social Proof
+- [x] Add testimonial/quote section with 4 music industry personas (Maya R., Liam P., Chloe S., David K.)
+- [x] Add animated user/review count stats section (already in SocialProofBar)
+- [x] Add trust indicators (review count, tracks analyzed, genres covered)
+- [x] Use Claude 4.5 to generate authentic-sounding testimonial copy (via built-in LLM)
+
+### Landing Page Demo Audio Player
+- [x] Add interactive demo section showing a sample review experience
+- [x] Include mock audio waveform with 60 bars and play/pause controls
+- [x] Show animated score reveal (5 dimensions, staggered 300ms) and Quick Take
+- [x] CTA buttons: "Review Your Own Track" + "Get Your Free Review"
+
+### Quality & Testing
+- [x] Write tests for all Round 86 features (32 tests in features-round86.test.ts)
+- [x] All tests pass (59 files, 1533 tests)
+- [x] Push to GitHub
