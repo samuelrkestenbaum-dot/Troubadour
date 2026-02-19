@@ -22,6 +22,7 @@ import { subscriptionRouter } from "./routers/subscriptionRouter";
 import { creativeRouter } from "./routers/creativeRouter";
 import { portfolioRouter } from "./routers/portfolioRouter";
 import { adminRouter } from "./routers/adminRouter";
+import { emailVerificationRouter } from "./routers/emailVerificationRouter";
 
 // ── Guards (re-exported from guards.ts to avoid circular imports) ──
 import { ALLOWED_AUDIO_TYPES, MAX_FILE_SIZE, assertUsageAllowed, assertFeatureAllowed, assertMonthlyReviewAllowed } from "./guards";
@@ -1167,6 +1168,9 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
 
   // ── Admin Dashboard (extracted to routers/adminRouter.ts) ──
   admin: adminRouter,
+
+  // ── Email Verification ──
+  emailVerification: emailVerificationRouter,
 
 });
 export type AppRouter = typeof appRouter;

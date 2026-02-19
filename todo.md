@@ -2271,3 +2271,42 @@
 - [x] Write tests for robots.txt, sitemap.xml, Stripe config, SEO meta tags (22 tests in features-round88.test.ts)
 - [x] All tests pass (61 files, 1588 tests)
 - [ ] Push to GitHub (token expired - use Settings → GitHub to export)
+
+## Round 89 - Stripe E2E + Changelog + Email Verification (Claude 4.5 + Gravito)
+
+### Stripe Checkout E2E Test
+- [x] Verified checkout code flow: subscriptionRouter.checkout creates sessions correctly
+- [x] Verified webhook handler: test events return {verified:true}, checkout.session.completed upgrades tier
+- [x] Verified Stripe products/prices exist (Artist price_1T2UrXPbT3YQzJXSR4ou1XVL, Pro price_1T2UrcPbT3YQzJXSOa8cQPv8)
+- [ ] Stripe sandbox needs payment methods activated in dashboard (card payments not enabled yet)
+- [ ] Full E2E test with 4242 card deferred until payment methods configured
+
+### Changelog / Release Notes Page
+- [x] /changelog route already exists with version history (public, no auth)
+- [x] Added 6 new releases (v3.7-v4.4) with dates, version numbers, icons, and descriptions
+- [x] Changelog already linked from footer and WhatsNew component
+- [x] Now covers 17 releases from v1.0 (Dec 2025) through v4.4 (Feb 2026)
+- [x] Public-facing, no auth required, timeline design with type badges
+
+### Email Verification
+- [x] Add emailVerified field to users table schema
+- [x] Create emailVerificationTokens table with token, expiry, userId FK
+- [x] Create verification token generation and storage (DB helpers in db.ts)
+- [x] Build emailVerification tRPC router (status, sendVerification, verify procedures)
+- [x] Send verification email via Postmark with branded HTML template
+- [x] Create /verify-email route with success/error/loading states
+- [x] Add EmailVerificationBanner to DashboardLayout (dismissible, rate-limited resend)
+- [x] Add email verification status badge (Verified/Unverified) to Settings page
+- [x] Rate limiting: 1-minute cooldown between resend requests
+- [x] Token expiry: 24 hours, single-use, old tokens invalidated on new request
+- [ ] Gate digest emails behind verified email status
+
+### Gravito Governance Review
+- [ ] Run Gravito reviewContent on changelog copy
+- [ ] Run Gravito reviewContent on verification email template
+
+### Quality & Testing
+- [x] Write tests for email verification (32 tests: status, send, verify, schema, components)
+- [x] Fix emailVerified in all mock user objects across 8 test files
+- [x] All 1,620 tests pass across 62 files
+- [ ] Save checkpoint

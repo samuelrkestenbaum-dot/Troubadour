@@ -118,7 +118,16 @@ export default function Settings() {
             <span className="text-muted-foreground font-medium">Name</span>
             <span>{user?.name || "—"}</span>
             <span className="text-muted-foreground font-medium">Email</span>
-            <span>{user?.email || "—"}</span>
+            <span className="flex items-center gap-2">
+              {user?.email || "—"}
+              {user?.email && (
+                user?.emailVerified ? (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 text-xs">Verified</Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs">Unverified</Badge>
+                )
+              )}
+            </span>
             <span className="text-muted-foreground font-medium">Role</span>
             <span className="capitalize">{user?.role || "user"}</span>
             <span className="text-muted-foreground font-medium">Member since</span>

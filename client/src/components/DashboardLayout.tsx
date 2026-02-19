@@ -32,6 +32,7 @@ import { NotificationBell } from "./NotificationBell";
 import { WhatsNewModal, useHasNewChangelog } from "./WhatsNew";
 import { GlobalSearch } from "./GlobalSearch";
 import { useNavBadges } from "@/hooks/useNavBadges";
+import { EmailVerificationBanner } from "./EmailVerificationBanner";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -353,6 +354,7 @@ function DashboardLayoutContent({
             <GlobalSearch />
           </div>
         )}
+        <EmailVerificationBanner />
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
       <WhatsNewModal open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />

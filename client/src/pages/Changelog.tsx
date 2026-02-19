@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Shield, Zap, Music, BarChart3, MessageSquare, FileText, Palette, CreditCard, Tag, Clock, Share2, Brain, Layers, HelpCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, Shield, Zap, Music, BarChart3, MessageSquare, FileText, Palette, CreditCard, Tag, Clock, Share2, Brain, Layers, HelpCircle, TrendingUp, Flame, Dna, Target, Bell, Search, Play, Quote, Globe, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Release {
@@ -11,6 +11,76 @@ interface Release {
 }
 
 const releases: Release[] = [
+  {
+    version: "4.4",
+    date: "February 2026",
+    title: "SEO & Stripe Payment Setup",
+    type: "minor",
+    highlights: [
+      { icon: <Globe className="h-4 w-4" />, text: "robots.txt and sitemap.xml for search engine crawling" },
+      { icon: <CreditCard className="h-4 w-4" />, text: "Stripe products and prices created — Artist ($19/mo) and Pro ($49/mo)" },
+      { icon: <Search className="h-4 w-4" />, text: "JSON-LD structured data for rich search results" },
+      { icon: <Globe className="h-4 w-4" />, text: "Open Graph image and Twitter summary_large_image cards" },
+    ],
+  },
+  {
+    version: "4.3",
+    date: "February 2026",
+    title: "Mobile UX & SEO Meta Tags",
+    type: "minor",
+    highlights: [
+      { icon: <Zap className="h-4 w-4" />, text: "Mobile-optimized testimonials and demo player (44px touch targets)" },
+      { icon: <Globe className="h-4 w-4" />, text: "Enhanced Open Graph and Twitter Card meta tags" },
+      { icon: <Search className="h-4 w-4" />, text: "Custom OG image for social sharing previews" },
+    ],
+  },
+  {
+    version: "4.2",
+    date: "February 2026",
+    title: "Landing Page Conversion Optimization",
+    type: "major",
+    highlights: [
+      { icon: <Quote className="h-4 w-4" />, text: "Testimonials section with 4 AI-generated music industry personas" },
+      { icon: <Play className="h-4 w-4" />, text: "Interactive demo audio player with animated score reveal" },
+      { icon: <Sparkles className="h-4 w-4" />, text: "Real review data powering the demo (Indie Pop, 122 BPM)" },
+    ],
+  },
+  {
+    version: "4.1",
+    date: "February 2026",
+    title: "Nav Badges & Upgrade A/B Testing",
+    type: "minor",
+    highlights: [
+      { icon: <Bell className="h-4 w-4" />, text: "Notification badges on Intelligence Suite sidebar items" },
+      { icon: <TrendingUp className="h-4 w-4" />, text: "4 A/B copy variants for upgrade prompts (PostHog tracked)" },
+      { icon: <Target className="h-4 w-4" />, text: "Contextual upgrade modal with loss aversion, social proof, curiosity gap, and value prop" },
+    ],
+  },
+  {
+    version: "4.0",
+    date: "February 2026",
+    title: "Intelligence Suite — Know Your Music",
+    type: "major",
+    highlights: [
+      { icon: <Flame className="h-4 w-4" />, text: "Streak tracking — daily/weekly activity streaks with milestones" },
+      { icon: <TrendingUp className="h-4 w-4" />, text: "Skill Progression — track improvement across 5 dimensions over time" },
+      { icon: <Dna className="h-4 w-4" />, text: "Artist DNA — discover your unique creative fingerprint" },
+      { icon: <Target className="h-4 w-4" />, text: "Competitive Benchmarks — compare against genre averages" },
+      { icon: <BarChart3 className="h-4 w-4" />, text: "Release Readiness scoring and Flywheel momentum tracker" },
+      { icon: <Mail className="h-4 w-4" />, text: "Weekly digest emails with streak, skill, and DNA insights" },
+    ],
+  },
+  {
+    version: "3.7",
+    date: "February 2026",
+    title: "Score Calibration & Anti-Inflation",
+    type: "minor",
+    highlights: [
+      { icon: <Target className="h-4 w-4" />, text: "Claude 4.5 score calibration — meaningful differentiation, not inflated praise" },
+      { icon: <Sparkles className="h-4 w-4" />, text: "Upgraded review engine with anti-inflation guidance" },
+      { icon: <Shield className="h-4 w-4" />, text: "Contextual upgrade prompts for free tier users hitting review limits" },
+    ],
+  },
   {
     version: "3.6",
     date: "February 2026",

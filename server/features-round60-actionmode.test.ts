@@ -156,6 +156,7 @@ function createTestUser(): User {
     audioMinutesLimit: 60,
     tier: "free",
     preferredPersona: "full",
+    emailVerified: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),

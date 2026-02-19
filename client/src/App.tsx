@@ -40,6 +40,7 @@ import ArtistDNA from "./pages/ArtistDNA";
 import Flywheel from "./pages/Flywheel";
 import ReleaseReadiness from "./pages/ReleaseReadiness";
 import { OnboardingTour } from "./components/OnboardingTour";
+import VerifyEmail from "./pages/VerifyEmail";
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -124,6 +125,7 @@ function Router() {
       <Route path="/support" component={Support} />
       <Route path="/changelog" component={Changelog} />
       <Route path="/invite/:token" component={AcceptInvite} />
+      <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/404" component={NotFound} />
       <Route>
         <DashboardRoutes />

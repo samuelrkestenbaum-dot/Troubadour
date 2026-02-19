@@ -60,6 +60,7 @@ function createAuthContext(userId = 1) {
       digestFrequency: "weekly" as const,
     lastDigestSentAt: null, notificationPreferences: null,
     preferredPersona: "full" as const,
+    emailVerified: false,
     },
     req: { headers: { origin: "http://localhost:3000" } } as any,
     res: {} as any,

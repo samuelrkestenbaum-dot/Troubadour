@@ -281,6 +281,13 @@
       "when": 1771449472612,
       "tag": "0039_zippy_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1771507705684,
+      "tag": "0040_chilly_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }

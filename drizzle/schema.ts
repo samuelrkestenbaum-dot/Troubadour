@@ -31,6 +31,7 @@ export const users = mysqlTable("users", {
     payment_failed: boolean;
     system: boolean;
   }>(),
+  emailVerified: boolean("emailVerified").default(false).notNull(),
   deletedAt: timestamp("deletedAt"),
 });
 
@@ -737,3 +738,20 @@ export const artistArchetypes = mysqlTable("artistArchetypes", {
 ]);
 export type ArtistArchetypeRow = typeof artistArchetypes.$inferSelect;
 export type InsertArtistArchetype = typeof artistArchetypes.$inferInsert;
+
+// ── Email Verification Tokens ──
+export const emailVerificationTokens = mysqlTable("emailVerificationTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_emailVerToken_userId").on(t.userId),
+  index("idx_emailVerToken_token").on(t.token),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type EmailVerificationTokenRow = typeof emailVerificationTokens.$inferSelect;
+export type InsertEmailVerificationToken = typeof emailVerificationTokens.$inferInsert;

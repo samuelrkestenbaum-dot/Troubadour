@@ -1,7 +1,7 @@
-import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound, InsertSkillProgression, InsertGenreBenchmarkStats, InsertReleaseReadiness, InsertUserStreak, InsertArtistDNA, InsertGenreCluster, InsertArtistArchetype } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes, emailVerificationTokens } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound, InsertSkillProgression, InsertGenreBenchmarkStats, InsertReleaseReadiness, InsertUserStreak, InsertArtistDNA, InsertGenreCluster, InsertArtistArchetype, InsertEmailVerificationToken } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3407,4 +3407,78 @@ export async function getArchetypesByCluster(clusterLabel: string) {
   return db.select().from(artistArchetypes)
     .where(eq(artistArchetypes.clusterLabel, clusterLabel))
     .orderBy(desc(artistArchetypes.confidence));
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Email Verification
+// ══════════════════════════════════════════════════════════════
+
+export async function createEmailVerificationToken(userId: number, email: string, token: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Invalidate any existing unused tokens for this user
+  await db.update(emailVerificationTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(emailVerificationTokens.userId, userId), isNull(emailVerificationTokens.usedAt)));
+  // Create new token
+  const result = await db.insert(emailVerificationTokens).values({
+    userId,
+    email,
+    token,
+    expiresAt,
+  });
+  return result[0].insertId;
+}
+
+export async function getEmailVerificationToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(emailVerificationTokens)
+    .where(eq(emailVerificationTokens.token, token))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markEmailVerificationTokenUsed(tokenId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(emailVerificationTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(emailVerificationTokens.id, tokenId));
+}
+
+export async function setUserEmailVerified(userId: number, verified: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailVerified: verified }).where(eq(users.id, userId));
+}
+
+export async function getActiveVerificationToken(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(emailVerificationTokens)
+    .where(
+      and(
+        eq(emailVerificationTokens.userId, userId),
+        isNull(emailVerificationTokens.usedAt),
+        gte(emailVerificationTokens.expiresAt, new Date())
+      )
+    )
+    .orderBy(desc(emailVerificationTokens.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function cleanupExpiredVerificationTokens() {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.delete(emailVerificationTokens)
+    .where(
+      and(
+        lt(emailVerificationTokens.expiresAt, new Date()),
+        isNull(emailVerificationTokens.usedAt)
+      )
+    );
+  return result[0]?.affectedRows ?? 0;
 }
