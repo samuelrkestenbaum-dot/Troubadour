@@ -2227,3 +2227,25 @@
 - [x] Write tests for all Round 86 features (32 tests in features-round86.test.ts)
 - [x] All tests pass (59 files, 1533 tests)
 - [x] Push to GitHub
+
+## Round 87 - SEO + Mobile UX + Gravito (Claude 4.5)
+
+### SEO Meta Tags & Open Graph
+- [x] Add comprehensive meta description, keywords, and canonical URL (already had, enhanced)
+- [x] Add Open Graph tags with og:image:width/height, og:locale (upgraded image to new waveform+scores design)
+- [x] Upgrade Twitter Card to summary_large_image with image:alt tag
+- [x] Generate OG image for social sharing (2752x1536 waveform + score badges)
+- [x] Add structured data (JSON-LD) for SoftwareApplication schema with pricing, rating, features
+- [x] robots meta tag already present (index, follow### Mobile UX Audit
+- [x] Audit testimonials section on mobile viewports (stacking, padding, font sizes)
+- [x] Audit demo audio player on mobile (waveform touch, play button size, score reveal)
+- [x] Fix overflow/truncation: smaller dimension labels (w-24→w-36), tighter gaps, reduced padding
+- [x] Touch targets: play button 44px (h-11 w-11), active:scale-95 for touch feedback
+- [x] Responsive breakpoints: py-16→py-24, text-2xl→text-4xl, gap-[1px]→gap-[2px], hidden AI Analysis label on mobilec features on mobile
+### Gravito Governance Review
+- [ ] Run Gravito reviewContent on landing page copy (service unavailable - OAuth transport error)
+- [ ] Run Gravito reviewContent on testimonial content (service unavailable)
+- [ ] Ensure no blocked content in public-facing pages (deferred until service recovers)ting
+- [x] Write tests for all Round 87 features (33 tests in features-round87.test.ts)
+- [x] All tests pass (60 files, 1566 tests)
+- [ ] Push to GitHub (token expired - use Settings → GitHub to export)

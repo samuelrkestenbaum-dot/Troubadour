@@ -804,12 +804,12 @@ function TestimonialsSection() {
   const isInView = useInView(sectionRef, { once: true, margin: "-80px" });
 
   return (
-    <section ref={sectionRef} className="py-24 border-t border-border/30 relative overflow-hidden">
+    <section ref={sectionRef} className="py-16 sm:py-24 border-t border-border/30 relative overflow-hidden">
       <div className="absolute top-1/4 left-0 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl" />
-      <div className="container max-w-5xl mx-auto relative">
+      <div className="container max-w-5xl mx-auto px-4 sm:px-6 relative">
         <motion.div
-          className="text-center mb-14"
+          className="text-center mb-10 sm:mb-14"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
@@ -818,23 +818,23 @@ function TestimonialsSection() {
             <Quote className="h-3.5 w-3.5" />
             What Artists Are Saying
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
             Built for Musicians Who Want to{" "}
             <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">Get Better</span>
           </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {testimonials.map((t, i) => (
             <motion.div
               key={t.name}
-              className="p-6 rounded-2xl border border-border/40 bg-card/50 hover:bg-card/80 hover:border-border/60 transition-all group"
+              className="p-4 sm:p-6 rounded-2xl border border-border/40 bg-card/50 hover:bg-card/80 hover:border-border/60 transition-all group"
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.1 * i, duration: 0.5 }}
             >
-              <Quote className="h-8 w-8 text-muted-foreground/20 mb-4" />
-              <p className="text-foreground leading-relaxed mb-6">
+              <Quote className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground/20 mb-3 sm:mb-4" />
+              <p className="text-sm sm:text-base text-foreground leading-relaxed mb-4 sm:mb-6">
                 "{t.quote}"
               </p>
               <div className="flex items-center gap-3">
@@ -923,12 +923,12 @@ function DemoReviewSection({ handleGetStarted, user }: { handleGetStarted: () =>
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-24 border-t border-border/30 relative overflow-hidden">
+    <section ref={sectionRef} className="py-16 sm:py-24 border-t border-border/30 relative overflow-hidden">
       <div className="absolute top-1/3 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 left-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl" />
-      <div className="container max-w-5xl mx-auto relative">
+      <div className="container max-w-5xl mx-auto px-4 sm:px-6 relative">
         <motion.div
-          className="text-center mb-14"
+          className="text-center mb-10 sm:mb-14"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
@@ -937,11 +937,11 @@ function DemoReviewSection({ handleGetStarted, user }: { handleGetStarted: () =>
             <Headphones className="h-3.5 w-3.5" />
             See It in Action
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
             From Upload to{" "}
             <span className="bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">Actionable Feedback</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+          <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg">
             Watch how a real track gets analyzed. Hit play to see the review unfold.
           </p>
         </motion.div>
@@ -953,16 +953,16 @@ function DemoReviewSection({ handleGetStarted, user }: { handleGetStarted: () =>
           transition={{ delay: 0.2, duration: 0.6 }}
         >
           {/* Track Header */}
-          <div className="p-6 border-b border-border/30 bg-gradient-to-r from-muted/50 to-muted/20">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/30 flex items-center justify-center shadow-lg">
-                <Music className="h-7 w-7 text-primary" />
+          <div className="p-4 sm:p-6 border-b border-border/30 bg-gradient-to-r from-muted/50 to-muted/20">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="h-11 w-11 sm:h-14 sm:w-14 rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/30 flex items-center justify-center shadow-lg">
+                <Music className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-lg" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Demo Track</h3>
                 <p className="text-sm text-muted-foreground">Indie Pop &middot; 122 BPM &middot; 2:38</p>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
                 <Volume2 className="h-4 w-4" />
                 <span>AI Analysis</span>
               </div>
@@ -970,17 +970,17 @@ function DemoReviewSection({ handleGetStarted, user }: { handleGetStarted: () =>
           </div>
 
           {/* Waveform Player */}
-          <div className="p-6">
-            <div className="flex items-center gap-4 mb-6">
+          <div className="p-4 sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
               <button
                 onClick={handlePlay}
-                className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:scale-105 shrink-0"
+                className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95 shrink-0"
               >
                 {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
               </button>
               <div className="flex-1">
                 {/* Waveform visualization */}
-                <div className="flex items-end gap-[2px] h-12">
+                <div className="flex items-end gap-[1px] sm:gap-[2px] h-10 sm:h-12">
                   {waveformBars.map((height, i) => {
                     const barProgress = (i / waveformBars.length) * 100;
                     const isActive = barProgress <= progress;
@@ -1021,12 +1021,12 @@ function DemoReviewSection({ handleGetStarted, user }: { handleGetStarted: () =>
                 {demoScores.map((score, i) => (
                   <motion.div
                     key={score.dimension}
-                    className="flex items-center gap-4"
+                    className="flex items-center gap-2 sm:gap-4"
                     initial={{ opacity: 0, x: -20 }}
                     animate={i < revealedScores ? { opacity: 1, x: 0 } : {}}
                     transition={{ duration: 0.4, ease: "easeOut" }}
                   >
-                    <span className="text-sm text-muted-foreground w-36 shrink-0">{score.dimension}</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground w-24 sm:w-36 shrink-0">{score.dimension}</span>
                     <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                       <motion.div
                         className={`h-full ${score.color} rounded-full`}
@@ -1036,7 +1036,7 @@ function DemoReviewSection({ handleGetStarted, user }: { handleGetStarted: () =>
                       />
                     </div>
                     <motion.span
-                      className="text-sm font-bold tabular-nums w-10 text-right"
+                      className="text-xs sm:text-sm font-bold tabular-nums w-8 sm:w-10 text-right"
                       style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
                       initial={{ opacity: 0 }}
                       animate={i < revealedScores ? { opacity: 1 } : {}}
