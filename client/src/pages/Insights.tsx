@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLocation } from "wouter";
 import {
   GraduationCap, Dna, Database, Flame, Swords, Rocket, BarChart3,
-  Music, FileText, FolderOpen, TrendingUp, Star, Trophy, Clock, Loader2
+  Music, FileText, FolderOpen, TrendingUp, Star, Trophy, Clock, Loader2,
+  LineChart, Award, Fingerprint
 } from "lucide-react";
 import { scoreColor } from "@/lib/scoreColor";
 import { useMemo } from "react";
@@ -46,7 +47,7 @@ const scoreBarColor = (score: number) => {
   return "bg-rose-400";
 };
 
-type InsightTab = "overview" | "skills" | "benchmarks" | "release" | "streak" | "dna" | "flywheel";
+type InsightTab = "overview" | "skills" | "competitive" | "momentum" | "dna";
 
 export default function Insights() {
   const [, setLocation] = useLocation();
@@ -62,34 +63,41 @@ export default function Insights() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as InsightTab)} className="w-full">
-        <TabsList className="w-full justify-start h-auto flex-wrap gap-1 bg-muted/30 p-1">
-          <TabsTrigger value="overview" className="text-xs gap-1.5">
-            <BarChart3 className="h-3.5 w-3.5" />
-            Overview
+        <TabsList className="w-full justify-start h-auto flex-wrap gap-1 bg-muted/30 p-1.5">
+          <TabsTrigger value="overview" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">Overview</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-normal">Performance summary and activity trends</span>
           </TabsTrigger>
-          <TabsTrigger value="skills" className="text-xs gap-1.5">
-            <GraduationCap className="h-3.5 w-3.5" />
-            Skill Growth
+          <TabsTrigger value="skills" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <LineChart className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">Skill Growth</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-normal">Track development across artistic dimensions</span>
           </TabsTrigger>
-          <TabsTrigger value="benchmarks" className="text-xs gap-1.5">
-            <Swords className="h-3.5 w-3.5" />
-            Benchmarks
+          <TabsTrigger value="competitive" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <Award className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">Competitive Position</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-normal">Project readiness and peer benchmarks</span>
           </TabsTrigger>
-          <TabsTrigger value="release" className="text-xs gap-1.5">
-            <Rocket className="h-3.5 w-3.5" />
-            Release Ready
+          <TabsTrigger value="momentum" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">Momentum</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-normal">Consistency, streaks, and data impact</span>
           </TabsTrigger>
-          <TabsTrigger value="streak" className="text-xs gap-1.5">
-            <Flame className="h-3.5 w-3.5" />
-            Streak
-          </TabsTrigger>
-          <TabsTrigger value="dna" className="text-xs gap-1.5">
-            <Dna className="h-3.5 w-3.5" />
-            Artist DNA
-          </TabsTrigger>
-          <TabsTrigger value="flywheel" className="text-xs gap-1.5">
-            <Database className="h-3.5 w-3.5" />
-            Flywheel
+          <TabsTrigger value="dna" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <Fingerprint className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">Artist DNA</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-normal">Your unique sonic signature and identity</span>
           </TabsTrigger>
         </TabsList>
 
@@ -99,20 +107,14 @@ export default function Insights() {
         <TabsContent value="skills" className="mt-4">
           <SkillProgressionView />
         </TabsContent>
-        <TabsContent value="benchmarks" className="mt-4">
-          <CompetitiveBenchmarkView />
+        <TabsContent value="competitive" className="mt-4">
+          <CompetitivePositionTab />
         </TabsContent>
-        <TabsContent value="release" className="mt-4">
-          <ReleaseReadinessTab />
-        </TabsContent>
-        <TabsContent value="streak" className="mt-4">
-          <StreakDashboard />
+        <TabsContent value="momentum" className="mt-4">
+          <MomentumTab />
         </TabsContent>
         <TabsContent value="dna" className="mt-4">
           <ArtistDNAView />
-        </TabsContent>
-        <TabsContent value="flywheel" className="mt-4">
-          <DataFlywheelView />
         </TabsContent>
       </Tabs>
     </div>
@@ -260,6 +262,76 @@ function HeatmapSection() {
   const { data: heatmap } = trpc.analytics.heatmap.useQuery(undefined, { retry: false });
   if (!heatmap || heatmap.length === 0) return null;
   return <ActivityHeatmap data={heatmap} />;
+}
+
+/** Competitive Position Tab - Combines Release Ready + Benchmarks */
+function CompetitivePositionTab() {
+  const [view, setView] = useState<"readiness" | "benchmarks">("readiness");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView("readiness")}
+          className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+            view === "readiness"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          <Rocket className="h-4 w-4 inline mr-2" />
+          Release Readiness
+        </button>
+        <button
+          onClick={() => setView("benchmarks")}
+          className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+            view === "benchmarks"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          <Swords className="h-4 w-4 inline mr-2" />
+          Benchmarks
+        </button>
+      </div>
+      {view === "readiness" ? <ReleaseReadinessTab /> : <CompetitiveBenchmarkView />}
+    </div>
+  );
+}
+
+/** Momentum Tab - Combines Streak + Flywheel */
+function MomentumTab() {
+  const [view, setView] = useState<"streak" | "flywheel">("streak");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView("streak")}
+          className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+            view === "streak"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          <Flame className="h-4 w-4 inline mr-2" />
+          Streak
+        </button>
+        <button
+          onClick={() => setView("flywheel")}
+          className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+            view === "flywheel"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          <Database className="h-4 w-4 inline mr-2" />
+          Data Flywheel
+        </button>
+      </div>
+      {view === "streak" ? <StreakDashboard /> : <DataFlywheelView />}
+    </div>
+  );
 }
 
 function ReleaseReadinessTab() {

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { trackActionModeUsed, trackActionModeExported } from "@/lib/analytics";
 import { Streamdown } from "streamdown";
@@ -12,31 +13,36 @@ import { CollapsibleReview } from "@/components/CollapsibleReview";
 
 type ActionModeKey = "full-picture" | "session-prep" | "pitch-ready" | "rewrite-focus" | "remix-focus";
 
-const ACTION_MODES: Record<ActionModeKey, { label: string; icon: string; description: string }> = {
+const ACTION_MODES: Record<ActionModeKey, { label: string; icon: string; description: string; tooltip: string }> = {
   "full-picture": {
     label: "Full Review",
     icon: "📋",
     description: "Original comprehensive review",
+    tooltip: "Choose this for a deep dive into every aspect of your song, from lyrics to production.",
   },
   "session-prep": {
     label: "Session Prep",
     icon: "🎛️",
     description: "Top actionable items for the studio",
+    tooltip: "Use this when you're heading into the studio and need actionable steps for your next recording session.",
   },
   "pitch-ready": {
     label: "Pitch Ready",
     icon: "📊",
     description: "Commercial readiness & pitch summary",
+    tooltip: "Select this to refine your song for industry professionals, focusing on marketability and presentation.",
   },
   "rewrite-focus": {
     label: "Rewrite",
     icon: "✍️",
     description: "Songwriting deep dive & rewrite prompts",
+    tooltip: "Pick this if you want targeted feedback on improving your lyrics, melody, or song structure.",
   },
   "remix-focus": {
     label: "Remix",
     icon: "🔊",
     description: "Production & mix technical action items",
+    tooltip: "Opt for this to get suggestions on production, arrangement, and instrumentation for a fresh take.",
   },
 };
 
@@ -79,27 +85,34 @@ export function ReviewActionTabs({ reviewId, reviewMarkdown, stripDuplicateSecti
   };
 
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="w-full justify-start h-auto flex-wrap gap-1 bg-muted/30 p-1">
-        {(Object.entries(ACTION_MODES) as [ActionModeKey, typeof ACTION_MODES[ActionModeKey]][]).map(([key, mode]) => {
-          const isLoading = loadingMode === key;
-          const isCached = !!cachedResults[key];
-          return (
-            <TabsTrigger
-              key={key}
-              value={key}
-              className="text-xs gap-1.5 data-[state=active]:bg-background relative"
-            >
-              <span>{mode.icon}</span>
-              <span>{mode.label}</span>
-              {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-              {isCached && key !== "full-picture" && activeTab !== key && (
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              )}
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
+    <TooltipProvider>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="w-full justify-start h-auto flex-wrap gap-1 bg-muted/30 p-1">
+          {(Object.entries(ACTION_MODES) as [ActionModeKey, typeof ACTION_MODES[ActionModeKey]][]).map(([key, mode]) => {
+            const isLoading = loadingMode === key;
+            const isCached = !!cachedResults[key];
+            return (
+              <Tooltip key={key}>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value={key}
+                    className="text-xs gap-1.5 data-[state=active]:bg-background relative"
+                  >
+                    <span>{mode.icon}</span>
+                    <span>{mode.label}</span>
+                    {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                    {isCached && key !== "full-picture" && activeTab !== key && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    )}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">{mode.tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </TabsList>
 
       <TabsContent value="full-picture" className="mt-3">
         <Card>
@@ -125,7 +138,8 @@ export function ReviewActionTabs({ reviewId, reviewMarkdown, stripDuplicateSecti
             ) : null}
           </TabsContent>
         ))}
-    </Tabs>
+      </Tabs>
+    </TooltipProvider>
   );
 }
 

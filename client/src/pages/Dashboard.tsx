@@ -296,6 +296,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Pending Actions - Claude-designed */}
+      <PendingActionsSection />
+
       {/* Quick Stats Widgets */}
       <QuickStatsBar />
 
@@ -948,6 +951,129 @@ function RecentActivityFeed() {
   );
 }
 
+
+/** Pending Actions Section - Claude-designed */
+function PendingActionsSection() {
+  const [, setLocation] = useLocation();
+  const { data: projects } = trpc.project.list.useQuery();
+  const { data: stats } = trpc.analytics.quickStats.useQuery();
+
+  // Determine user state based on Claude's design
+  const getUserState = () => {
+    if (!projects || projects.length === 0) return "new_user";
+    
+    const hasUnreviewed = projects.some((p: any) => p.status === "pending" || p.status === "processing");
+    if (hasUnreviewed) return "uploaded_but_not_reviewed";
+    
+    const hasReviewed = projects.some((p: any) => p.status === "reviewed" || p.status === "completed");
+    if (hasReviewed) {
+      // Check if user has acted on reviews (simplified: assume active if they have multiple projects)
+      if (projects.length >= 3) return "active_user";
+      return "review_complete";
+    }
+    
+    // Check for stale user (simplified: if they have projects but all are old)
+    const lastActivity = projects[0]?.createdAt;
+    if (lastActivity) {
+      const daysSinceActivity = (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceActivity > 7) return "stale_user";
+    }
+    
+    return "active_user";
+  };
+
+  const userState = getUserState();
+
+  // Define actions based on Claude's design
+  const actions: Record<string, { title: string; subtitle: string; icon: React.ElementType; path: string; secondary?: { title: string; path: string; icon: React.ElementType } }> = {
+    new_user: {
+      title: "Upload Your First Track",
+      subtitle: "Let's get your music into Troubadour and start the magic.",
+      icon: UploadCloud,
+      path: "/projects/new",
+    },
+    uploaded_but_not_reviewed: {
+      title: "Review Your Latest Upload",
+      subtitle: "Your track is ready for AI analysis. See what we found!",
+      icon: Sparkles,
+      path: `/projects/${projects?.[0]?.id || ''}`,
+    },
+    review_complete: {
+      title: "Upload Your Next Track",
+      subtitle: "Keep the momentum going! What's next in your creative pipeline?",
+      icon: UploadCloud,
+      path: "/projects/new",
+      secondary: {
+        title: "Explore Your Latest Insights",
+        path: "/insights",
+        icon: BarChart3,
+      },
+    },
+    active_user: {
+      title: "Upload Your Next Track",
+      subtitle: "Keep the momentum going! What's next in your creative pipeline?",
+      icon: UploadCloud,
+      path: "/projects/new",
+      secondary: {
+        title: "Explore Your Latest Insights",
+        path: "/insights",
+        icon: BarChart3,
+      },
+    },
+    stale_user: {
+      title: "Upload a New Track",
+      subtitle: "It's been a while! Let's get back into the flow and create something new.",
+      icon: UploadCloud,
+      path: "/projects/new",
+      secondary: {
+        title: "Revisit Your Last Project",
+        path: `/projects/${projects?.[0]?.id || ''}`,
+        icon: Music,
+      },
+    },
+  };
+
+  const action = actions[userState];
+  if (!action) return null;
+
+  const Icon = action.icon;
+  const SecondaryIcon = action.secondary?.icon;
+
+  return (
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">What's Next?</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <button
+          onClick={() => setLocation(action.path)}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/40 bg-card/80 hover:bg-card hover:border-border/60 transition-all group text-left"
+        >
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+            <Icon className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">{action.title}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{action.subtitle}</p>
+          </div>
+          <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
+        </button>
+        {action.secondary && SecondaryIcon && (
+          <button
+            onClick={() => setLocation(action.secondary!.path)}
+            className="w-full flex items-center gap-3 p-3 rounded-lg border border-border/30 bg-card/50 hover:bg-card/80 hover:border-border/50 transition-all group text-left"
+          >
+            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <SecondaryIcon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-xs font-medium flex-1">{action.secondary.title}</p>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function FeatureQuickAccess() {
   const [, setLocation] = useLocation();
