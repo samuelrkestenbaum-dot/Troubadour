@@ -755,3 +755,27 @@ export const emailVerificationTokens = mysqlTable("emailVerificationTokens", {
 ]);
 export type EmailVerificationTokenRow = typeof emailVerificationTokens.$inferSelect;
 export type InsertEmailVerificationToken = typeof emailVerificationTokens.$inferInsert;
+
+// ── Dead Letter Queue ──
+export const deadLetterQueue = mysqlTable("deadLetterQueue", {
+  id: int("id").autoincrement().primaryKey(),
+  originalJobId: int("originalJobId").notNull(),
+  jobType: varchar("jobType", { length: 50 }).notNull(),
+  userId: int("userId").notNull(),
+  trackId: int("trackId"),
+  projectId: int("projectId"),
+  payload: json("payload").$type<Record<string, unknown>>(),
+  errorMessage: text("errorMessage").notNull(),
+  attempts: int("attempts").notNull(),
+  processed: boolean("processed").default(false).notNull(),
+  reprocessedJobId: int("reprocessedJobId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  processedAt: timestamp("processedAt"),
+}, (t) => [
+  index("idx_dlq_userId").on(t.userId),
+  index("idx_dlq_processed").on(t.processed),
+  index("idx_dlq_jobType").on(t.jobType),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type DeadLetterQueueRow = typeof deadLetterQueue.$inferSelect;
+export type InsertDeadLetterQueue = typeof deadLetterQueue.$inferInsert;

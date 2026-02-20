@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "../_core/cookies";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as db from "../db";
 import { getPlanByTier } from "../stripe/products";
+import { logAuditEvent } from "../utils/auditTrail";
 
 export const subscriptionRouter = {
   // ── Usage ──
@@ -104,6 +105,7 @@ export const subscriptionRouter = {
           origin: input.origin,
         });
 
+        logAuditEvent({ userId: ctx.user.id, action: "subscription.checkout", resourceType: "subscription", metadata: { plan: input.plan } });
         return { url };
       }),
 

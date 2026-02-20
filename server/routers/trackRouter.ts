@@ -4,7 +4,9 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import * as db from "../db";
 import { storagePut } from "../storage";
+import { logAuditEvent } from "../utils/auditTrail";
 import { recordActivity } from "../services/retentionEngine";
+import { validateAudioMagicBytes } from "../utils/audioValidation";
 
 const ALLOWED_AUDIO_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
@@ -51,6 +53,17 @@ export const trackRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: `File too large (${Math.round(input.fileSize / 1024 / 1024)}MB). Maximum: 50MB.` });
       }
       const fileBuffer = Buffer.from(input.fileBase64, "base64");
+
+      // Magic bytes validation — verify actual file content matches claimed audio format
+      const { valid, detectedFormat } = validateAudioMagicBytes(fileBuffer);
+      if (!valid) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "File content does not match a recognized audio format. The file may be corrupted or not a valid audio file.",
+        });
+      }
+      console.log(`[Upload] Magic bytes validated: ${detectedFormat} for ${input.filename}`);
+
       const fileKey = `audio/${ctx.user.id}/${input.projectId}/${nanoid()}-${input.filename}`;
       const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
       let trackOrder = input.trackOrder ?? 0;
@@ -84,6 +97,7 @@ export const trackRouter = router({
         console.warn("[Streak] Failed to record upload activity:", e);
       }
 
+      logAuditEvent({ userId: ctx.user.id, action: "track.upload", resourceType: "track", resourceId: track.id, metadata: { filename: input.filename, projectId: input.projectId } });
       return { trackId: track.id, storageUrl: url };
     }),
   get: protectedProcedure

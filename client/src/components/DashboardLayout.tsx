@@ -33,6 +33,7 @@ import { WhatsNewModal, useHasNewChangelog } from "./WhatsNew";
 import { GlobalSearch } from "./GlobalSearch";
 import { useNavBadges } from "@/hooks/useNavBadges";
 import { EmailVerificationBanner } from "./EmailVerificationBanner";
+import { ServiceStatusBanner } from "./ServiceStatusBanner";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -354,6 +355,7 @@ function DashboardLayoutContent({
             <GlobalSearch />
           </div>
         )}
+        <ServiceStatusBanner />
         <EmailVerificationBanner />
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>

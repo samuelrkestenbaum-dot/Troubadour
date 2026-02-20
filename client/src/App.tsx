@@ -1,46 +1,61 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import NewProject from "./pages/NewProject";
-import ProjectView from "./pages/ProjectView";
-import TrackView from "./pages/TrackView";
-import ReviewView from "./pages/ReviewView";
-import VersionDiff from "./pages/VersionDiff";
-import Usage from "./pages/Usage";
-import Analytics from "./pages/Analytics";
-import SharedReview from "./pages/SharedReview";
-import Pricing from "./pages/Pricing";
-import Settings from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
-import CompareReviews from "./pages/CompareReviews";
-import QuickReview from "./pages/QuickReview";
-import Templates from "./pages/Templates";
-import AcceptInvite from "./pages/AcceptInvite";
-import GenreBenchmarks from "./pages/GenreBenchmarks";
-import TemplatesGallery from "./pages/TemplatesGallery";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
-import Digest from "./pages/Digest";
-import TagManager from "./pages/TagManager";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import Support from "./pages/Support";
-import Changelog from "./pages/Changelog";
-import AdminDashboard from "./pages/AdminDashboard";
-import SkillProgression from "./pages/SkillProgression";
-import CompetitiveBenchmarks from "./pages/CompetitiveBenchmarks";
-import Streak from "./pages/Streak";
-import ArtistDNA from "./pages/ArtistDNA";
-import Flywheel from "./pages/Flywheel";
-import ReleaseReadiness from "./pages/ReleaseReadiness";
 import { OnboardingTour } from "./components/OnboardingTour";
-import VerifyEmail from "./pages/VerifyEmail";
+
+// ── Lazy-loaded pages (code-split per route) ──
+const Home = lazy(() => import("./pages/Home"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const NewProject = lazy(() => import("./pages/NewProject"));
+const ProjectView = lazy(() => import("./pages/ProjectView"));
+const TrackView = lazy(() => import("./pages/TrackView"));
+const ReviewView = lazy(() => import("./pages/ReviewView"));
+const VersionDiff = lazy(() => import("./pages/VersionDiff"));
+const Usage = lazy(() => import("./pages/Usage"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const SharedReview = lazy(() => import("./pages/SharedReview"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Settings = lazy(() => import("./pages/Settings"));
+const CompareReviews = lazy(() => import("./pages/CompareReviews"));
+const QuickReview = lazy(() => import("./pages/QuickReview"));
+const Templates = lazy(() => import("./pages/Templates"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const GenreBenchmarks = lazy(() => import("./pages/GenreBenchmarks"));
+const TemplatesGallery = lazy(() => import("./pages/TemplatesGallery"));
+const Digest = lazy(() => import("./pages/Digest"));
+const TagManager = lazy(() => import("./pages/TagManager"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Support = lazy(() => import("./pages/Support"));
+const Changelog = lazy(() => import("./pages/Changelog"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const SkillProgression = lazy(() => import("./pages/SkillProgression"));
+const CompetitiveBenchmarks = lazy(() => import("./pages/CompetitiveBenchmarks"));
+const Streak = lazy(() => import("./pages/Streak"));
+const ArtistDNA = lazy(() => import("./pages/ArtistDNA"));
+const Flywheel = lazy(() => import("./pages/Flywheel"));
+const ReleaseReadiness = lazy(() => import("./pages/ReleaseReadiness"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+/** Route-level loading spinner */
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 /** Safely parse a route param as a positive integer, returning null if invalid */
 function safeParseId(raw: string): number | null {
@@ -144,7 +159,9 @@ function App() {
           <KeyboardShortcutsDialog />
           <GlobalKeyboardShortcuts />
           <OnboardingTour />
-          <Router />
+          <Suspense fallback={<PageLoader />}>
+            <Router />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -23,6 +23,8 @@ import { creativeRouter } from "./routers/creativeRouter";
 import { portfolioRouter } from "./routers/portfolioRouter";
 import { adminRouter } from "./routers/adminRouter";
 import { emailVerificationRouter } from "./routers/emailVerificationRouter";
+import { dlqRouter } from "./routers/dlqRouter";
+import { logAuditEvent } from "./utils/auditTrail";
 
 // ── Guards (re-exported from guards.ts to avoid circular imports) ──
 import { ALLOWED_AUDIO_TYPES, MAX_FILE_SIZE, assertUsageAllowed, assertFeatureAllowed, assertMonthlyReviewAllowed } from "./guards";
@@ -92,6 +94,7 @@ export const appRouter = router({
           targetVibe: input.targetVibe || null,
           reviewFocus: "full",
         });
+        logAuditEvent({ userId: ctx.user.id, action: "project.create", resourceType: "project", resourceId: result.id, metadata: { title: input.title } });
         return result;
       }),
 
@@ -124,6 +127,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
         await db.deleteProject(input.id);
+        logAuditEvent({ userId: ctx.user.id, action: "project.delete", resourceType: "project", resourceId: input.id, metadata: { title: project.title } });
         return { success: true };
       }),
 
@@ -135,6 +139,7 @@ export const appRouter = router({
           const project = await db.getProjectById(id);
           if (project && project.userId === ctx.user.id) {
             await db.deleteProject(id);
+            logAuditEvent({ userId: ctx.user.id, action: "project.delete", resourceType: "project", resourceId: id });
             deleted++;
           }
         }
@@ -1172,6 +1177,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
 
   // ── Email Verification ──
   emailVerification: emailVerificationRouter,
+  dlq: dlqRouter,
 
 });
 export type AppRouter = typeof appRouter;

@@ -895,15 +895,30 @@ export default function TrackView({ id }: { id: number }) {
         subtitle={track.detectedGenre ? `${track.detectedGenre}${track.detectedSubgenres ? ` · ${track.detectedSubgenres}` : ""}` : undefined}
       />
 
-      {/* Error Banner */}
-      {track.status === "error" && jobError && (
+      {/* Error Banner with Retry */}
+      {track.status === "error" && (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="py-3 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-destructive">Processing failed</p>
-              <p className="text-xs text-muted-foreground mt-1 break-words">{jobError}</p>
+              <p className="text-xs text-muted-foreground mt-1 break-words">
+                {jobError || "An unexpected error occurred during analysis. This may be due to a temporary AI service outage."}
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                You can retry the analysis below, or try again in a few minutes if the issue persists.
+              </p>
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
+              onClick={() => analyzeAndReview.mutate({ trackId: id })}
+              disabled={analyzeAndReview.isPending}
+            >
+              {analyzeAndReview.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5 mr-1.5" />}
+              Retry
+            </Button>
           </CardContent>
         </Card>
       )}

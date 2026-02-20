@@ -1650,11 +1650,14 @@ describe("server-side file validation", () => {
     (db.getUserById as any).mockResolvedValueOnce(createTestUser());
     (db.getTracksByProject as any).mockResolvedValueOnce([]);
 
+    // Build a buffer with valid MP3 ID3v2 magic bytes (>= 16 bytes)
+    const mp3Buf = Buffer.alloc(32);
+    mp3Buf[0] = 0x49; mp3Buf[1] = 0x44; mp3Buf[2] = 0x33; // ID3
     const result = await caller.track.upload({
       projectId: 1,
       filename: "song.mp3",
       mimeType: "audio/mpeg",
-      fileBase64: btoa("fake audio data"),
+      fileBase64: mp3Buf.toString("base64"),
       fileSize: 5 * 1024 * 1024, // 5MB
     });
     expect(result.trackId).toBeDefined();
@@ -1672,11 +1675,15 @@ describe("server-side file validation", () => {
     (db.getUserById as any).mockResolvedValueOnce(createTestUser());
     (db.getTracksByProject as any).mockResolvedValueOnce([]);
 
+    // Build a buffer with valid WAV magic bytes (RIFF....WAVE, >= 16 bytes)
+    const wavBuf = Buffer.alloc(32);
+    Buffer.from("RIFF").copy(wavBuf, 0);
+    Buffer.from("WAVE").copy(wavBuf, 8);
     const result = await caller.track.upload({
       projectId: 1,
       filename: "song.wav",
       mimeType: "audio/wav",
-      fileBase64: btoa("fake wav data"),
+      fileBase64: wavBuf.toString("base64"),
       fileSize: 10 * 1024 * 1024,
     });
     expect(result.trackId).toBeDefined();
@@ -1699,11 +1706,14 @@ describe("server-side version numbering", () => {
       { id: 11, parentTrackId: 10, versionNumber: 2 },
     ]);
 
+    // Build a buffer with valid MP3 magic bytes for version test
+    const mp3Buf = Buffer.alloc(32);
+    mp3Buf[0] = 0x49; mp3Buf[1] = 0x44; mp3Buf[2] = 0x33; // ID3
     const result = await caller.track.upload({
       projectId: 1,
       filename: "v3.mp3",
       mimeType: "audio/mpeg",
-      fileBase64: btoa("fake audio"),
+      fileBase64: mp3Buf.toString("base64"),
       fileSize: 1000000,
       parentTrackId: 10,
       versionNumber: 999, // Client tries to set v999, server should ignore

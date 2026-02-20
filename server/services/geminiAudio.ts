@@ -5,6 +5,7 @@
  */
 import { ENV } from "../_core/env";
 import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
+import { geminiCircuitBreaker } from "../utils/circuitBreaker";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_TIMEOUT_MS = 180_000; // 3 minutes (audio analysis is slow)
@@ -176,7 +177,11 @@ export async function analyzeAudioWithGemini(audioUrl: string, mimeType: string,
   if (!ENV.geminiApiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
+  // Circuit breaker: fail fast if Gemini has been consistently failing
+  return geminiCircuitBreaker.execute(() => _analyzeAudioInner(audioUrl, mimeType, reviewFocus));
+}
 
+async function _analyzeAudioInner(audioUrl: string, mimeType: string, reviewFocus?: ReviewFocusRole): Promise<GeminiAudioAnalysis> {
   // Download the audio file to get its bytes
   const audioResponse = await fetch(audioUrl);
   if (!audioResponse.ok) {
@@ -260,6 +265,13 @@ export async function compareAudioWithGemini(
   if (!ENV.geminiApiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
+  return geminiCircuitBreaker.execute(() => _compareAudioInner(audioUrl1, mimeType1, audioUrl2, mimeType2));
+}
+
+async function _compareAudioInner(
+  audioUrl1: string, mimeType1: string,
+  audioUrl2: string, mimeType2: string
+): Promise<string> {
 
   const [audio1, audio2] = await Promise.all([
     fetch(audioUrl1).then(r => r.arrayBuffer()),
@@ -323,6 +335,13 @@ export async function compareReferenceWithGemini(
   if (!ENV.geminiApiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
+  return geminiCircuitBreaker.execute(() => _compareReferenceInner(userAudioUrl, userMimeType, refAudioUrl, refMimeType));
+}
+
+async function _compareReferenceInner(
+  userAudioUrl: string, userMimeType: string,
+  refAudioUrl: string, refMimeType: string
+): Promise<{ referenceAnalysis: string; comparison: string }> {
 
   const [userAudio, refAudio] = await Promise.all([
     fetch(userAudioUrl).then(r => r.arrayBuffer()),

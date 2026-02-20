@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `deadLetterQueue` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `originalJobId` int NOT NULL,\n  `jobType` varchar(50) NOT NULL,\n  `userId` int NOT NULL,\n  `trackId` int,\n  `projectId` int,\n  `payload` json,\n  `errorMessage` text NOT NULL,\n  `attempts` int NOT NULL,\n  `processed` boolean NOT NULL DEFAULT false,\n  `reprocessedJobId` int,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `processedAt` timestamp,\n  CONSTRAINT `deadLetterQueue_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX `idx_dlq_userId` ON `deadLetterQueue` (`userId`);\nCREATE INDEX `idx_dlq_processed` ON `deadLetterQueue` (`processed`);\nCREATE INDEX `idx_dlq_jobType` ON `deadLetterQueue` (`jobType`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE IF NOT EXISTS `deadLetterQueue` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `originalJobId` int NOT NULL,\n  `jobType` varchar(50) NOT NULL,\n  `userId` int NOT NULL,\n  `trackId` int,\n  `projectId` int,\n  `payload` json,\n  `errorMessage` text NOT NULL,\n  `attempts` int NOT NULL,\n  `processed` boolean NOT NULL DEFAULT false,\n  `reprocessedJobId` int,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `processedAt` timestamp,\n  CONSTRAINT `deadLetterQueue_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX `idx_dlq_userId` ON `deadLetterQueue` (`userId`);\nCREATE INDEX `idx_dlq_processed` ON `deadLetterQueue` (`processed`);\nCREATE INDEX `idx_dlq_jobType` ON `deadLetterQueue` (`jobType`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2238
+}

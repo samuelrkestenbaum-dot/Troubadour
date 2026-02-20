@@ -288,6 +288,13 @@
       "when": 1771507705684,
       "tag": "0040_chilly_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1771557455376,
+      "tag": "0041_magical_red_shift",
+      "breakpoints": true
     }
   ]
 }

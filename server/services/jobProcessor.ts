@@ -198,6 +198,7 @@ async function processNextJob() {
           await db.updateJob(claimedJob.id, { status: "error", errorMessage, completedAt: new Date() }).catch(() => {});
         }
       } else {
+        // All retries exhausted — mark as error and add to dead letter queue
         try {
           await db.updateJob(claimedJob.id, {
             status: "error",
@@ -208,9 +209,31 @@ async function processNextJob() {
           console.error(`[JobQueue] Failed to update job ${claimedJob.id} error status:`, updateError);
           await db.updateJob(claimedJob.id, {
             status: "error",
-            errorMessage: "Job failed — see server logs for details",
+            errorMessage: "Job failed \u2014 see server logs for details",
             completedAt: new Date(),
           }).catch(() => {});
+        }
+
+        // Add to dead letter queue for inspection and potential reprocessing
+        try {
+          await db.addToDeadLetterQueue({
+            originalJobId: claimedJob.id,
+            jobType: claimedJob.type,
+            userId: claimedJob.userId,
+            trackId: claimedJob.trackId,
+            projectId: claimedJob.projectId,
+            payload: {
+              type: claimedJob.type,
+              trackId: claimedJob.trackId,
+              projectId: claimedJob.projectId,
+              attempts: claimedJob.attempts,
+              maxAttempts,
+            },
+            errorMessage,
+            attempts: claimedJob.attempts,
+          });
+        } catch (dlqError) {
+          console.error(`[JobQueue] Failed to add job ${claimedJob.id} to DLQ:`, dlqError);
         }
       }
     } finally {

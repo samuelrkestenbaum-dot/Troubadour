@@ -6,6 +6,7 @@
 import { ENV } from "../_core/env";
 import type { GeminiAudioAnalysis } from "./geminiAudio";
 import { getFocusConfig, type ReviewFocusRole } from "./reviewFocus";
+import { claudeCircuitBreaker } from "../utils/circuitBreaker";
 
 export const CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
 
@@ -48,6 +49,11 @@ async function sleep(ms: number) {
 export async function callClaude(systemPrompt: string, messages: ClaudeMessage[], maxTokens = 4096): Promise<string> {
   assertApiKey();
 
+  // Circuit breaker: fail fast if Claude has been consistently failing
+  return claudeCircuitBreaker.execute(() => _callClaudeInner(systemPrompt, messages, maxTokens));
+}
+
+async function _callClaudeInner(systemPrompt: string, messages: ClaudeMessage[], maxTokens: number): Promise<string> {
   const allMessages = [
     { role: "system" as const, content: systemPrompt },
     ...messages,

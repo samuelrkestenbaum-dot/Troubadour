@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as db from "../db";
 import { nanoid } from "nanoid";
+import { logAuditEvent } from "../utils/auditTrail";
 
 export const collaborationRouter = {
   // ── Collaboration ──
@@ -48,6 +49,7 @@ export const collaborationRouter = {
           }).catch(err => console.error("[Email] invite send failed:", err));
         }).catch(err => console.error("[Email] import failed:", err));
 
+        logAuditEvent({ userId: ctx.user.id, action: "collaboration.invite", resourceType: "project", resourceId: input.projectId, metadata: { invitedEmail: input.email, role: input.role } });
         return { success: true, inviteToken, autoAccepted: !!invitedUser };
       }),
 

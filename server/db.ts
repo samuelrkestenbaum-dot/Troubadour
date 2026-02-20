@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes, emailVerificationTokens } from "../drizzle/schema";
-import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound, InsertSkillProgression, InsertGenreBenchmarkStats, InsertReleaseReadiness, InsertUserStreak, InsertArtistDNA, InsertGenreCluster, InsertArtistArchetype, InsertEmailVerificationToken } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes, emailVerificationTokens, deadLetterQueue } from "../drizzle/schema";
+import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound, InsertSkillProgression, InsertGenreBenchmarkStats, InsertReleaseReadiness, InsertUserStreak, InsertArtistDNA, InsertGenreCluster, InsertArtistArchetype, InsertEmailVerificationToken, InsertDeadLetterQueue } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1205,6 +1205,12 @@ export async function getStructureAnalysis(trackId: number) {
 // ── Genre Benchmarking (Feature 5) ──
 
 export async function getGenreBenchmarks(genre: string) {
+  // Use cache for genre benchmarks (15 min TTL — computed periodically)
+  const { genreBenchmarksCache } = await import("./utils/cache");
+  const cacheKey = `genre:${genre}`;
+  const cached = genreBenchmarksCache.get(cacheKey);
+  if (cached) return cached as unknown as { trackCount: number; reviews: { scoresJson: unknown }[] };
+
   const db = await getDb();
   if (!db) return null;
   // Get average scores for all tracks in this genre
@@ -1224,9 +1230,10 @@ export async function getGenreBenchmarks(genre: string) {
       eq(reviews.reviewType, "track"),
     ));
   
-  return { trackCount: result[0]?.trackCount || 0, reviews: reviewRows };
+   const benchmarkResult = { trackCount: result[0]?.trackCount || 0, reviews: reviewRows };
+  genreBenchmarksCache.set(cacheKey, benchmarkResult as unknown as unknown[]);
+  return benchmarkResult;
 }
-
 export async function getAllGenresWithCounts() {
   const db = await getDb();
   if (!db) return [];
@@ -3481,4 +3488,75 @@ export async function cleanupExpiredVerificationTokens() {
       )
     );
   return result[0]?.affectedRows ?? 0;
+}
+
+
+// ── Dead Letter Queue Helpers ──
+
+export async function addToDeadLetterQueue(params: {
+  originalJobId: number;
+  jobType: string;
+  userId: number;
+  trackId?: number | null;
+  projectId?: number | null;
+  payload?: Record<string, unknown>;
+  errorMessage: string;
+  attempts: number;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.error("[DLQ] Cannot add to dead letter queue: database not available");
+    return;
+  }
+  await db.insert(deadLetterQueue).values({
+    originalJobId: params.originalJobId,
+    jobType: params.jobType,
+    userId: params.userId,
+    trackId: params.trackId ?? null,
+    projectId: params.projectId ?? null,
+    payload: params.payload ?? null,
+    errorMessage: params.errorMessage,
+    attempts: params.attempts,
+  });
+  console.log(`[DLQ] Job ${params.originalJobId} (${params.jobType}) added to dead letter queue`);
+}
+
+export async function getDeadLetterQueueItems(options?: { processed?: boolean; limit?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [];
+  if (options?.processed !== undefined) {
+    conditions.push(eq(deadLetterQueue.processed, options.processed));
+  }
+  const query = db.select().from(deadLetterQueue)
+    .orderBy(desc(deadLetterQueue.createdAt))
+    .limit(options?.limit ?? 50);
+  if (conditions.length > 0) {
+    return query.where(and(...conditions));
+  }
+  return query;
+}
+
+export async function markDlqItemProcessed(id: number, reprocessedJobId?: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(deadLetterQueue)
+    .set({
+      processed: true,
+      processedAt: new Date(),
+      reprocessedJobId: reprocessedJobId ?? null,
+    })
+    .where(eq(deadLetterQueue.id, id));
+}
+
+export async function getDlqStats(): Promise<{ total: number; unprocessed: number }> {
+  const db = await getDb();
+  if (!db) return { total: 0, unprocessed: 0 };
+  const [totalResult] = await db.select({ count: count() }).from(deadLetterQueue);
+  const [unprocessedResult] = await db.select({ count: count() }).from(deadLetterQueue)
+    .where(eq(deadLetterQueue.processed, false));
+  return {
+    total: totalResult?.count ?? 0,
+    unprocessed: unprocessedResult?.count ?? 0,
+  };
 }

@@ -2329,4 +2329,54 @@
 ### Quality & Testing - Round 90
 - [x] Write 23 tests for digest gating (8 test suites covering all gating paths)
 - [x] All 1,643 tests pass across 63 files
-- [ ] Save checkpoint
+- [x] Save checkpoint (d38dc76f)
+
+## Round 91 - Claude Opus 4 Comprehensive Audit
+
+### Audit Preparation
+- [x] Gather full codebase inventory (30 tables, 18 services, 12 routers, 37 pages, 45+ components)
+- [x] Submit comprehensive audit to Claude Opus 4 via Forge API (54,642-char report)
+
+### Audit Execution
+- [x] Cross-verify findings against actual codebase (grep/structural analysis)
+- [x] Compile actionable gap report with 20 verified gaps across 4 priority phases
+- [x] Deliver gap analysis report to user
+
+### Verified Gaps from Opus 4 Audit (Prioritized)
+
+#### Phase 1 — Security & Data Integrity
+- [x] FK constraints already exist on 28/30 tables (verified via grep, not just self-refs)
+- [x] Implement magic bytes file validation (audioValidation.ts — 9 format signatures)
+- [x] Add dead-letter queue (deadLetterQueue table + 4 DB helpers + jobProcessor integration)
+- [x] SameSite cookie attribute already set to "none" in cookies.ts
+- [ ] Wrap critical multi-table operations in database transactions (deferred — low risk)
+
+#### Phase 2 — Performance & Resilience
+- [x] Implement React.lazy for all 33 route imports (lazy + Suspense fallback)
+- [x] Add circuit breakers for Claude, Gemini, Postmark (circuitBreaker.ts utility)
+- [x] Implement TTLCache for static data (genreBenchmarks 15min, adminSettings 5min, userTier 1min)
+- [ ] Switch to presigned URLs for audio file access (deferred — S3 is public)
+- [ ] Add list virtualization for long lists (deferred — react-window)
+
+#### Phase 3 — Business Logic & UX
+- [x] Handle additional Stripe webhook events (trial_will_end, paused, resumed)
+- [x] Improve error recovery UX for failed jobs (retry button + clear error messages in TrackView)
+- [x] Add graceful degradation UI (ServiceStatusBanner + serviceHealth tRPC procedure)
+- [x] DLQ admin router (list, stats, retry, delete) registered in appRouter
+- [x] Collaboration roles already enforced (commenter check on comments, owner check on invites)
+- [ ] Add cancellation exit survey and subscription pause option (deferred — UX design needed)
+
+#### Phase 4 — Polish & Growth
+- [x] General user action audit trail (auditTrail.ts + logging on project CRUD, track upload, subscription, collaboration)
+- [ ] Accessibility audit and WCAG fixes (deferred)
+- [ ] Mobile responsiveness improvements (deferred)
+- [ ] Contextual upgrade prompts with A/B testing (deferred)
+- [ ] Postmark bounce webhook integration (deferred)
+
+### Quality & Testing - Round 92
+- [x] Write 60 tests for all Phase 1-4 implementations
+- [x] Fix 4 existing tests broken by magic bytes validation (valid audio buffers in base64)
+- [x] Fix 1 existing test broken by lazy import pattern change
+- [x] All 1,703 tests pass across 64 files
+- [x] 0 TypeScript errors
+- [x] Save checkpoint

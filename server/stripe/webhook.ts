@@ -225,6 +225,118 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   }).catch(() => {});
 }
 
+async function handleTrialWillEnd(subscription: Stripe.Subscription) {
+  const customerId = typeof subscription.customer === "string"
+    ? subscription.customer
+    : (subscription.customer as any)?.id;
+
+  if (!customerId) return;
+
+  const user = await db.getUserByStripeCustomerId(customerId);
+  if (!user) return;
+
+  const trialEnd = subscription.trial_end
+    ? new Date(subscription.trial_end * 1000).toLocaleDateString()
+    : "soon";
+
+  console.log(`[Webhook] Trial ending ${trialEnd} for user ${user.id}`);
+
+  // Create in-app notification about trial ending
+  try {
+    await db.createNotification({
+      userId: user.id,
+      type: "system",
+      title: "Your trial is ending soon",
+      message: `Your trial ends on ${trialEnd}. Add a payment method to keep your ${user.tier} features.`,
+      link: "/settings",
+    });
+  } catch (e) {
+    console.warn("[Webhook] Failed to create trial ending notification:", e);
+  }
+
+  // Slack notification
+  sendSubscriptionChangeAlert({
+    userName: user.name || `User #${user.id}`,
+    previousTier: user.tier || "free",
+    newTier: user.tier || "free",
+    changeType: "downgrade",
+  }).catch(() => {});
+}
+
+async function handleSubscriptionPaused(subscription: Stripe.Subscription) {
+  const customerId = typeof subscription.customer === "string"
+    ? subscription.customer
+    : (subscription.customer as any)?.id;
+
+  if (!customerId) return;
+
+  const user = await db.getUserByStripeCustomerId(customerId);
+  if (!user) return;
+
+  const previousTier = user.tier || "free";
+  // Downgrade to free while paused
+  await db.updateUserSubscription(user.id, {
+    tier: "free",
+    audioMinutesLimit: PLANS.free.audioMinutesLimit,
+  });
+  console.log(`[Webhook] User ${user.id} subscription paused, downgraded to free`);
+
+  // Create in-app notification
+  try {
+    await db.createNotification({
+      userId: user.id,
+      type: "system",
+      title: "Subscription paused",
+      message: `Your ${previousTier} subscription has been paused. Resume anytime from your settings to restore your features.`,
+      link: "/settings",
+    });
+  } catch (e) {
+    console.warn("[Webhook] Failed to create pause notification:", e);
+  }
+
+  sendSubscriptionChangeAlert({
+    userName: user.name || `User #${user.id}`,
+    previousTier,
+    newTier: "free",
+    changeType: "downgrade",
+  }).catch(() => {});
+}
+
+async function handleSubscriptionResumed(subscription: Stripe.Subscription) {
+  const customerId = typeof subscription.customer === "string"
+    ? subscription.customer
+    : (subscription.customer as any)?.id;
+
+  if (!customerId) return;
+
+  const user = await db.getUserByStripeCustomerId(customerId);
+  if (!user) return;
+
+  const priceId = subscription.items.data[0]?.price?.id;
+  const tier = priceId ? await tierFromPriceId(priceId) : "artist";
+  if (tier !== "free") {
+    const plan = PLANS[tier];
+    await db.updateUserSubscription(user.id, {
+      tier,
+      stripeSubscriptionId: subscription.id,
+      audioMinutesLimit: plan.audioMinutesLimit,
+    });
+    console.log(`[Webhook] User ${user.id} subscription resumed to ${tier}`);
+
+    try {
+      await db.createNotification({
+        userId: user.id,
+        type: "system",
+        title: "Welcome back!",
+        message: `Your ${tier} subscription has been resumed. All your features are restored.`,
+        link: "/dashboard",
+      });
+    } catch (e) {
+      console.warn("[Webhook] Failed to create resume notification:", e);
+    }
+  }
+}
+
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = typeof invoice.customer === "string"
     ? invoice.customer
@@ -302,6 +414,15 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           currency: (event.data.object as any).currency,
           description: `Payment failed (attempt ${(event.data.object as any).attempt_count ?? 1})`,
         }).catch(() => {});
+        break;
+      case "customer.subscription.trial_will_end":
+        await handleTrialWillEnd(event.data.object as Stripe.Subscription);
+        break;
+      case "customer.subscription.paused":
+        await handleSubscriptionPaused(event.data.object as Stripe.Subscription);
+        break;
+      case "customer.subscription.resumed":
+        await handleSubscriptionResumed(event.data.object as Stripe.Subscription);
         break;
       default:
         console.log(`[Webhook] Unhandled event type: ${event.type}`);

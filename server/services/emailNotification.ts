@@ -5,6 +5,7 @@
  */
 
 import { ENV } from "../_core/env";
+import { postmarkCircuitBreaker, CircuitOpenError } from "../utils/circuitBreaker";
 
 interface EmailPayload {
   to: string;
@@ -21,6 +22,21 @@ async function sendEmail(payload: EmailPayload): Promise<boolean> {
     return false;
   }
 
+  try {
+    return await postmarkCircuitBreaker.execute(async () => {
+      return await _sendEmailInner(payload, apiToken);
+    });
+  } catch (error) {
+    if (error instanceof CircuitOpenError) {
+      console.warn(`[Email] Postmark circuit open — skipping email to ${payload.to}: "${payload.subject}"`);
+      return false;
+    }
+    console.error("[Email] Failed to send:", error);
+    return false;
+  }
+}
+
+async function _sendEmailInner(payload: EmailPayload, apiToken: string): Promise<boolean> {
   try {
     const response = await fetch("https://api.postmarkapp.com/email", {
       method: "POST",
