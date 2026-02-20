@@ -2525,4 +2525,29 @@
 - [x] Run Gravito governance checks on new content (2 of 5 tools succeeded, 100/100 scores)
 - [x] Update tests for new components (14 new tests in features-round96-audit-implementation.test.ts)
 - [x] All tests pass: 1,784 tests passing, 67 files, 0 TypeScript errors
+- [x] Save checkpoint (version 06ea4c67)
+
+## Round 97 - Implement 3 Suggested Improvements (Claude Opus 4 + Gravito)
+### Feature 1: Compare with Previous Version in A/B Comparison
+- [x] Use Claude to design the version comparison UX (mode selector + version dropdown)
+- [x] Add "Version History" mode alongside "Fresh Perspectives" mode in ABReviewComparison
+- [x] Wire up trpc.review.history + trpc.review.get for version comparison
+- [x] Score progression badge with +/- indicator
+- [ ] Run Gravito governance check on new UI copy (deferred to Phase 6)
+### Feature 2: Prefetch Active Insights Tab Data
+- [x] Implement data prefetching on Insights page mount for default tab (analytics.dashboard)
+- [x] Add prefetch hints for adjacent tabs on hover (200ms debounce)
+- [x] Prefetch routes: skillTracker.overview, streak.get, artistDNA.latest/history
+- [x] 0 TypeScript errors
+### Feature 3: Smart Review Length Override
+- [x] Claude designed collapsible "Advanced options" with Settings2 icon in re-review dialog
+- [x] Add 3-option grid (Brief/Standard/Detailed) with descriptions under "Advanced options" toggle
+- [x] Wire up re-review mutation with selected length (only sends non-standard)
+- [x] Default is Standard; power users can expand to override
+- [x] 0 TypeScript errors
+### Verification
+- [x] Run Claude Opus 4 verification audit: Feature 1 (9/10), Feature 2 (9.5/10), Feature 3 (7/10), Overall 8.5/10
+- [x] Run Gravito governance checks on all new content (4 checks: 100/100, 100/100, 100/100, 90/100)
+- [x] Update tests for new features (26 new tests in features-round97-three-improvements.test.ts)
+- [x] All tests pass: 1,810 tests passing, 68 files, 0 TypeScript errors
 - [ ] Save checkpoint

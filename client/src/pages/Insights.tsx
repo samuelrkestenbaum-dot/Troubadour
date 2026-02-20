@@ -20,7 +20,7 @@ import {
   LineChart, Award, Fingerprint
 } from "lucide-react";
 import { scoreColor } from "@/lib/scoreColor";
-import { useMemo } from "react";
+import { useMemo, useCallback, useRef } from "react";
 
 const scoreLabels: Record<string, string> = {
   production: "Production",
@@ -49,9 +49,71 @@ const scoreBarColor = (score: number) => {
 
 type InsightTab = "overview" | "skills" | "competitive" | "momentum" | "dna";
 
+// Round 97: Prefetch hook for adjacent tabs per Claude Opus 4 design
+function usePrefetchInsightsTabs() {
+  const utils = trpc.useUtils();
+  const prefetchedRef = useRef<Set<string>>(new Set());
+
+  // Prefetch overview data on mount (default tab)
+  const prefetchOverview = useCallback(() => {
+    if (!prefetchedRef.current.has("overview")) {
+      utils.analytics.dashboard.prefetch();
+      prefetchedRef.current.add("overview");
+    }
+  }, [utils]);
+
+  // Prefetch adjacent tabs on hover with debounce
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTabHover = useCallback((tab: InsightTab) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      if (!prefetchedRef.current.has(tab)) {
+        // Prefetch the data for the hovered tab
+        switch (tab) {
+          case "overview":
+            utils.analytics.dashboard.prefetch();
+            break;
+          case "skills":
+            utils.skillTracker.overview.prefetch();
+            break;
+          case "competitive":
+            // CompetitivePosition uses releaseReadiness (mutation-based, can't prefetch)
+            // No-op: evaluate is a mutation triggered by user action
+            break;
+          case "momentum":
+            // Momentum uses streak.get + flywheel data
+            utils.streak.get.prefetch();
+            break;
+          case "dna":
+            utils.artistDNA.latest.prefetch();
+            utils.artistDNA.history.prefetch();
+            break;
+        }
+        prefetchedRef.current.add(tab);
+      }
+    }, 200); // 200ms debounce per Claude design
+  }, [utils]);
+
+  const handleTabHoverEnd = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  }, []);
+
+  return { prefetchOverview, handleTabHover, handleTabHoverEnd };
+}
+
 export default function Insights() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<InsightTab>("overview");
+  const { prefetchOverview, handleTabHover, handleTabHoverEnd } = usePrefetchInsightsTabs();
+
+  // Prefetch overview data on mount
+  useMemo(() => {
+    prefetchOverview();
+  }, [prefetchOverview]);
 
   return (
     <div className="container py-6 max-w-5xl space-y-6">
@@ -64,35 +126,35 @@ export default function Insights() {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as InsightTab)} className="w-full">
         <TabsList className="w-full justify-start h-auto flex-wrap gap-1 bg-muted/30 p-1.5">
-          <TabsTrigger value="overview" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+          <TabsTrigger value="overview" className="flex-col items-start h-auto py-2 px-3 gap-0.5" onMouseEnter={() => handleTabHover("overview")} onMouseLeave={handleTabHoverEnd}>
             <div className="flex items-center gap-1.5">
               <BarChart3 className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">Overview</span>
             </div>
             <span className="text-[10px] text-muted-foreground font-normal">Performance summary and activity trends</span>
           </TabsTrigger>
-          <TabsTrigger value="skills" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+          <TabsTrigger value="skills" className="flex-col items-start h-auto py-2 px-3 gap-0.5" onMouseEnter={() => handleTabHover("skills")} onMouseLeave={handleTabHoverEnd}>
             <div className="flex items-center gap-1.5">
               <LineChart className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">Skill Growth</span>
             </div>
             <span className="text-[10px] text-muted-foreground font-normal">Track development across artistic dimensions</span>
           </TabsTrigger>
-          <TabsTrigger value="competitive" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+          <TabsTrigger value="competitive" className="flex-col items-start h-auto py-2 px-3 gap-0.5" onMouseEnter={() => handleTabHover("competitive")} onMouseLeave={handleTabHoverEnd}>
             <div className="flex items-center gap-1.5">
               <Award className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">Competitive Position</span>
             </div>
             <span className="text-[10px] text-muted-foreground font-normal">Project readiness and peer benchmarks</span>
           </TabsTrigger>
-          <TabsTrigger value="momentum" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+          <TabsTrigger value="momentum" className="flex-col items-start h-auto py-2 px-3 gap-0.5" onMouseEnter={() => handleTabHover("momentum")} onMouseLeave={handleTabHoverEnd}>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">Momentum</span>
             </div>
             <span className="text-[10px] text-muted-foreground font-normal">Consistency, streaks, and data impact</span>
           </TabsTrigger>
-          <TabsTrigger value="dna" className="flex-col items-start h-auto py-2 px-3 gap-0.5">
+          <TabsTrigger value="dna" className="flex-col items-start h-auto py-2 px-3 gap-0.5" onMouseEnter={() => handleTabHover("dna")} onMouseLeave={handleTabHoverEnd}>
             <div className="flex items-center gap-1.5">
               <Fingerprint className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">Artist DNA</span>

@@ -13,7 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { RadarChart } from "@/components/RadarChart";
 import {
   ArrowLeft, Download, Copy, AlertCircle, BarChart3, Music, BookOpen, GitCompare,
-  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check, Lock, RefreshCw
+  MessageCircle, Send, Loader2, ChevronDown, ChevronUp, Share2, Check, Lock, RefreshCw, Settings2
 } from "lucide-react";
 import {
   AlertDialog,
@@ -411,6 +411,8 @@ export default function ReviewView({ id }: { id: number }) {
   };
 
   const [reReviewTemplateId, setReReviewTemplateId] = useState<number | null>(null);
+  const [reReviewLength, setReReviewLength] = useState<"brief" | "standard" | "detailed">("standard");
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [diffReviewId, setDiffReviewId] = useState<number | null>(null);
 
@@ -569,13 +571,51 @@ export default function ReviewView({ id }: { id: number }) {
                     <p className="text-xs text-muted-foreground">Choose a persona to shape the AI's critique style.</p>
                   </div>
 
+                  {/* Smart Review Length Override — Round 97 */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Settings2 className="h-3 w-3" />
+                    <span>Advanced options</span>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${showAdvancedOptions ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showAdvancedOptions && (
+                    <div className="space-y-2 pl-4 border-l-2 border-muted">
+                      <label className="text-sm font-medium text-foreground">Review Depth</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: "brief" as const, label: "Brief", desc: "Quick take, key points only" },
+                          { value: "standard" as const, label: "Standard", desc: "Balanced analysis" },
+                          { value: "detailed" as const, label: "Detailed", desc: "Deep dive, every dimension" },
+                        ]).map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setReReviewLength(opt.value)}
+                            className={`p-2 rounded-md border text-left transition-all ${
+                              reReviewLength === opt.value
+                                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                                : "border-border hover:border-muted-foreground/30"
+                            }`}
+                          >
+                            <div className="text-xs font-medium">{opt.label}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Default is Standard. Brief saves time; Detailed gives exhaustive feedback.</p>
+                    </div>
+                  )}
                 </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={() => reReviewMut.mutate({
                     trackId: review.trackId!,
                     ...(reReviewTemplateId ? { templateId: reReviewTemplateId } : {}),
-
+                    ...(reReviewLength !== "standard" ? { reviewLength: reReviewLength } : {}),
                   })}>
                     Generate New Review
                   </AlertDialogAction>

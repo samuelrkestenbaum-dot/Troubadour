@@ -3,11 +3,13 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, GitCompare, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, GitCompare, Star, ChevronDown, ChevronUp, History, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
 // Focus modes removed in Round 94 UX simplification — A/B comparison now uses templates only
+// Round 97: Added "Compare with Previous Version" option per Claude Opus 4 design
 
 function ScoreBadge({ score, label }: { score: number; label: string }) {
   const color = score >= 8 ? "text-emerald-400" : score >= 6 ? "text-amber-400" : "text-red-400";
@@ -19,10 +21,10 @@ function ScoreBadge({ score, label }: { score: number; label: string }) {
   );
 }
 
-function ReviewPanel({ review, side }: { review: any; side: "A" | "B" }) {
+function ReviewPanel({ review, side, label }: { review: any; side: "A" | "B"; label?: string }) {
   const [expanded, setExpanded] = useState(true);
   const scores = review?.scoresJson as any;
-  const focusLabel = side === "A" ? "Review A" : "Review B";
+  const focusLabel = label || (side === "A" ? "Review A" : "Review B");
   const sideColor = side === "A" ? "border-blue-500/50 bg-blue-500/5" : "border-purple-500/50 bg-purple-500/5";
   const sideBadge = side === "A" ? "bg-blue-500/20 text-blue-400" : "bg-purple-500/20 text-purple-400";
 
@@ -90,10 +92,34 @@ function ReviewPanel({ review, side }: { review: any; side: "A" | "B" }) {
   );
 }
 
-export function ABReviewComparison({ trackId }: { trackId: number }) {
+type ComparisonMode = "perspectives" | "versions";
 
+export function ABReviewComparison({ trackId }: { trackId: number }) {
+  const [mode, setMode] = useState<ComparisonMode>("perspectives");
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [isSetup, setIsSetup] = useState(true);
+
+  // Version comparison state
+  const [selectedPreviousReviewId, setSelectedPreviousReviewId] = useState<string>("");
+  const [versionCompareActive, setVersionCompareActive] = useState(false);
+
+  // Fetch review history for version comparison
+  const historyQuery = trpc.review.history.useQuery(
+    { trackId },
+    { enabled: mode === "versions" }
+  );
+
+  // Fetch the selected previous review
+  const previousReviewQuery = trpc.review.get.useQuery(
+    { id: Number(selectedPreviousReviewId) },
+    { enabled: versionCompareActive && !!selectedPreviousReviewId }
+  );
+
+  // Fetch the current (latest) review
+  const currentReviewQuery = trpc.review.get.useQuery(
+    { id: historyQuery.data?.[0]?.id ?? 0 },
+    { enabled: versionCompareActive && !!historyQuery.data?.[0]?.id }
+  );
 
   const generateMutation = trpc.abCompare.generate.useMutation({
     onSuccess: (data) => {
@@ -109,7 +135,6 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
     { enabled: !!activeBatchId, refetchInterval: activeBatchId ? 3000 : false }
   );
 
-  // Stop polling when complete
   useEffect(() => {
     if (resultsQuery.data?.status === "complete" || resultsQuery.data?.status === "error") {
       // Query will stop refetching since we don't need to poll anymore
@@ -123,8 +148,23 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
   const handleNewComparison = () => {
     setActiveBatchId(null);
     setIsSetup(true);
+    setVersionCompareActive(false);
+    setSelectedPreviousReviewId("");
   };
 
+  const handleVersionCompare = () => {
+    if (!selectedPreviousReviewId) {
+      toast.error("Select a previous review to compare");
+      return;
+    }
+    setVersionCompareActive(true);
+    setIsSetup(false);
+  };
+
+  const reviewHistory = historyQuery.data || [];
+  const hasPreviousVersions = reviewHistory.length >= 2;
+
+  // Setup screen
   if (isSetup) {
     return (
       <Card className="border-dashed border-muted-foreground/30">
@@ -134,31 +174,174 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
             A/B Review Comparison
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Generate two reviews from different perspectives side-by-side to see how different personas critique the same track.
+            Compare reviews side-by-side to gain deeper insight into your track.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Generate two independent reviews side-by-side to compare different takes on the same track.
-          </p>
+          {/* Mode selector */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setMode("perspectives")}
+              className={`p-3 rounded-lg border text-left transition-all ${
+                mode === "perspectives"
+                  ? "border-primary bg-primary/10"
+                  : "border-border/50 hover:border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <GitCompare className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold">Fresh Perspectives</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Generate two new reviews from different AI personas
+              </p>
+            </button>
+            <button
+              onClick={() => setMode("versions")}
+              className={`p-3 rounded-lg border text-left transition-all ${
+                mode === "versions"
+                  ? "border-primary bg-primary/10"
+                  : "border-border/50 hover:border-border"
+              } ${!hasPreviousVersions && mode !== "versions" ? "opacity-50" : ""}`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <History className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold">Version History</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Compare current review with a previous version
+              </p>
+            </button>
+          </div>
 
-          <Button
-            onClick={handleGenerate}
-            disabled={generateMutation.isPending}
-            className="w-full"
-            size="sm"
-          >
-            {generateMutation.isPending ? (
-              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating...</>
-            ) : (
-              <><GitCompare className="h-4 w-4 mr-2" /> Compare Perspectives</>
-            )}
-          </Button>
+          {/* Fresh Perspectives mode */}
+          {mode === "perspectives" && (
+            <Button
+              onClick={handleGenerate}
+              disabled={generateMutation.isPending}
+              className="w-full"
+              size="sm"
+            >
+              {generateMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating...</>
+              ) : (
+                <><GitCompare className="h-4 w-4 mr-2" /> Compare Perspectives</>
+              )}
+            </Button>
+          )}
+
+          {/* Version History mode */}
+          {mode === "versions" && (
+            <div className="space-y-3">
+              {!hasPreviousVersions ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No previous reviews found. Re-review this track first to build version history.
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Compare current review with:</label>
+                    <Select value={selectedPreviousReviewId} onValueChange={setSelectedPreviousReviewId}>
+                      <SelectTrigger className="w-full text-xs">
+                        <SelectValue placeholder="Select a previous review" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reviewHistory.slice(1).map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)} className="text-xs">
+                            v{r.reviewVersion} — {r.scoresJson ? `${((r.scoresJson as any).overall || 0).toFixed(1)}/10` : "—"} — {new Date(r.createdAt!).toLocaleDateString()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={handleVersionCompare}
+                    disabled={!selectedPreviousReviewId}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    Compare Versions
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
   }
 
+  // Version comparison results
+  if (versionCompareActive) {
+    const currentReview = currentReviewQuery.data;
+    const previousReview = previousReviewQuery.data;
+    const isLoading = currentReviewQuery.isLoading || previousReviewQuery.isLoading;
+
+    const currentScores = (currentReview?.scoresJson as any) || {};
+    const previousScores = (previousReview?.scoresJson as any) || {};
+    const scoreDiff = currentScores.overall && previousScores.overall
+      ? (currentScores.overall - previousScores.overall).toFixed(1)
+      : null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Version Comparison</span>
+            {isLoading && <Badge variant="outline" className="text-xs animate-pulse">Loading...</Badge>}
+            {!isLoading && <Badge variant="outline" className="text-xs text-emerald-400">Ready</Badge>}
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleNewComparison} className="text-xs">
+            New Comparison
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ReviewPanel
+            review={previousReview}
+            side="A"
+            label={`v${previousReview?.reviewVersion || "?"} (Previous)`}
+          />
+          <ReviewPanel
+            review={currentReview}
+            side="B"
+            label={`v${currentReview?.reviewVersion || "?"} (Current)`}
+          />
+        </div>
+
+        {!isLoading && currentReview && previousReview && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Score progression:</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-blue-400 font-medium">
+                    v{previousReview.reviewVersion}: {previousScores.overall?.toFixed(1) || "—"}
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-purple-400 font-medium">
+                    v{currentReview.reviewVersion}: {currentScores.overall?.toFixed(1) || "—"}
+                  </span>
+                  {scoreDiff && (
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${Number(scoreDiff) > 0 ? "text-emerald-400" : Number(scoreDiff) < 0 ? "text-red-400" : "text-muted-foreground"}`}
+                    >
+                      {Number(scoreDiff) > 0 ? "+" : ""}{scoreDiff}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // A/B Perspectives results (existing flow)
   const results = resultsQuery.data;
   const isComplete = results?.status === "complete";
   const isError = results?.status === "error";
