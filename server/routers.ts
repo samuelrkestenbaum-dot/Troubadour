@@ -938,9 +938,9 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
           link: "/digest",
         });
 
-        // Send email via Postmark (if configured)
+        // Send email via Postmark (only if email is verified)
         let emailSent = false;
-        if (user.email) {
+        if (user.email && user.emailVerified) {
           try {
             const { sendDigestEmail } = await import("./services/emailService");
             const result = await sendDigestEmail({
@@ -1057,6 +1057,7 @@ ${JSON.stringify(features?.geminiAnalysisJson || {}, null, 2)}`;
         const user = await db.getUserById(ctx.user.id);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });
         if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "No email address on file. Please update your profile first." });
+        if (!user.emailVerified) throw new TRPCError({ code: "BAD_REQUEST", message: "Please verify your email address before sending test digests. Check your inbox for the verification link or request a new one from Settings." });
 
         // Generate a small digest
         const data = await db.getDigestData(ctx.user.id, 7);

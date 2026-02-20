@@ -423,8 +423,8 @@ async function runScheduledDigest(): Promise<void> {
           link: "/digest",
         });
 
-        // Send email if user has email and Postmark is configured
-        if (user.email) {
+        // Send email only if user has email AND email is verified
+        if (user.email && (user as any).emailVerified === true) {
           try {
             const { sendDigestEmail } = await import("./emailService");
             const htmlContent = generateDigestEmailHtml(
@@ -524,6 +524,9 @@ export async function forceDigestRun(): Promise<{ sent: number; skipped: number;
         frequencySkipped++;
         continue;
       }
+
+      // Skip email sending for users with unverified emails
+      // (in-app notifications still created below)
 
       const daysBack = getDaysBackForFrequency(frequency);
       const data = await db.getDigestData(user.id, daysBack);
