@@ -125,6 +125,88 @@ export const subscriptionRouter = {
         return { url };
       }),
 
+    submitCancellationSurvey: protectedProcedure
+      .input(z.object({
+        reason: z.string().min(1).max(50),
+        feedbackText: z.string().max(1000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.createCancellationSurvey({
+          userId: ctx.user.id,
+          reason: input.reason,
+          feedbackText: input.feedbackText,
+          offeredDiscount: false,
+          acceptedDiscount: false,
+        });
+
+        logAuditEvent({
+          userId: ctx.user.id,
+          action: "cancellation_survey",
+          resourceType: "subscription",
+          metadata: { reason: input.reason },
+        });
+
+        // Offer discount for price-sensitive or usage-related reasons
+        const discountReasons = ["too_expensive", "not_using_enough", "temporary_break"];
+        const offerDiscount = discountReasons.includes(input.reason);
+
+        return { success: true, offerDiscount };
+      }),
+
+    acceptRetentionDiscount: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.stripeSubscriptionId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription" });
+        }
+
+        try {
+          const { getStripe } = await import("../stripe/stripe");
+          const stripe = getStripe();
+
+          // Create a 30% off coupon for 1 month
+          const coupon = await stripe.coupons.create({
+            percent_off: 30,
+            duration: "once",
+            name: "Retention - 30% off next cycle",
+            metadata: { type: "retention", userId: ctx.user.id.toString() },
+          });
+
+          // Apply to the subscription via discount
+          await stripe.subscriptions.update(user.stripeSubscriptionId, {
+            discounts: [{ coupon: coupon.id }],
+          });
+
+          // Update the survey to reflect discount acceptance
+          const surveys = await db.getCancellationSurveys(ctx.user.id);
+          if (surveys.length > 0) {
+            // Mark the most recent survey as having accepted the discount
+            const { getDb } = await import("../db");
+            const dbConn = await getDb();
+            if (dbConn) {
+              const { cancellationSurveys } = await import("../../drizzle/schema");
+              const { eq } = await import("drizzle-orm");
+              await dbConn.update(cancellationSurveys)
+                .set({ offeredDiscount: true, acceptedDiscount: true })
+                .where(eq(cancellationSurveys.id, surveys[0].id));
+            }
+          }
+
+          logAuditEvent({
+            userId: ctx.user.id,
+            action: "subscription.cancel",
+            resourceType: "subscription",
+            metadata: { outcome: "retained_with_discount" },
+          });
+
+          return { success: true };
+        } catch (err: any) {
+          console.error("[Retention] Failed to apply discount:", err.message);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to apply discount" });
+        }
+      }),
+
     deleteAccount: protectedProcedure
       .input(z.object({ confirmation: z.literal("DELETE") }))
       .mutation(async ({ ctx }) => {

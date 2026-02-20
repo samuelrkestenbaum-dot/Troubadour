@@ -28,6 +28,9 @@ function createAuthContext(overrides?: Partial<AuthenticatedUser>): TrpcContext 
     notificationPreferences: null,
     preferredPersona: "full" as const,
     emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null,
     ...overrides,
   };
   return {
@@ -83,7 +86,10 @@ beforeEach(() => {
 
 describe("Email Verification - Status", () => {
   it("returns verification status for authenticated user", async () => {
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
     const result = await caller.emailVerification.status();
     expect(result.emailVerified).toBe(false);
@@ -92,7 +98,10 @@ describe("Email Verification - Status", () => {
   });
 
   it("returns emailVerified true when user is verified", async () => {
-    const ctx = createAuthContext({ emailVerified: true, email: "verified@example.com" });
+    const ctx = createAuthContext({ emailVerified: true,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "verified@example.com" });
     const caller = appRouter.createCaller(ctx);
     const result = await caller.emailVerification.status();
     expect(result.emailVerified).toBe(true);
@@ -117,7 +126,10 @@ describe("Email Verification - Status", () => {
 describe("Email Verification - Send Verification", () => {
   it("sends verification email for unverified user", async () => {
     const db = await import("./db");
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     (db.getActiveVerificationToken as any).mockResolvedValueOnce(null);
@@ -137,7 +149,10 @@ describe("Email Verification - Send Verification", () => {
   });
 
   it("rejects when email is already verified", async () => {
-    const ctx = createAuthContext({ emailVerified: true, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: true,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     await expect(
@@ -156,7 +171,10 @@ describe("Email Verification - Send Verification", () => {
 
   it("enforces rate limiting with cooldown period", async () => {
     const db = await import("./db");
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     // Simulate a recently created token (10 seconds ago)
@@ -177,7 +195,10 @@ describe("Email Verification - Send Verification", () => {
 
   it("allows resend after cooldown period", async () => {
     const db = await import("./db");
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     // Simulate a token created 2 minutes ago (past cooldown)
@@ -209,7 +230,10 @@ describe("Email Verification - Send Verification", () => {
   });
 
   it("validates origin is a URL", async () => {
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     await expect(
@@ -219,7 +243,10 @@ describe("Email Verification - Send Verification", () => {
 
   it("generates a token with 48 characters", async () => {
     const db = await import("./db");
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     (db.getActiveVerificationToken as any).mockResolvedValueOnce(null);
@@ -236,7 +263,10 @@ describe("Email Verification - Send Verification", () => {
 
   it("sets token expiry to 24 hours from now", async () => {
     const db = await import("./db");
-    const ctx = createAuthContext({ emailVerified: false, email: "test@example.com" });
+    const ctx = createAuthContext({ emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     (db.getActiveVerificationToken as any).mockResolvedValueOnce(null);

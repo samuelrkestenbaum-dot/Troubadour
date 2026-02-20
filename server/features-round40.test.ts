@@ -27,6 +27,9 @@ function createAuthContext(overrides?: Partial<AuthenticatedUser>): TrpcContext 
     lastDigestSentAt: null, notificationPreferences: null,
     preferredPersona: "full" as const,
     emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null,
     ...overrides,
   };
 

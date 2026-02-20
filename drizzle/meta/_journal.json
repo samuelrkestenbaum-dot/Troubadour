@@ -295,6 +295,13 @@
       "when": 1771557455376,
       "tag": "0041_magical_red_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1771596487797,
+      "tag": "0042_aromatic_angel",
+      "breakpoints": true
     }
   ]
 }

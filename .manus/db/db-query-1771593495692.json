@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `cancellationSurveys` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `userId` int NOT NULL,\n  `reason` varchar(50) NOT NULL,\n  `feedbackText` text,\n  `offeredDiscount` boolean NOT NULL DEFAULT false,\n  `acceptedDiscount` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  INDEX `idx_cancelSurvey_userId` (`userId`),\n  INDEX `idx_cancelSurvey_reason` (`reason`),\n  CONSTRAINT `fk_cancelSurvey_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2yoFfYif5LNxbni.536e2831ff0e --database ZpobkhoyuogEaApEUcL3SK --execute CREATE TABLE IF NOT EXISTS `cancellationSurveys` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `userId` int NOT NULL,\n  `reason` varchar(50) NOT NULL,\n  `feedbackText` text,\n  `offeredDiscount` boolean NOT NULL DEFAULT false,\n  `acceptedDiscount` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  INDEX `idx_cancelSurvey_userId` (`userId`),\n  INDEX `idx_cancelSurvey_reason` (`reason`),\n  CONSTRAINT `fk_cancelSurvey_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 434
+}

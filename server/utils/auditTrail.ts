@@ -22,11 +22,16 @@ export type AuditAction =
   | "email.verify"
   | "template.create"
   | "template.delete"
-  | "admin.action";
+  | "admin.action"
+  | "email_spam_complaint"
+  | "email_hard_bounce"
+  | "email_soft_bounce"
+  | "cancellation_survey";
 
 interface AuditEntry {
-  userId: number;
+  userId?: number;
   action: AuditAction;
+  details?: string;
   resourceType?: string;
   resourceId?: number;
   targetUserId?: number;
@@ -40,10 +45,11 @@ interface AuditEntry {
 export async function logAuditEvent(entry: AuditEntry): Promise<void> {
   try {
     await db.createAuditLogEntry({
-      adminUserId: entry.userId,
+      adminUserId: entry.userId ?? 0,
       action: entry.action,
       targetUserId: entry.targetUserId,
       details: {
+        ...(entry.details ? { description: entry.details } : {}),
         resourceType: entry.resourceType,
         resourceId: entry.resourceId,
         ...(entry.metadata || {}),

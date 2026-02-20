@@ -32,6 +32,9 @@ export const users = mysqlTable("users", {
     system: boolean;
   }>(),
   emailVerified: boolean("emailVerified").default(false).notNull(),
+  emailBounced: boolean("emailBounced").default(false).notNull(),
+  emailBouncedAt: timestamp("emailBouncedAt"),
+  emailBounceReason: varchar("emailBounceReason", { length: 255 }),
   deletedAt: timestamp("deletedAt"),
 });
 
@@ -779,3 +782,20 @@ export const deadLetterQueue = mysqlTable("deadLetterQueue", {
 ]);
 export type DeadLetterQueueRow = typeof deadLetterQueue.$inferSelect;
 export type InsertDeadLetterQueue = typeof deadLetterQueue.$inferInsert;
+
+// ── Cancellation Surveys ──
+export const cancellationSurveys = mysqlTable("cancellationSurveys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  reason: varchar("reason", { length: 50 }).notNull(),
+  feedbackText: text("feedbackText"),
+  offeredDiscount: boolean("offeredDiscount").default(false).notNull(),
+  acceptedDiscount: boolean("acceptedDiscount").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_cancelSurvey_userId").on(t.userId),
+  index("idx_cancelSurvey_reason").on(t.reason),
+  foreignKey({ columns: [t.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+]);
+export type CancellationSurveyRow = typeof cancellationSurveys.$inferSelect;
+export type InsertCancellationSurvey = typeof cancellationSurveys.$inferInsert;

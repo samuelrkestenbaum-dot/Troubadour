@@ -78,6 +78,12 @@ async function startServer() {
     return handleStripeWebhook(req, res);
   });
 
+  // Postmark bounce/complaint webhook
+  app.post("/api/postmark/bounce", express.json(), async (req, res) => {
+    const { handlePostmarkBounceWebhook } = await import("../postmark/bounceWebhook");
+    return handlePostmarkBounceWebhook(req, res);
+  });
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

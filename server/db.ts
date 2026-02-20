@@ -1,6 +1,6 @@
 import { eq, and, desc, asc, sql, count, avg, isNull, inArray, gte, or, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes, emailVerificationTokens, deadLetterQueue } from "../drizzle/schema";
+import { InsertUser, users, projects, tracks, lyrics, audioFeatures, reviews, jobs, conversationMessages, referenceTracks, chatSessions, chatMessages, processedWebhookEvents, favorites, reviewTemplates, projectCollaborators, waveformAnnotations, mixReports, structureAnalyses, projectInsights, notifications, reviewComments, artworkConcepts, masteringChecklists, trackNotes, actionModeCache, adminAuditLog, adminSettings, instrumentationAdvice, signatureSound, skillProgression, genreBenchmarkStats, releaseReadiness, userStreaks, artistDNA, genreClusters, artistArchetypes, emailVerificationTokens, deadLetterQueue, cancellationSurveys } from "../drizzle/schema";
 import type { InsertProject, InsertTrack, InsertLyrics, InsertAudioFeatures, InsertReview, InsertJob, InsertConversationMessage, InsertReferenceTrack, InsertChatSession, InsertChatMessage, InsertReviewTemplate, InsertProjectCollaborator, InsertWaveformAnnotation, InsertMixReport, InsertStructureAnalysis, InsertProjectInsight, InsertNotification, InsertReviewComment, InsertArtworkConcept, InsertMasteringChecklist, InsertTrackNote, InsertAdminAuditLog, InsertAdminSetting, InsertInstrumentationAdvice, InsertSignatureSound, InsertSkillProgression, InsertGenreBenchmarkStats, InsertReleaseReadiness, InsertUserStreak, InsertArtistDNA, InsertGenreCluster, InsertArtistArchetype, InsertEmailVerificationToken, InsertDeadLetterQueue } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -935,19 +935,21 @@ export async function updateProjectCoverImage(projectId: number, coverImageUrl: 
 export async function toggleFavorite(userId: number, trackId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const existing = await db.select().from(favorites).where(
-    and(eq(favorites.userId, userId), eq(favorites.trackId, trackId))
-  ).limit(1);
-
-  if (existing.length > 0) {
-    await db.delete(favorites).where(
+  return db.transaction(async (tx) => {
+    const existing = await tx.select().from(favorites).where(
       and(eq(favorites.userId, userId), eq(favorites.trackId, trackId))
-    );
-    return false; // unfavorited
-  } else {
-    await db.insert(favorites).values({ userId, trackId });
-    return true; // favorited
-  }
+    ).limit(1);
+
+    if (existing.length > 0) {
+      await tx.delete(favorites).where(
+        and(eq(favorites.userId, userId), eq(favorites.trackId, trackId))
+      );
+      return false; // unfavorited
+    } else {
+      await tx.insert(favorites).values({ userId, trackId });
+      return true; // favorited
+    }
+  });
 }
 
 export async function getFavoritesByUser(userId: number) {
@@ -3559,4 +3561,83 @@ export async function getDlqStats(): Promise<{ total: number; unprocessed: numbe
     total: totalResult?.count ?? 0,
     unprocessed: unprocessedResult?.count ?? 0,
   };
+}
+
+// ── Cancellation Survey Helpers ──
+
+export async function createCancellationSurvey(data: {
+  userId: number;
+  reason: string;
+  feedbackText?: string;
+  offeredDiscount: boolean;
+  acceptedDiscount: boolean;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(cancellationSurveys).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getCancellationSurveys(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cancellationSurveys)
+    .where(eq(cancellationSurveys.userId, userId))
+    .orderBy(desc(cancellationSurveys.createdAt));
+}
+
+export async function hasRecentCancellationSurvey(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const result = await db.select({ id: cancellationSurveys.id })
+    .from(cancellationSurveys)
+    .where(and(
+      eq(cancellationSurveys.userId, userId),
+      gte(cancellationSurveys.createdAt, thirtyDaysAgo)
+    ))
+    .limit(1);
+  return result.length > 0;
+}
+
+// ── Email Bounce Helpers ──
+
+export async function markEmailBounced(email: string, reason: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({
+    emailBounced: true,
+    emailBouncedAt: new Date(),
+    emailBounceReason: reason,
+  }).where(eq(users.email, email));
+}
+
+export async function clearEmailBounce(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null,
+  }).where(eq(users.id, userId));
+}
+
+export async function isEmailBounced(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select({ emailBounced: users.emailBounced })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return result.length > 0 && result[0].emailBounced;
+}
+
+export async function isEmailBouncedByAddress(email: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select({ emailBounced: users.emailBounced })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  return result.length > 0 && result[0].emailBounced;
 }

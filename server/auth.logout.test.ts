@@ -35,6 +35,9 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     lastDigestSentAt: null, notificationPreferences: null,
     preferredPersona: "full" as const,
     emailVerified: false,
+    emailBounced: false,
+    emailBouncedAt: null,
+    emailBounceReason: null,
   };
 
   const ctx: TrpcContext = {

@@ -17,6 +17,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { User, Crown, CreditCard, Bell, Shield, Calendar, Music, Zap, ExternalLink, Loader2, AlertTriangle, Send, Mail, Clock, Eye } from "lucide-react";
+import CancellationSurvey from "@/components/CancellationSurvey";
 
 const TIER_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
@@ -34,6 +35,7 @@ export default function Settings() {
   const { user } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [cancelSurveyOpen, setCancelSurveyOpen] = useState(false);
 
   const subscriptionQuery = trpc.subscription.status.useQuery(undefined, {
     retry: false,
@@ -277,6 +279,16 @@ export default function Settings() {
                     <ExternalLink className="h-3 w-3 opacity-50" />
                   </Button>
                 )}
+                {tier !== "free" && subscriptionQuery.data?.stripeCustomerId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCancelSurveyOpen(true)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    Cancel Subscription
+                  </Button>
+                )}
               </div>
             </>
           )}
@@ -413,6 +425,15 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cancellation Exit Survey */}
+      <CancellationSurvey
+        open={cancelSurveyOpen}
+        onOpenChange={setCancelSurveyOpen}
+        onProceedToCancel={() => {
+          billingMutation.mutate({ origin: window.location.origin });
+        }}
+      />
     </div>
   );
 }

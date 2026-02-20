@@ -357,7 +357,7 @@ function DashboardLayoutContent({
         )}
         <ServiceStatusBanner />
         <EmailVerificationBanner />
-        <main className="flex-1 p-4">{children}</main>
+        <main id="main-content" aria-label="Main content" className="flex-1 p-4">{children}</main>
       </SidebarInset>
       <WhatsNewModal open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />
     </>

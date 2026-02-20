@@ -22,6 +22,19 @@ async function sendEmail(payload: EmailPayload): Promise<boolean> {
     return false;
   }
 
+  // Check if recipient email has bounced — skip sending to prevent further bounces
+  try {
+    const { isEmailBouncedByAddress } = await import("../db");
+    const bounced = await isEmailBouncedByAddress(payload.to);
+    if (bounced) {
+      console.warn(`[Email] Skipping bounced address ${payload.to}: "${payload.subject}"`);
+      return false;
+    }
+  } catch (err) {
+    // Don't block email sending if bounce check fails
+    console.warn("[Email] Bounce check failed, proceeding with send:", err);
+  }
+
   try {
     return await postmarkCircuitBreaker.execute(async () => {
       return await _sendEmailInner(payload, apiToken);
