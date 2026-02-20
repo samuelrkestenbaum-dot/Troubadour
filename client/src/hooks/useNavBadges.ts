@@ -15,14 +15,8 @@ const STORAGE_KEY = "troubadour_nav_visits";
 
 /** Features that can show badges */
 const BADGE_FEATURES = [
-  "/skill-progression",
-  "/competitive-benchmarks",
-  "/release-readiness",
-  "/streak",
-  "/artist-dna",
-  "/flywheel",
+  "/insights",
   "/digest",
-  "/analytics",
 ] as const;
 
 type BadgeFeature = (typeof BADGE_FEATURES)[number];
@@ -97,51 +91,38 @@ export function useNavBadges() {
 
     const lastVisit = (path: string) => visitMap[path] || 0;
 
-    // Streak: show badge if streak was updated since last visit
+    // Insights: show badge if any Intelligence Suite data has been updated since last visit
+    const insightsLastVisit = lastVisit("/insights");
+    let insightsHasNew = false;
+
     if (streakQuery.data) {
       const streakData = streakQuery.data as { updatedAt?: string | Date; currentStreak?: number };
       const updatedAt = streakData.updatedAt ? new Date(streakData.updatedAt).getTime() : 0;
-      if (updatedAt > lastVisit("/streak") && (streakData.currentStreak ?? 0) > 0) {
-        result["/streak"] = true;
-      }
+      if (updatedAt > insightsLastVisit && (streakData.currentStreak ?? 0) > 0) insightsHasNew = true;
     }
-
-    // Skill Progression: show badge if there are new skill entries since last visit
     if (skillQuery.data) {
       const skillData = skillQuery.data as { latestAt?: string | Date; totalEntries?: number };
       const latestAt = skillData.latestAt ? new Date(skillData.latestAt).getTime() : 0;
-      if (latestAt > lastVisit("/skill-progression") && (skillData.totalEntries ?? 0) > 0) {
-        result["/skill-progression"] = true;
-      }
+      if (latestAt > insightsLastVisit && (skillData.totalEntries ?? 0) > 0) insightsHasNew = true;
     }
-
-    // Artist DNA: show badge if DNA was generated since last visit
     if (artistDNAQuery.data) {
       const dnaData = artistDNAQuery.data as { generatedAt?: string | Date };
       const generatedAt = dnaData.generatedAt ? new Date(dnaData.generatedAt).getTime() : 0;
-      if (generatedAt > lastVisit("/artist-dna")) {
-        result["/artist-dna"] = true;
-      }
+      if (generatedAt > insightsLastVisit) insightsHasNew = true;
     }
-
-    // Flywheel: show badge if archetype was classified since last visit
     if (flywheelQuery.data) {
       const fwData = flywheelQuery.data as { updatedAt?: string | Date };
       const updatedAt = fwData.updatedAt ? new Date(fwData.updatedAt).getTime() : 0;
-      if (updatedAt > lastVisit("/flywheel")) {
-        result["/flywheel"] = true;
-      }
+      if (updatedAt > insightsLastVisit) insightsHasNew = true;
     }
+    if (!visitMap["/insights"]) {
+      const hasReviews = (skillQuery.data as { totalEntries?: number })?.totalEntries ?? 0;
+      if (hasReviews > 0) insightsHasNew = true;
+    }
+    result["/insights"] = insightsHasNew;
 
-    // For features without easy timestamp checks, show badge if never visited
-    // and the user has at least 1 review (meaning there's data to see)
-    const hasReviews = (skillQuery.data as { totalEntries?: number })?.totalEntries ?? 0;
-    if (hasReviews > 0) {
-      if (!visitMap["/competitive-benchmarks"]) result["/competitive-benchmarks"] = true;
-      if (!visitMap["/release-readiness"]) result["/release-readiness"] = true;
-      if (!visitMap["/digest"]) result["/digest"] = true;
-      if (!visitMap["/analytics"]) result["/analytics"] = true;
-    }
+    // Digest: show badge if never visited
+    if (!visitMap["/digest"]) result["/digest"] = true;
 
     return result;
   }, [user, visitMap, streakQuery.data, skillQuery.data, artistDNAQuery.data, flywheelQuery.data]);

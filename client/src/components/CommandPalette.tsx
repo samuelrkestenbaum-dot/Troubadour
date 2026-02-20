@@ -37,10 +37,9 @@ export function CommandPalette() {
       // Navigation
       { id: "nav-home", label: "Go to Home", icon: Home, action: () => setLocation("/"), category: "Navigation", keywords: ["landing", "home"] },
       { id: "nav-dashboard", label: "Go to Dashboard", icon: LayoutDashboard, action: () => setLocation("/dashboard"), category: "Navigation", keywords: ["dashboard", "projects"] },
-      { id: "nav-analytics", label: "Go to Analytics", icon: BarChart3, action: () => setLocation("/analytics"), category: "Navigation", keywords: ["analytics", "stats", "scores"] },
+      { id: "nav-insights", label: "Go to Insights", icon: BarChart3, action: () => setLocation("/insights"), category: "Navigation", keywords: ["analytics", "stats", "scores", "insights", "skills", "dna", "streak"] },
       { id: "nav-templates", label: "Go to Templates", icon: BookOpen, action: () => setLocation("/templates"), category: "Navigation", keywords: ["templates", "presets"] },
       { id: "nav-benchmarks", label: "Go to Genre Benchmarks", icon: Star, action: () => setLocation("/benchmarks"), category: "Navigation", keywords: ["benchmarks", "genre", "compare"] },
-      { id: "nav-usage", label: "Go to Usage", icon: Zap, action: () => setLocation("/usage"), category: "Navigation", keywords: ["usage", "minutes", "limit"] },
       { id: "nav-settings", label: "Go to Settings", icon: Settings, action: () => setLocation("/settings"), category: "Navigation", keywords: ["settings", "account", "profile"] },
       { id: "nav-pricing", label: "Go to Pricing", icon: CreditCard, action: () => setLocation("/pricing"), category: "Navigation", keywords: ["pricing", "plans", "upgrade"] },
 

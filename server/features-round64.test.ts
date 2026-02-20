@@ -40,18 +40,18 @@ describe("Round 64 — Changelog, Action Mode Rename, Quality Pass", () => {
     });
   });
 
-  describe("Action Mode rename: Full Picture → Full Review", () => {
-    it("ActionModeSelector uses 'Full Review' label", () => {
-      const selectorPath = path.join(__dirname, "../client/src/components/ActionModeSelector.tsx");
-      const content = fs.readFileSync(selectorPath, "utf-8");
-      expect(content).toContain('"Full Review"');
-      expect(content).toContain("Original comprehensive review");
+  describe("Action Mode rename: Full Picture → Full Review (Round 94: now ReviewActionTabs)", () => {
+    it("ReviewActionTabs uses 'Full Review' label", () => {
+      const tabsPath = path.join(__dirname, "../client/src/components/ReviewActionTabs.tsx");
+      const content = fs.readFileSync(tabsPath, "utf-8");
+      expect(content).toContain("Full Review");
     });
 
-    it("uses clipboard icon instead of target icon", () => {
-      const selectorPath = path.join(__dirname, "../client/src/components/ActionModeSelector.tsx");
-      const content = fs.readFileSync(selectorPath, "utf-8");
-      expect(content).toContain("📋");
+    it("ReviewActionTabs includes all action modes as tabs", () => {
+      const tabsPath = path.join(__dirname, "../client/src/components/ReviewActionTabs.tsx");
+      const content = fs.readFileSync(tabsPath, "utf-8");
+      expect(content).toContain("Session Prep");
+      expect(content).toContain("Pitch Ready");
     });
   });
 

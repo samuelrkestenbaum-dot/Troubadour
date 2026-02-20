@@ -11,13 +11,8 @@ describe("Sidebar Notification Badges (useNavBadges)", () => {
     expect(hookSource).toContain("export function useNavBadges");
   });
 
-  it("tracks Intelligence Suite feature paths", () => {
-    expect(hookSource).toContain("/skill-progression");
-    expect(hookSource).toContain("/competitive-benchmarks");
-    expect(hookSource).toContain("/release-readiness");
-    expect(hookSource).toContain("/streak");
-    expect(hookSource).toContain("/artist-dna");
-    expect(hookSource).toContain("/flywheel");
+  it("tracks consolidated Insights path (Round 94: Intelligence Suite merged into /insights)", () => {
+    expect(hookSource).toContain("/insights");
     expect(hookSource).toContain("/digest");
   });
 

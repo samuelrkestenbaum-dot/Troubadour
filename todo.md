@@ -2434,3 +2434,36 @@
 - [x] All 1,747 tests pass across 65 files
 - [x] 0 TypeScript errors
 - [x] Save checkpoint
+
+## Round 94 - UX Simplification (Ruthless)
+### Phase 1: Remove Pre-Review Decision Points
+- [x] Remove ReviewLengthSelector from ProjectView
+- [x] Remove ReviewLengthSelector from ReviewView re-review dialog
+- [x] Remove review length from BatchActionsToolbar
+- [x] Backend: reviewLength param kept but defaults to "standard" (backward compat)
+### Phase 2: Convert Post-Review Action Modes to Tabs
+- [x] Convert ActionModeSelector from card to inline tabs within review (ReviewActionTabs)
+- [x] Remove "What do you want to do with this?" card UI
+- [x] Make action modes simple tab triggers within review content
+### Phase 3: Remove QuickReview Page
+- [x] Remove QuickReview page and route
+- [x] Remove quick-review link from ProjectView
+### Phase 4: Consolidate Sidebar (16 → ~8)
+- [x] Create unified Insights page (Skill Growth + Artist DNA + Flywheel + Streak + Release Ready + Analytics)
+- [x] Merge Competitive Benchmarks into Insights Benchmarks tab
+- [x] Kept Templates, Digest as separate pages; removed Usage (redirect to Settings)
+- [x] Updated sidebar: Dashboard, Projects, Templates, Benchmarks, Insights, Digest, Pricing, Settings (8 items)
+- [x] Updated CommandPalette, GlobalKeyboardShortcuts, OnboardingTour, useNavBadges, Dashboard FeatureQuickAccess
+- [x] Added redirect routes for all removed pages (/analytics, /usage, /skill-progression, etc.)
+### Phase 5: Remove Focus Modes from A/B Comparison
+- [x] Remove Songwriter/Producer/Arranger focus options from ABReviewComparison
+### Phase 6: Clean Up
+- [x] Update App.tsx routing for removed/merged pages (done in Phase 4)
+- [x] Update onboarding tour text (done in Phase 4)
+- [x] Landing page and Pricing page: no changes needed (features still exist, just consolidated)
+- [x] Backend: reviewLength params kept as optional with "standard" default (backward compat)
+### Quality & Testing - Round 94
+- [x] Update existing tests for simplified flows (13 tests fixed across 8 files)
+- [x] Write new tests for consolidated pages (24 new tests in features-round94-ux-simplification.test.ts)
+- [x] All tests pass: 1,770 tests passing, 66 files, 0 TypeScript errors
+- [x] Save checkpoint

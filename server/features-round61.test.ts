@@ -196,13 +196,12 @@ describe("Round 61 – Public Sharing, Dashboard Stats, Batch Tag Management", (
       expect(app).toContain("TagManager");
     });
 
-    it("Tags nav item exists in DashboardLayout sidebar", () => {
-      const layout = readFileSync(
-        resolve(__dirname, "../client/src/components/DashboardLayout.tsx"),
+    it("Tags page accessible via /tags route (Round 94: removed from sidebar, still accessible)", () => {
+      const appTsx = readFileSync(
+        resolve(__dirname, "../client/src/App.tsx"),
         "utf-8"
       );
-      expect(layout).toContain("\"Tags\"");
-      expect(layout).toContain("/tags");
+      expect(appTsx).toContain("/tags");
     });
 
     it("TagManager shows empty state when no tags", () => {

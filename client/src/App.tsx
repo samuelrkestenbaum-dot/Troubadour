@@ -18,13 +18,11 @@ const ProjectView = lazy(() => import("./pages/ProjectView"));
 const TrackView = lazy(() => import("./pages/TrackView"));
 const ReviewView = lazy(() => import("./pages/ReviewView"));
 const VersionDiff = lazy(() => import("./pages/VersionDiff"));
-const Usage = lazy(() => import("./pages/Usage"));
-const Analytics = lazy(() => import("./pages/Analytics"));
+const Insights = lazy(() => import("./pages/Insights"));
 const SharedReview = lazy(() => import("./pages/SharedReview"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Settings = lazy(() => import("./pages/Settings"));
 const CompareReviews = lazy(() => import("./pages/CompareReviews"));
-const QuickReview = lazy(() => import("./pages/QuickReview"));
 const Templates = lazy(() => import("./pages/Templates"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const GenreBenchmarks = lazy(() => import("./pages/GenreBenchmarks"));
@@ -36,12 +34,7 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const Support = lazy(() => import("./pages/Support"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const SkillProgression = lazy(() => import("./pages/SkillProgression"));
-const CompetitiveBenchmarks = lazy(() => import("./pages/CompetitiveBenchmarks"));
-const Streak = lazy(() => import("./pages/Streak"));
-const ArtistDNA = lazy(() => import("./pages/ArtistDNA"));
-const Flywheel = lazy(() => import("./pages/Flywheel"));
-const ReleaseReadiness = lazy(() => import("./pages/ReleaseReadiness"));
+
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -100,26 +93,22 @@ function DashboardRoutes() {
             return id ? <CompareReviews projectId={id} /> : <NotFound />;
           }}
         </Route>
-        <Route path="/projects/:id/quick-review">
-          {(params) => {
-            const id = safeParseId(params.id);
-            return id ? <QuickReview /> : <NotFound />;
-          }}
-        </Route>
         <Route path="/templates" component={Templates} />
         <Route path="/templates/gallery" component={TemplatesGallery} />
         <Route path="/benchmarks" component={GenreBenchmarks} />
-        <Route path="/analytics" component={Analytics} />
+        <Route path="/insights" component={Insights} />
         <Route path="/tags" component={TagManager} />
         <Route path="/digest" component={Digest} />
-        <Route path="/usage" component={Usage} />
         <Route path="/settings" component={Settings} />
-        <Route path="/skill-progression" component={SkillProgression} />
-        <Route path="/competitive-benchmarks" component={CompetitiveBenchmarks} />
-        <Route path="/release-readiness" component={ReleaseReadiness} />
-        <Route path="/streak" component={Streak} />
-        <Route path="/artist-dna" component={ArtistDNA} />
-        <Route path="/flywheel" component={Flywheel} />
+        {/* Redirects for removed pages */}
+        <Route path="/analytics">{() => { window.location.replace("/insights"); return null; }}</Route>
+        <Route path="/usage">{() => { window.location.replace("/settings"); return null; }}</Route>
+        <Route path="/skill-progression">{() => { window.location.replace("/insights"); return null; }}</Route>
+        <Route path="/competitive-benchmarks">{() => { window.location.replace("/insights"); return null; }}</Route>
+        <Route path="/release-readiness">{() => { window.location.replace("/insights"); return null; }}</Route>
+        <Route path="/streak">{() => { window.location.replace("/insights"); return null; }}</Route>
+        <Route path="/artist-dna">{() => { window.location.replace("/insights"); return null; }}</Route>
+        <Route path="/flywheel">{() => { window.location.replace("/insights"); return null; }}</Route>
         <Route path="/admin" component={AdminDashboard} />
         <Route component={NotFound} />
       </Switch>

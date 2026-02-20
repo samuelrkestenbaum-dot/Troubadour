@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home, Target, Sparkles, CalendarDays, Tag, ShieldCheck, Flame, Dna, Database, GraduationCap, Swords, Rocket } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, FolderOpen, BarChart3, TrendingUp, Crown, Settings, FileText, Home, Target, Sparkles, CalendarDays, Tag, ShieldCheck, Flame, Dna, Database, GraduationCap, Swords, Rocket, Lightbulb } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -40,16 +40,8 @@ const menuItems = [
   { icon: FolderOpen, label: "Projects", path: "/projects" },
   { icon: FileText, label: "Templates", path: "/templates" },
   { icon: Target, label: "Benchmarks", path: "/benchmarks" },
-  { icon: TrendingUp, label: "Analytics", path: "/analytics" },
-  { icon: Tag, label: "Tags", path: "/tags" },
+  { icon: Lightbulb, label: "Insights", path: "/insights" },
   { icon: CalendarDays, label: "Digest", path: "/digest" },
-  { icon: BarChart3, label: "Usage", path: "/usage" },
-  { icon: GraduationCap, label: "Skill Growth", path: "/skill-progression" },
-  { icon: Swords, label: "Compete", path: "/competitive-benchmarks" },
-  { icon: Rocket, label: "Release Ready", path: "/release-readiness" },
-  { icon: Flame, label: "Streak", path: "/streak" },
-  { icon: Dna, label: "Artist DNA", path: "/artist-dna" },
-  { icon: Database, label: "Flywheel", path: "/flywheel" },
   { icon: Crown, label: "Pricing", path: "/pricing" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];

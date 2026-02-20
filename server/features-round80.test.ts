@@ -284,8 +284,8 @@ describe("Onboarding Tour Deep-Link", () => {
     const content = fs.readFileSync(tourPath, "utf-8");
 
     expect(content).toContain('id: "intelligence-suite"');
-    expect(content).toContain('deepLink: "/skill-progression"');
-    expect(content).toContain('deepLinkLabel: "Explore Skill Progression"');
+    expect(content).toContain('deepLink: "/insights"');
+    expect(content).toContain('deepLinkLabel: "Explore Insights"');
   });
 
   it("TourStep interface includes deepLink and deepLinkLabel fields", async () => {

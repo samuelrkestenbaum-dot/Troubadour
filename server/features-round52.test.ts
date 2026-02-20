@@ -32,8 +32,7 @@ describe("Round 52 – A/B Review Comparison", () => {
     );
     expect(content).toContain("export function ABReviewComparison");
     expect(content).toContain("trackId");
-    expect(content).toContain("focusA");
-    expect(content).toContain("focusB");
+    // Round 94: focus modes removed, A/B comparison generates two independent reviews
   });
 
   it("ABReviewComparison has side-by-side panel layout", async () => {
@@ -46,24 +45,13 @@ describe("Round 52 – A/B Review Comparison", () => {
     expect(content).toContain("lg:grid-cols-2");
   });
 
-  it("ABReviewComparison supports all 6 focus options", async () => {
+  it("ABReviewComparison generates two independent reviews (Round 94: focus modes removed)", async () => {
     const content = await import("fs").then(fs =>
       fs.readFileSync("/home/ubuntu/ai-album-critic/client/src/components/ABReviewComparison.tsx", "utf-8")
     );
-    expect(content).toContain('"songwriter"');
-    expect(content).toContain('"producer"');
-    expect(content).toContain('"arranger"');
-    expect(content).toContain('"artist"');
-    expect(content).toContain('"anr"');
-    expect(content).toContain('"full"');
-  });
-
-  it("prevents comparing same perspective", async () => {
-    const content = await import("fs").then(fs =>
-      fs.readFileSync("/home/ubuntu/ai-album-critic/client/src/components/ABReviewComparison.tsx", "utf-8")
-    );
-    expect(content).toContain("focusA === focusB");
-    expect(content).toContain("Select different perspectives");
+    expect(content).toContain("generateMutation.mutate");
+    expect(content).toContain("ReviewPanel");
+    // Focus mode selection removed in Round 94 UX simplification
   });
 });
 

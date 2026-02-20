@@ -64,10 +64,10 @@ const tourSteps: TourStep[] = [
     title: "Intelligence Suite",
     description: "Six powerful tools beyond reviews: track your Skill Progression over time, benchmark against your genre, check Release Readiness with traffic-light scoring, maintain Creative Streaks, discover your Artist DNA fingerprint, and explore Genre Intelligence. Find them all in the sidebar.",
     icon: <Brain className="h-6 w-6 text-cyan-400" />,
-    route: "/skill-progression",
+    route: "/insights",
     position: "center",
-    deepLink: "/skill-progression",
-    deepLinkLabel: "Explore Skill Progression",
+    deepLink: "/insights",
+    deepLinkLabel: "Explore Insights",
   },
   {
     id: "explore",

@@ -198,9 +198,9 @@ describe("Round 59 — Global Keyboard Shortcuts", () => {
     expect(globalContent).toContain('setLocation("/dashboard")');
   });
 
-  it("should support G+A for Analytics navigation", () => {
+  it("should support G+A for Insights navigation (Round 94: analytics → insights)", () => {
     expect(globalContent).toContain('case "a"');
-    expect(globalContent).toContain('setLocation("/analytics")');
+    expect(globalContent).toContain('setLocation("/insights")');
   });
 
   it("should support G+S for Settings navigation", () => {

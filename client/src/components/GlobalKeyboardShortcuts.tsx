@@ -35,7 +35,7 @@ export function GlobalKeyboardShortcuts() {
             return;
           case "a":
             e.preventDefault();
-            setLocation("/analytics");
+            setLocation("/insights");
             return;
           case "s":
             e.preventDefault();
@@ -49,9 +49,9 @@ export function GlobalKeyboardShortcuts() {
             e.preventDefault();
             setLocation("/benchmarks");
             return;
-          case "u":
+          case "i":
             e.preventDefault();
-            setLocation("/usage");
+            setLocation("/insights");
             return;
           case "p":
             e.preventDefault();

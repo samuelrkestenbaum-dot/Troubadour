@@ -2,22 +2,12 @@ import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, GitCompare, ArrowRight, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, GitCompare, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
-const FOCUS_OPTIONS = [
-  { value: "full", label: "Full Review" },
-  { value: "songwriter", label: "Songwriter" },
-  { value: "producer", label: "Producer" },
-  { value: "arranger", label: "Arranger" },
-  { value: "artist", label: "Artist Development" },
-  { value: "anr", label: "A&R Executive" },
-] as const;
-
-type FocusType = "songwriter" | "producer" | "arranger" | "artist" | "anr" | "full";
+// Focus modes removed in Round 94 UX simplification — A/B comparison now uses templates only
 
 function ScoreBadge({ score, label }: { score: number; label: string }) {
   const color = score >= 8 ? "text-emerald-400" : score >= 6 ? "text-amber-400" : "text-red-400";
@@ -29,10 +19,10 @@ function ScoreBadge({ score, label }: { score: number; label: string }) {
   );
 }
 
-function ReviewPanel({ review, side, focus }: { review: any; side: "A" | "B"; focus: string }) {
+function ReviewPanel({ review, side }: { review: any; side: "A" | "B" }) {
   const [expanded, setExpanded] = useState(true);
   const scores = review?.scoresJson as any;
-  const focusLabel = FOCUS_OPTIONS.find(f => f.value === focus)?.label || focus;
+  const focusLabel = side === "A" ? "Review A" : "Review B";
   const sideColor = side === "A" ? "border-blue-500/50 bg-blue-500/5" : "border-purple-500/50 bg-purple-500/5";
   const sideBadge = side === "A" ? "bg-blue-500/20 text-blue-400" : "bg-purple-500/20 text-purple-400";
 
@@ -101,8 +91,7 @@ function ReviewPanel({ review, side, focus }: { review: any; side: "A" | "B"; fo
 }
 
 export function ABReviewComparison({ trackId }: { trackId: number }) {
-  const [focusA, setFocusA] = useState<FocusType>("songwriter");
-  const [focusB, setFocusB] = useState<FocusType>("producer");
+
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [isSetup, setIsSetup] = useState(true);
 
@@ -128,11 +117,7 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
   }, [resultsQuery.data?.status]);
 
   const handleGenerate = () => {
-    if (focusA === focusB) {
-      toast.error("Select different perspectives for A and B to get a meaningful comparison");
-      return;
-    }
-    generateMutation.mutate({ trackId, focusA, focusB });
+    generateMutation.mutate({ trackId });
   };
 
   const handleNewComparison = () => {
@@ -153,45 +138,9 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-[1fr,auto,1fr] items-end gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium flex items-center gap-1">
-                <Badge variant="outline" className="bg-blue-500/20 text-blue-400 text-[10px] px-1">A</Badge>
-                Perspective
-              </label>
-              <Select value={focusA} onValueChange={(v) => setFocusA(v as FocusType)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FOCUS_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="pb-1">
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium flex items-center gap-1">
-                <Badge variant="outline" className="bg-purple-500/20 text-purple-400 text-[10px] px-1">B</Badge>
-                Perspective
-              </label>
-              <Select value={focusB} onValueChange={(v) => setFocusB(v as FocusType)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FOCUS_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Generate two independent reviews side-by-side to compare different takes on the same track.
+          </p>
 
           <Button
             onClick={handleGenerate}
@@ -232,8 +181,8 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ReviewPanel review={results?.reviewA} side="A" focus={focusA} />
-        <ReviewPanel review={results?.reviewB} side="B" focus={focusB} />
+        <ReviewPanel review={results?.reviewA} side="A" />
+        <ReviewPanel review={results?.reviewB} side="B" />
       </div>
 
       {isComplete && results?.reviewA && results?.reviewB && (

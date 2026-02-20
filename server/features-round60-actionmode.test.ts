@@ -366,24 +366,22 @@ describe("Round 60 – Post-Review Action Modes", () => {
   });
 
   describe("UI integration", () => {
-    it("ActionModeSelector.tsx exists and exports required components", async () => {
+    it("ReviewActionTabs.tsx exists and exports required components (Round 94: replaced ActionModeSelector)", async () => {
       const fs = await import("fs");
-      const filePath = "/home/ubuntu/ai-album-critic/client/src/components/ActionModeSelector.tsx";
+      const filePath = "/home/ubuntu/ai-album-critic/client/src/components/ReviewActionTabs.tsx";
       expect(fs.existsSync(filePath)).toBe(true);
 
       const content = fs.readFileSync(filePath, "utf-8");
-      expect(content).toContain("export function ActionModeSelector");
-      expect(content).toContain("export function ActionModeContent");
-      expect(content).toContain("What do you want to do with this");
+      expect(content).toContain("export function ReviewActionTabs");
+      expect(content).toContain("Session Prep");
+      expect(content).toContain("Pitch Ready");
     });
 
-    it("ReviewView.tsx integrates ActionModeSelector", async () => {
+    it("ReviewView.tsx integrates ReviewActionTabs", async () => {
       const fs = await import("fs");
       const filePath = "/home/ubuntu/ai-album-critic/client/src/pages/ReviewView.tsx";
       const content = fs.readFileSync(filePath, "utf-8");
-      expect(content).toContain("ActionModeSelector");
-      expect(content).toContain("ActionModeContent");
-      expect(content).toContain("actionModeContent");
+      expect(content).toContain("ReviewActionTabs");
     });
   });
 });

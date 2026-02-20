@@ -21,7 +21,6 @@ import { DropZone } from "@/components/DropZone";
 import { TrackTagsBadges } from "@/components/TrackTags";
 import { CollaborationPanel } from "@/components/CollaborationPanel";
 import { TemplateSelector } from "@/components/TemplateSelector";
-import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
 import { ProjectInsightsCard } from "@/components/ProjectInsightsCard";
 import { ScoreMatrix } from "@/components/ScoreMatrix";
 import { SentimentTimeline } from "@/components/SentimentTimeline";
@@ -59,7 +58,6 @@ export default function ProjectView({ id }: { id: number }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  const [reviewLength, setReviewLength] = useState<ReviewLength>("standard");
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
   const [reorderMode, setReorderMode] = useState(false);
   const { showUpgrade, upgradeProps } = useUpgradePrompt();
@@ -514,12 +512,6 @@ export default function ProjectView({ id }: { id: number }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {tracks.some(t => t.status === "reviewed") && (
-            <Button variant="outline" size="sm" onClick={() => setLocation(`/projects/${id}/quick-review`)}>
-              <Zap className="h-3.5 w-3.5 mr-1.5" />
-              Quick Review
-            </Button>
-          )}
           {tracks.filter(t => t.status === "reviewed").length >= 2 && (
             <Button variant="outline" size="sm" onClick={() => setLocation(`/projects/${id}/compare`)}>
               <GitCompare className="h-3.5 w-3.5 mr-1.5" />
@@ -672,9 +664,8 @@ export default function ProjectView({ id }: { id: number }) {
           className="flex-1 max-w-xs"
         />
         <TemplateSelector value={selectedTemplateId} onChange={setSelectedTemplateId} />
-        <ReviewLengthSelector value={reviewLength} onChange={setReviewLength} />
         <Button
-          onClick={() => batchReviewAll.mutate({ projectId: id, reviewLength, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
+          onClick={() => batchReviewAll.mutate({ projectId: id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
           disabled={batchReviewAll.isPending || allReviewed}
         >
           <Zap className="h-4 w-4 mr-2" />
@@ -700,7 +691,6 @@ export default function ProjectView({ id }: { id: number }) {
                 <AlertDialogAction
                   onClick={() => batchReReview.mutate({
                     projectId: id,
-                    reviewLength,
                     ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
                   })}
                 >
@@ -766,7 +756,6 @@ export default function ProjectView({ id }: { id: number }) {
           selectedIds={selectedTrackIds}
           tracks={tracks}
           projectId={id}
-          reviewLength={reviewLength}
           templateId={selectedTemplateId ?? undefined}
           onClearSelection={() => setSelectedTrackIds(new Set())}
         />
@@ -864,7 +853,7 @@ export default function ProjectView({ id }: { id: number }) {
                           <>
                             <Button
                               size="sm"
-                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, reviewLength, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
+                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
                               disabled={analyzeAndReview.isPending}
                             >
                               <Zap className="h-3.5 w-3.5 mr-1.5" />
@@ -905,7 +894,7 @@ export default function ProjectView({ id }: { id: number }) {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, reviewLength, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
+                              onClick={() => analyzeAndReview.mutate({ trackId: track.id, ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}) })}
                               disabled={analyzeAndReview.isPending}
                             >
                               <RotateCcw className="h-3.5 w-3.5 mr-1.5" />

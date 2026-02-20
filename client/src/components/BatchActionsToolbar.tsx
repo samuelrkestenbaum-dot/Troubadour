@@ -26,7 +26,6 @@ interface BatchActionsToolbarProps {
   onSelectAll?: () => void;
   onDeselectAll?: () => void;
   onClearSelection?: () => void;
-  reviewLength?: string;
   templateId?: number;
 }
 
@@ -38,7 +37,6 @@ export function BatchActionsToolbar({
   onSelectAll,
   onDeselectAll,
   onClearSelection,
-  reviewLength = "standard",
   templateId,
 }: BatchActionsToolbarProps) {
   const utils = trpc.useUtils();
@@ -84,7 +82,6 @@ export function BatchActionsToolbar({
       try {
         await analyzeAndReview.mutateAsync({
           trackId: track.id,
-          reviewLength: reviewLength as "brief" | "standard" | "detailed",
           ...(templateId ? { templateId } : {}),
         });
         queued++;

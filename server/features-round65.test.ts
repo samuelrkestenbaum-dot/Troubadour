@@ -71,14 +71,14 @@ describe("Round 65 – PostHog Analytics", () => {
     expect(src).toContain("support_message_sent");
   });
 
-  it("ActionModeSelector imports and calls trackActionModeUsed", () => {
-    const src = fs.readFileSync(path.join(ROOT, "client/src/components/ActionModeSelector.tsx"), "utf-8");
-    expect(src).toContain("import { trackActionModeUsed, trackActionModeExported }");
-    expect(src).toContain("trackActionModeUsed(reviewId, mode)");
+  it("ReviewActionTabs imports and calls trackActionModeUsed (Round 94: replaced ActionModeSelector)", () => {
+    const src = fs.readFileSync(path.join(ROOT, "client/src/components/ReviewActionTabs.tsx"), "utf-8");
+    expect(src).toContain("trackActionModeUsed");
+    expect(src).toContain("trackActionModeExported");
   });
 
-  it("ActionModeContent calls trackActionModeExported on export", () => {
-    const src = fs.readFileSync(path.join(ROOT, "client/src/components/ActionModeSelector.tsx"), "utf-8");
+  it("ReviewActionTabs calls trackActionModeExported on export", () => {
+    const src = fs.readFileSync(path.join(ROOT, "client/src/components/ReviewActionTabs.tsx"), "utf-8");
     expect(src).toContain("trackActionModeExported(reviewId, mode)");
   });
 

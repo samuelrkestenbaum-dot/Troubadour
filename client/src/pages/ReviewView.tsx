@@ -33,9 +33,8 @@ import { trackExportUsed, trackShareLinkCreated, trackFeatureGated } from "@/lib
 import { scoreColor } from "@/lib/scoreColor";
 import { ReviewQualityBadge } from "@/components/ReviewQualityBadge";
 import { CollapsibleReview } from "@/components/CollapsibleReview";
-import { ActionModeSelector, ActionModeContent } from "@/components/ActionModeSelector";
+import { ReviewActionTabs } from "@/components/ReviewActionTabs";
 import { TemplateSelector } from "@/components/TemplateSelector";
-import { ReviewLengthSelector, type ReviewLength } from "@/components/ReviewLengthSelector";
 import { ReviewDiffView } from "@/components/ReviewDiffView";
 import { ReviewComments } from "@/components/ReviewComments";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -412,11 +411,9 @@ export default function ReviewView({ id }: { id: number }) {
   };
 
   const [reReviewTemplateId, setReReviewTemplateId] = useState<number | null>(null);
-  const [reReviewLength, setReReviewLength] = useState<ReviewLength>("standard");
   const [showDiff, setShowDiff] = useState(false);
   const [diffReviewId, setDiffReviewId] = useState<number | null>(null);
-  const [actionModeContent, setActionModeContent] = useState<string | null>(null);
-  const [activeActionMode, setActiveActionMode] = useState<string>("full-picture");
+
 
   const reReviewMut = trpc.job.reReview.useMutation({
     onSuccess: () => {
@@ -571,20 +568,14 @@ export default function ReviewView({ id }: { id: number }) {
                     />
                     <p className="text-xs text-muted-foreground">Choose a persona to shape the AI's critique style.</p>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Review Depth</label>
-                    <ReviewLengthSelector
-                      value={reReviewLength}
-                      onChange={setReReviewLength}
-                    />
-                  </div>
+
                 </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={() => reReviewMut.mutate({
                     trackId: review.trackId!,
                     ...(reReviewTemplateId ? { templateId: reReviewTemplateId } : {}),
-                    reviewLength: reReviewLength,
+
                   })}>
                     Generate New Review
                   </AlertDialogAction>
@@ -722,20 +713,13 @@ export default function ReviewView({ id }: { id: number }) {
 
       <Separator />
 
-      {/* Action Mode Selector */}
-      {review.reviewType === "track" && (
-        <ActionModeSelector
+      {/* Review Content with Action Mode Tabs */}
+      {review.reviewType === "track" ? (
+        <ReviewActionTabs
           reviewId={review.id}
-          onModeContent={(content, mode) => {
-            setActionModeContent(content);
-            setActiveActionMode(mode);
-          }}
+          reviewMarkdown={review.reviewMarkdown}
+          stripDuplicateSections={stripDuplicateSections}
         />
-      )}
-
-      {/* Full Review or Reshaped Content */}
-      {actionModeContent && activeActionMode !== "full-picture" ? (
-        <ActionModeContent content={actionModeContent} mode={activeActionMode as any} reviewId={review.id} />
       ) : (
         <Card>
           <CardContent className="py-6">
