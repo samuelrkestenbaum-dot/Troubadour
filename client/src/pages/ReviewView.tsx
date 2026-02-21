@@ -411,8 +411,17 @@ export default function ReviewView({ id }: { id: number }) {
   };
 
   const [reReviewTemplateId, setReReviewTemplateId] = useState<number | null>(null);
-  const [reReviewLength, setReReviewLength] = useState<"brief" | "standard" | "detailed">("standard");
+  const userPreferredLength = user?.preferredReviewLength || "standard";
+  const [reReviewLength, setReReviewLength] = useState<"brief" | "standard" | "detailed">(userPreferredLength);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const updateLengthPref = trpc.auth.updatePreferredReviewLength.useMutation();
+
+  // Sync local state when user preference loads
+  useEffect(() => {
+    if (userPreferredLength) {
+      setReReviewLength(userPreferredLength);
+    }
+  }, [userPreferredLength]);
   const [showDiff, setShowDiff] = useState(false);
   const [diffReviewId, setDiffReviewId] = useState<number | null>(null);
 
@@ -594,7 +603,12 @@ export default function ReviewView({ id }: { id: number }) {
                           <button
                             key={opt.value}
                             type="button"
-                            onClick={() => setReReviewLength(opt.value)}
+                            onClick={() => {
+                              setReReviewLength(opt.value);
+                              if (opt.value !== userPreferredLength) {
+                                updateLengthPref.mutate({ length: opt.value });
+                              }
+                            }}
                             className={`p-2 rounded-md border text-left transition-all ${
                               reReviewLength === opt.value
                                 ? "border-primary bg-primary/5 ring-1 ring-primary/20"
@@ -606,7 +620,11 @@ export default function ReviewView({ id }: { id: number }) {
                           </button>
                         ))}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Default is Standard. Brief saves time; Detailed gives exhaustive feedback.</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {reReviewLength !== userPreferredLength
+                          ? `Preference saved — future reviews will default to ${reReviewLength}.`
+                          : "Your preferred depth is remembered across sessions."}
+                      </p>
                     </div>
                   )}
                 </div>

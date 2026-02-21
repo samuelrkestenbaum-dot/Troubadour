@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SkillProgressionView } from "@/components/SkillProgressionView";
 import { ArtistDNAView } from "@/components/ArtistDNAView";
@@ -49,18 +49,83 @@ const scoreBarColor = (score: number) => {
 
 type InsightTab = "overview" | "skills" | "competitive" | "momentum" | "dna";
 
-// Round 97: Prefetch hook for adjacent tabs per Claude Opus 4 design
+// ── Smart Prefetch Learning (Round 98) ──
+// Tracks user tab visit patterns in localStorage and prioritizes prefetching
+// frequently-visited tabs on mount, in addition to hover-based prefetching.
+const INSIGHTS_VISIT_KEY = "troubadour_insights_visits";
+
+function getTabVisitCounts(): Record<InsightTab, number> {
+  try {
+    const raw = localStorage.getItem(INSIGHTS_VISIT_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return { overview: 0, skills: 0, competitive: 0, momentum: 0, dna: 0 };
+}
+
+function recordTabVisit(tab: InsightTab) {
+  try {
+    const counts = getTabVisitCounts();
+    counts[tab] = (counts[tab] || 0) + 1;
+    localStorage.setItem(INSIGHTS_VISIT_KEY, JSON.stringify(counts));
+  } catch { /* ignore */ }
+}
+
+function getTopTabs(n: number): InsightTab[] {
+  const counts = getTabVisitCounts();
+  return (Object.entries(counts) as [InsightTab, number][])
+    .sort((a, b) => b[1] - a[1])
+    .filter(([, count]) => count >= 3) // Only prefetch tabs visited 3+ times
+    .slice(0, n)
+    .map(([tab]) => tab);
+}
+
+function prefetchTab(utils: ReturnType<typeof trpc.useUtils>, tab: InsightTab) {
+  switch (tab) {
+    case "overview":
+      utils.analytics.dashboard.prefetch();
+      break;
+    case "skills":
+      utils.skillTracker.overview.prefetch();
+      break;
+    case "competitive":
+      // CompetitivePosition uses releaseReadiness (mutation-based, can't prefetch)
+      break;
+    case "momentum":
+      utils.streak.get.prefetch();
+      break;
+    case "dna":
+      utils.artistDNA.latest.prefetch();
+      utils.artistDNA.history.prefetch();
+      break;
+  }
+}
+
+// Round 97 + Round 98: Prefetch hook with smart learning
 function usePrefetchInsightsTabs() {
   const utils = trpc.useUtils();
   const prefetchedRef = useRef<Set<string>>(new Set());
 
-  // Prefetch overview data on mount (default tab)
-  const prefetchOverview = useCallback(() => {
+  // Smart prefetch: on mount, prefetch the user's most-visited tabs (up to 2)
+  const prefetchSmart = useCallback(() => {
+    // Always prefetch overview (default tab)
     if (!prefetchedRef.current.has("overview")) {
-      utils.analytics.dashboard.prefetch();
+      prefetchTab(utils, "overview");
       prefetchedRef.current.add("overview");
     }
+    // Prefetch top user-visited tabs based on learned patterns
+    const topTabs = getTopTabs(2);
+    for (const tab of topTabs) {
+      if (!prefetchedRef.current.has(tab)) {
+        prefetchTab(utils, tab);
+        prefetchedRef.current.add(tab);
+      }
+    }
   }, [utils]);
+
+  // Track tab visits for learning
+  const trackVisit = useCallback((tab: InsightTab) => {
+    recordTabVisit(tab);
+  }, []);
 
   // Prefetch adjacent tabs on hover with debounce
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,27 +134,7 @@ function usePrefetchInsightsTabs() {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       if (!prefetchedRef.current.has(tab)) {
-        // Prefetch the data for the hovered tab
-        switch (tab) {
-          case "overview":
-            utils.analytics.dashboard.prefetch();
-            break;
-          case "skills":
-            utils.skillTracker.overview.prefetch();
-            break;
-          case "competitive":
-            // CompetitivePosition uses releaseReadiness (mutation-based, can't prefetch)
-            // No-op: evaluate is a mutation triggered by user action
-            break;
-          case "momentum":
-            // Momentum uses streak.get + flywheel data
-            utils.streak.get.prefetch();
-            break;
-          case "dna":
-            utils.artistDNA.latest.prefetch();
-            utils.artistDNA.history.prefetch();
-            break;
-        }
+        prefetchTab(utils, tab);
         prefetchedRef.current.add(tab);
       }
     }, 200); // 200ms debounce per Claude design
@@ -102,18 +147,23 @@ function usePrefetchInsightsTabs() {
     }
   }, []);
 
-  return { prefetchOverview, handleTabHover, handleTabHoverEnd };
+  return { prefetchSmart, handleTabHover, handleTabHoverEnd, trackVisit };
 }
 
 export default function Insights() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<InsightTab>("overview");
-  const { prefetchOverview, handleTabHover, handleTabHoverEnd } = usePrefetchInsightsTabs();
+  const { prefetchSmart, handleTabHover, handleTabHoverEnd, trackVisit } = usePrefetchInsightsTabs();
 
-  // Prefetch overview data on mount
+  // Smart prefetch on mount: overview + user's most-visited tabs
   useMemo(() => {
-    prefetchOverview();
-  }, [prefetchOverview]);
+    prefetchSmart();
+  }, [prefetchSmart]);
+
+  // Track tab visits for learning patterns
+  useEffect(() => {
+    trackVisit(activeTab);
+  }, [activeTab, trackVisit]);
 
   return (
     <div className="container py-6 max-w-5xl space-y-6">

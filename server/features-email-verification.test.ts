@@ -30,7 +30,7 @@ function createAuthContext(overrides?: Partial<AuthenticatedUser>): TrpcContext 
     emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null,
+    emailBounceReason: null, preferredReviewLength: "standard" as const,
     ...overrides,
   };
   return {
@@ -89,7 +89,7 @@ describe("Email Verification - Status", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
     const result = await caller.emailVerification.status();
     expect(result.emailVerified).toBe(false);
@@ -101,7 +101,7 @@ describe("Email Verification - Status", () => {
     const ctx = createAuthContext({ emailVerified: true,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "verified@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "verified@example.com" });
     const caller = appRouter.createCaller(ctx);
     const result = await caller.emailVerification.status();
     expect(result.emailVerified).toBe(true);
@@ -129,7 +129,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     (db.getActiveVerificationToken as any).mockResolvedValueOnce(null);
@@ -152,7 +152,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: true,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     await expect(
@@ -174,7 +174,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     // Simulate a recently created token (10 seconds ago)
@@ -198,7 +198,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     // Simulate a token created 2 minutes ago (past cooldown)
@@ -233,7 +233,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     await expect(
@@ -246,7 +246,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     (db.getActiveVerificationToken as any).mockResolvedValueOnce(null);
@@ -266,7 +266,7 @@ describe("Email Verification - Send Verification", () => {
     const ctx = createAuthContext({ emailVerified: false,
     emailBounced: false,
     emailBouncedAt: null,
-    emailBounceReason: null, email: "test@example.com" });
+    emailBounceReason: null, preferredReviewLength: "standard" as const, email: "test@example.com" });
     const caller = appRouter.createCaller(ctx);
 
     (db.getActiveVerificationToken as any).mockResolvedValueOnce(null);

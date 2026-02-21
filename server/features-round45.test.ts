@@ -64,6 +64,7 @@ function createAuthContext(userId = 1) {
     emailBounced: false,
     emailBouncedAt: null,
     emailBounceReason: null,
+    preferredReviewLength: "standard" as const,
     },
     req: { headers: { origin: "http://localhost:3000" } } as any,
     res: {} as any,

@@ -36,6 +36,7 @@ export const users = mysqlTable("users", {
   emailBouncedAt: timestamp("emailBouncedAt"),
   emailBounceReason: varchar("emailBounceReason", { length: 255 }),
   deletedAt: timestamp("deletedAt"),
+  preferredReviewLength: mysqlEnum("preferredReviewLength", ["brief", "standard", "detailed"]).default("standard").notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -148,6 +149,7 @@ export const reviews = mysqlTable("reviews", {
   shareExpiresAt: timestamp("shareExpiresAt"),
   reviewVersion: int("reviewVersion").default(1).notNull(),
   isLatest: boolean("isLatest").default(true).notNull(),
+  versionNote: varchar("versionNote", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => [
   index("idx_reviews_projectId").on(t.projectId),

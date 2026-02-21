@@ -2186,6 +2186,24 @@ export async function getUserPreferredPersona(userId: number): Promise<string> {
   return user?.preferredPersona ?? "full";
 }
 
+export async function updateUserPreferredReviewLength(
+  userId: number,
+  length: "brief" | "standard" | "detailed"
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ preferredReviewLength: length }).where(eq(users.id, userId));
+}
+
+export async function updateReviewVersionNote(
+  reviewId: number,
+  userId: number,
+  versionNote: string | null
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reviews).set({ versionNote }).where(and(eq(reviews.id, reviewId), eq(reviews.userId, userId)));
+}
 
 // ── Action Mode Cache ──
 

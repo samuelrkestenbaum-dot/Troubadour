@@ -38,6 +38,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     emailBounced: false,
     emailBouncedAt: null,
     emailBounceReason: null,
+    preferredReviewLength: "standard" as const,
   };
 
   const ctx: TrpcContext = {

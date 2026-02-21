@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, GitCompare, Star, ChevronDown, ChevronUp, History, ArrowRight } from "lucide-react";
+import { Loader2, GitCompare, Star, ChevronDown, ChevronUp, History, ArrowRight, StickyNote, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -17,6 +17,59 @@ function ScoreBadge({ score, label }: { score: number; label: string }) {
     <div className="flex items-center gap-1.5">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className={`text-sm font-bold ${color}`}>{score.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function VersionNoteInput({ reviewId, initialNote }: { reviewId: number; initialNote: string | null }) {
+  const [note, setNote] = useState(initialNote || "");
+  const [saved, setSaved] = useState(false);
+  const utils = trpc.useUtils();
+  const updateNote = trpc.review.updateVersionNote.useMutation({
+    onSuccess: () => {
+      setSaved(true);
+      utils.review.get.invalidate({ id: reviewId });
+      setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (err) => toast.error(err.message || "Failed to save note"),
+  });
+
+  const handleSave = useCallback(() => {
+    updateNote.mutate({ reviewId, versionNote: note.trim() || null });
+  }, [reviewId, note, updateNote]);
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/30">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <StickyNote className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[11px] font-medium text-muted-foreground">Version Note</span>
+      </div>
+      <div className="flex gap-1.5">
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => { setNote(e.target.value); setSaved(false); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+          placeholder="e.g. Re-recorded vocals, new bridge section"
+          maxLength={500}
+          className="flex-1 text-xs bg-background/50 border border-border/50 rounded-md px-2 py-1.5 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSave}
+          disabled={updateNote.isPending || saved}
+          className="h-7 px-2 text-xs"
+        >
+          {saved ? (
+            <Check className="h-3 w-3 text-emerald-400" />
+          ) : updateNote.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            "Save"
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -310,6 +363,26 @@ export function ABReviewComparison({ trackId }: { trackId: number }) {
             label={`v${currentReview?.reviewVersion || "?"} (Current)`}
           />
         </div>
+
+        {/* Version annotations */}
+        {!isLoading && previousReview && (
+          <Card className="border-border/30">
+            <CardContent className="py-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[11px] text-muted-foreground">v{previousReview.reviewVersion} annotation:</span>
+                  <VersionNoteInput reviewId={previousReview.id} initialNote={(previousReview as any).versionNote || null} />
+                </div>
+                {currentReview && (
+                  <div>
+                    <span className="text-[11px] text-muted-foreground">v{currentReview.reviewVersion} annotation:</span>
+                    <VersionNoteInput reviewId={currentReview.id} initialNote={(currentReview as any).versionNote || null} />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {!isLoading && currentReview && previousReview && (
           <Card className="border-primary/20 bg-primary/5">

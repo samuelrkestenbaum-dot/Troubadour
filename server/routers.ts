@@ -39,6 +39,12 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    updatePreferredReviewLength: protectedProcedure
+      .input(z.object({ length: z.enum(["brief", "standard", "detailed"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUserPreferredReviewLength(ctx.user.id, input.length);
+        return { success: true } as const;
+      }),
   }),
 
   project: router({

@@ -30,6 +30,7 @@ function createAuthContext(overrides?: Partial<AuthenticatedUser>): TrpcContext 
     emailBounced: false,
     emailBouncedAt: null,
     emailBounceReason: null,
+    preferredReviewLength: "standard" as const,
     ...overrides,
   };
 

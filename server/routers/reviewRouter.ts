@@ -691,4 +691,14 @@ export const reviewRouter = router({
 
       return result;
     }),
+
+  updateVersionNote: protectedProcedure
+    .input(z.object({
+      reviewId: z.number(),
+      versionNote: z.string().max(500).nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db.updateReviewVersionNote(input.reviewId, ctx.user.id, input.versionNote);
+      return { success: true } as const;
+    }),
 });
